@@ -21,7 +21,13 @@ const TYPE_COLORS: Record<string, string> = {
   other:       'bg-gray-100 text-gray-600',
 }
 
-export default function ProspectList({ prospects }: { prospects: Prospect[] }) {
+export default function ProspectList({
+  prospects,
+  canDelete,
+}: {
+  prospects: Prospect[]
+  canDelete: boolean
+}) {
   const [search, setSearch]           = useState('')
   const [typeFilter, setTypeFilter]   = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -152,13 +158,15 @@ export default function ProspectList({ prospects }: { prospects: Prospect[] }) {
                       >
                         Edit
                       </Link>
-                      <button
-                        onClick={() => handleDelete(p.id, p.company_name)}
-                        disabled={isPending && deletingId === p.id}
-                        className="text-sm text-red-500 hover:text-red-700 font-medium disabled:opacity-40"
-                      >
-                        {isPending && deletingId === p.id ? 'Deleting…' : 'Delete'}
-                      </button>
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDelete(p.id, p.company_name)}
+                          disabled={isPending && deletingId === p.id}
+                          className="text-sm text-red-500 hover:text-red-700 font-medium disabled:opacity-40"
+                        >
+                          {isPending && deletingId === p.id ? 'Deleting…' : 'Delete'}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

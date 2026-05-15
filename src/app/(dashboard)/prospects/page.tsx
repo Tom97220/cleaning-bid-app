@@ -1,12 +1,17 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { getUserRole } from '@/lib/supabase/auth'
 import Header from '@/components/layout/Header'
 import ProspectList from './ProspectList'
 
 export const metadata = { title: 'Prospect Master File | CleanBid Pro' }
 
 export default async function ProspectsPage() {
-  const supabase = await createClient()
+  const [supabase, role] = await Promise.all([
+    createClient(),
+    getUserRole(),
+  ])
+
   const { data: prospects, error } = await supabase
     .from('prospects')
     .select('*')
@@ -32,7 +37,10 @@ export default async function ProspectsPage() {
             Failed to load prospects: {error.message}
           </div>
         ) : (
-          <ProspectList prospects={prospects ?? []} />
+          <ProspectList
+            prospects={prospects ?? []}
+            canDelete={role === 'admin'}
+          />
         )}
       </div>
     </div>

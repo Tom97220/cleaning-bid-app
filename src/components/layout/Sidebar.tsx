@@ -2,12 +2,12 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { signOut } from '@/app/login/actions'
 
 const navigation = [
   {
     name: 'Prospect Master File',
     href: '/prospects',
-    description: 'Manage prospect accounts and contacts',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -18,7 +18,6 @@ const navigation = [
   {
     name: 'Position Descriptions',
     href: '/positions',
-    description: 'Define cleaning positions and roles',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -29,7 +28,6 @@ const navigation = [
   {
     name: 'Task Codes',
     href: '/task-codes',
-    description: 'Configure cleaning task codes and times',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -40,7 +38,6 @@ const navigation = [
   {
     name: 'Work Loading & Bidding',
     href: '/work-loading',
-    description: 'Calculate labor hours and generate bids',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -51,7 +48,6 @@ const navigation = [
   {
     name: 'Reports',
     href: '/reports',
-    description: 'View bid summaries and analytics',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -61,17 +57,23 @@ const navigation = [
   },
 ]
 
-export default function Sidebar() {
+interface SidebarProps {
+  userEmail?: string
+  role: 'admin' | 'user'
+}
+
+export default function Sidebar({ userEmail, role }: SidebarProps) {
   const pathname = usePathname()
 
   return (
     <div className="flex flex-col w-64 bg-brand-900 min-h-screen">
       {/* Logo */}
-      <div className="flex items-center h-16 px-6 bg-brand-900 border-b border-brand-800">
+      <div className="flex items-center h-16 px-6 border-b border-brand-800">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-400 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-brand-900" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+            <svg className="w-5 h-5 text-brand-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
           </div>
           <div>
@@ -104,9 +106,30 @@ export default function Sidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      <div className="px-4 py-4 border-t border-brand-800">
-        <p className="text-blue-400 text-xs text-center">TeamBid Replacement v1.0</p>
+      {/* User / logout footer */}
+      <div className="px-3 py-4 border-t border-brand-800 space-y-3">
+        {userEmail && (
+          <div className="px-3">
+            <p className="text-xs text-blue-300 truncate">{userEmail}</p>
+            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium mt-0.5 ${
+              role === 'admin' ? 'bg-blue-500 text-white' : 'bg-brand-800 text-blue-300'
+            }`}>
+              {role === 'admin' ? 'Admin' : 'User'}
+            </span>
+          </div>
+        )}
+        <form action={signOut}>
+          <button
+            type="submit"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-blue-200 hover:bg-brand-800 hover:text-white transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Sign out
+          </button>
+        </form>
       </div>
     </div>
   )
