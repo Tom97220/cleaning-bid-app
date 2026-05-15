@@ -10,6 +10,7 @@ const TYPE_LABELS: Record<string, string> = {
   industrial:  'Industrial',
   medical:     'Medical',
   educational: 'Educational',
+  other:       'Other',
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -17,6 +18,7 @@ const TYPE_COLORS: Record<string, string> = {
   industrial:  'bg-orange-50 text-orange-700',
   medical:     'bg-red-50 text-red-700',
   educational: 'bg-purple-50 text-purple-700',
+  other:       'bg-gray-100 text-gray-600',
 }
 
 export default function ProspectList({ prospects }: { prospects: Prospect[] }) {
@@ -67,6 +69,7 @@ export default function ProspectList({ prospects }: { prospects: Prospect[] }) {
           <option value="industrial">Industrial</option>
           <option value="medical">Medical</option>
           <option value="educational">Educational</option>
+          <option value="other">Other</option>
         </select>
         <select
           value={statusFilter}

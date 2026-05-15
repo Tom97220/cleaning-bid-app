@@ -1,4 +1,4 @@
-export const PROSPECT_TYPES = ['commercial', 'industrial', 'medical', 'educational'] as const
+export const PROSPECT_TYPES = ['commercial', 'industrial', 'medical', 'educational', 'other'] as const
 export const PROSPECT_STATUSES = ['active', 'inactive'] as const
 
 export type ProspectType = (typeof PROSPECT_TYPES)[number]

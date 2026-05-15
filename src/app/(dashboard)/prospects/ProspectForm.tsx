@@ -61,6 +61,7 @@ export default function ProspectForm({ prospect }: Props) {
               <option value="industrial">Industrial</option>
               <option value="medical">Medical</option>
               <option value="educational">Educational</option>
+              <option value="other">Other</option>
             </select>
           </div>
           <div>
