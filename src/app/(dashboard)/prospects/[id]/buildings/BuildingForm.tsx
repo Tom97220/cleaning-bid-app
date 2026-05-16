@@ -113,6 +113,16 @@ export default function BuildingForm({
               className={inputClass}
             />
           </div>
+          <div className="col-span-2">
+            <label className={labelClass}>Address 2</label>
+            <input
+              name="address_2"
+              type="text"
+              defaultValue={building?.address_2 ?? ''}
+              placeholder="Suite, floor, unit, etc."
+              className={inputClass}
+            />
+          </div>
           <div>
             <label className={labelClass}>City</label>
             <input

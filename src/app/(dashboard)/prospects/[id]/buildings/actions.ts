@@ -25,6 +25,7 @@ function extractBuildingData(formData: FormData) {
   return {
     building_name:    (formData.get('building_name') as string).trim(),
     address:          (formData.get('address') as string)?.trim() || null,
+    address_2:        (formData.get('address_2') as string)?.trim() || null,
     city:             (formData.get('city') as string)?.trim() || null,
     state:            (formData.get('state') as string)?.trim() || null,
     zip:              (formData.get('zip') as string)?.trim() || null,

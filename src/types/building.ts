@@ -10,6 +10,7 @@ export interface Building {
   prospect_id:      string
   building_name:    string
   address:          string | null
+  address_2:        string | null
   city:             string | null
   state:            string | null
   zip:              string | null
