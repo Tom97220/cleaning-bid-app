@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from '@/app/login/actions'
 
-const navigation = [
+const mainNavigation = [
   {
     name: 'Prospect Master File',
     href: '/prospects',
@@ -57,6 +57,19 @@ const navigation = [
   },
 ]
 
+const adminNavigation = [
+  {
+    name: 'Task Types',
+    href: '/admin/task-types',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+      </svg>
+    ),
+  },
+]
+
 interface SidebarProps {
   userEmail?: string
   role: 'admin' | 'user'
@@ -85,7 +98,7 @@ export default function Sidebar({ userEmail, role }: SidebarProps) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {navigation.map((item) => {
+        {mainNavigation.map((item) => {
           const isActive = pathname.startsWith(item.href)
           return (
             <Link
@@ -104,6 +117,33 @@ export default function Sidebar({ userEmail, role }: SidebarProps) {
             </Link>
           )
         })}
+
+        {role === 'admin' && (
+          <div className="pt-4">
+            <p className="px-3 mb-1 text-xs font-semibold text-blue-400 uppercase tracking-wider">
+              Admin Settings
+            </p>
+            {adminNavigation.map((item) => {
+              const isActive = pathname.startsWith(item.href)
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-brand-700 text-white'
+                      : 'text-blue-200 hover:bg-brand-800 hover:text-white'
+                  }`}
+                >
+                  <span className={isActive ? 'text-blue-300' : 'text-blue-400 group-hover:text-blue-300'}>
+                    {item.icon}
+                  </span>
+                  {item.name}
+                </Link>
+              )
+            })}
+          </div>
+        )}
       </nav>
 
       {/* User / logout footer */}
