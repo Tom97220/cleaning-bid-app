@@ -153,8 +153,14 @@ export default function ProspectList({
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <Link
-                        href={`/prospects/${p.id}/edit`}
+                        href={`/prospects/${p.id}`}
                         className="text-sm text-brand-600 hover:text-brand-800 font-medium"
+                      >
+                        View
+                      </Link>
+                      <Link
+                        href={`/prospects/${p.id}/edit`}
+                        className="text-sm text-gray-500 hover:text-gray-700 font-medium"
                       >
                         Edit
                       </Link>
