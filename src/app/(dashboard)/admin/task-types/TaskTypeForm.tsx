@@ -27,38 +27,20 @@ export default function TaskTypeForm({ taskType }: { taskType?: TaskType }) {
       <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
         <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Task Type Details</h2>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={labelClass}>
-              Type Code <span className="text-red-500">*</span>
-            </label>
-            <input
-              name="type_code"
-              type="text"
-              required
-              maxLength={35}
-              defaultValue={taskType?.type_code ?? ''}
-              placeholder="e.g. FLOOR"
-              className={inputClass}
-            />
-            <p className="text-xs text-gray-400 mt-1">Max 35 characters — auto-uppercased</p>
-          </div>
-
-          <div>
-            <label className={labelClass}>
-              Type Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              name="type_name"
-              type="text"
-              required
-              maxLength={50}
-              defaultValue={taskType?.type_name ?? ''}
-              placeholder="e.g. Floor Care"
-              className={inputClass}
-            />
-            <p className="text-xs text-gray-400 mt-1">Max 50 characters</p>
-          </div>
+        <div>
+          <label className={labelClass}>
+            Type Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            name="type_name"
+            type="text"
+            required
+            maxLength={50}
+            defaultValue={taskType?.type_name ?? ''}
+            placeholder="e.g. Floor Care"
+            className={inputClass}
+          />
+          <p className="text-xs text-gray-400 mt-1">Max 50 characters</p>
         </div>
       </section>
 

@@ -15,7 +15,6 @@ async function assertAdmin(): Promise<ActionState> {
 
 function extractData(formData: FormData) {
   return {
-    type_code: (formData.get('type_code') as string).trim().toUpperCase(),
     type_name: (formData.get('type_name') as string).trim(),
   }
 }
@@ -28,7 +27,6 @@ export async function createTaskType(
   if (authError) return authError
 
   const data = extractData(formData)
-  if (!data.type_code) return { error: 'Type code is required.' }
   if (!data.type_name) return { error: 'Type name is required.' }
 
   const supabase = await createClient()
@@ -48,7 +46,6 @@ export async function updateTaskType(
   if (authError) return authError
 
   const data = extractData(formData)
-  if (!data.type_code) return { error: 'Type code is required.' }
   if (!data.type_name) return { error: 'Type name is required.' }
 
   const supabase = await createClient()
