@@ -15,11 +15,10 @@ async function assertAdmin(): Promise<ActionState> {
 
 function extractPositionData(formData: FormData) {
   return {
-    position_code:    (formData.get('position_code')    as string).trim().toUpperCase(),
-    position_name:    (formData.get('position_name')    as string).trim(),
-    position_type:    (formData.get('position_type')    as string),
-    base_hourly_rate: parseFloat(formData.get('base_hourly_rate') as string) || 0,
-    description:      (formData.get('description')      as string)?.trim() || null,
+    position_code: (formData.get('position_code') as string).trim().toUpperCase(),
+    position_name: (formData.get('position_name') as string).trim(),
+    position_type: (formData.get('position_type') as string),
+    description:   (formData.get('description')   as string)?.trim() || null,
   }
 }
 

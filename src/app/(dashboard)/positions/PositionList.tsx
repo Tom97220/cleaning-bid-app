@@ -79,7 +79,7 @@ export default function PositionList({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              {['Code', 'Name', 'Type', 'Base Rate / Hr', 'Description', ...(isAdmin ? ['Actions'] : [])].map((h) => (
+              {['Code', 'Name', 'Type', 'Description', ...(isAdmin ? ['Actions'] : [])].map((h) => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {h}
                 </th>
@@ -89,7 +89,7 @@ export default function PositionList({
           <tbody className="divide-y divide-gray-100">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? 6 : 5} className="px-4 py-16 text-center">
+                <td colSpan={isAdmin ? 5 : 4} className="px-4 py-16 text-center">
                   <p className="text-sm font-medium text-gray-400">
                     {positions.length === 0
                       ? 'No positions defined yet.'
@@ -112,9 +112,6 @@ export default function PositionList({
                     <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${TYPE_COLORS[p.position_type]}`}>
                       {TYPE_LABELS[p.position_type]}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 font-medium">
-                    ${p.base_hourly_rate.toFixed(2)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">
                     {p.description ?? '—'}

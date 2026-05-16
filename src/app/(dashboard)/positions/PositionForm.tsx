@@ -74,20 +74,7 @@ export default function PositionForm({ position }: { position?: Position }) {
             />
           </div>
 
-          <div>
-            <label className={labelClass}>
-              Base Hourly Rate ($) <span className="text-red-500">*</span>
-            </label>
-            <input
-              name="base_hourly_rate"
-              type="number"
-              required
-              min="0"
-              step="0.01"
-              defaultValue={position?.base_hourly_rate ?? '0.00'}
-              className={inputClass}
-            />
-          </div>
+
         </div>
       </section>
 

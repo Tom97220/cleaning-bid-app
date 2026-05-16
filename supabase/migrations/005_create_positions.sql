@@ -3,7 +3,6 @@ create table if not exists positions (
   position_code     text         not null unique,
   position_name     text         not null,
   position_type     text         not null check (position_type in ('day', 'evening', 'night')),
-  base_hourly_rate  numeric(10,2) not null default 0,
   description       text,
   created_at        timestamptz  not null default now(),
   updated_at        timestamptz  not null default now()
