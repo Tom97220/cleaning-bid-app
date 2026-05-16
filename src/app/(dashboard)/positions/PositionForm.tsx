@@ -36,12 +36,12 @@ export default function PositionForm({ position }: { position?: Position }) {
               name="position_code"
               type="text"
               required
-              maxLength={18}
+              maxLength={35}
               defaultValue={position?.position_code ?? ''}
               placeholder="e.g. DAY1"
               className={inputClass}
             />
-            <p className="text-xs text-gray-400 mt-1">Max 18 characters — auto-uppercased</p>
+            <p className="text-xs text-gray-400 mt-1">Max 35 characters — auto-uppercased</p>
           </div>
 
           <div>
@@ -52,12 +52,12 @@ export default function PositionForm({ position }: { position?: Position }) {
               name="position_name"
               type="text"
               required
-              maxLength={18}
+              maxLength={35}
               defaultValue={position?.position_name ?? ''}
               placeholder="e.g. Day Cleaner"
               className={inputClass}
             />
-            <p className="text-xs text-gray-400 mt-1">Max 18 characters</p>
+            <p className="text-xs text-gray-400 mt-1">Max 35 characters</p>
           </div>
         </div>
       </section>
