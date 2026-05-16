@@ -17,7 +17,6 @@ function extractPositionData(formData: FormData) {
   return {
     position_code: (formData.get('position_code') as string).trim().toUpperCase(),
     position_name: (formData.get('position_name') as string).trim(),
-    position_type: (formData.get('position_type') as string),
     description:   (formData.get('description')   as string)?.trim() || null,
   }
 }
@@ -32,7 +31,6 @@ export async function createPosition(
   const data = extractPositionData(formData)
   if (!data.position_code) return { error: 'Position code is required.' }
   if (!data.position_name) return { error: 'Position name is required.' }
-  if (!data.position_type) return { error: 'Position type is required.' }
 
   const supabase = await createClient()
   const { error } = await supabase.from('positions').insert(data)
@@ -53,7 +51,6 @@ export async function updatePosition(
   const data = extractPositionData(formData)
   if (!data.position_code) return { error: 'Position code is required.' }
   if (!data.position_name) return { error: 'Position name is required.' }
-  if (!data.position_type) return { error: 'Position type is required.' }
 
   const supabase = await createClient()
   const { error } = await supabase.from('positions').update(data).eq('id', id)

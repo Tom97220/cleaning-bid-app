@@ -5,18 +5,6 @@ import Link from 'next/link'
 import { deletePosition } from './actions'
 import type { Position } from '@/types/position'
 
-const TYPE_LABELS: Record<string, string> = {
-  day:     'Day',
-  evening: 'Evening',
-  night:   'Night',
-}
-
-const TYPE_COLORS: Record<string, string> = {
-  day:     'bg-yellow-50 text-yellow-700',
-  evening: 'bg-orange-50 text-orange-700',
-  night:   'bg-indigo-50 text-indigo-700',
-}
-
 export default function PositionList({
   positions,
   isAdmin,
@@ -25,18 +13,17 @@ export default function PositionList({
   isAdmin: boolean
 }) {
   const [search, setSearch]          = useState('')
-  const [typeFilter, setTypeFilter]  = useState('')
   const [deletingId, setDeletingId]  = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const filtered = positions.filter((p) => {
     const q = search.toLowerCase()
-    const matchesSearch =
+    return (
       !q ||
       p.position_code.toLowerCase().includes(q) ||
-      p.position_name.toLowerCase().includes(q)
-    const matchesType = !typeFilter || p.position_type === typeFilter
-    return matchesSearch && matchesType
+      p.position_name.toLowerCase().includes(q) ||
+      (p.description?.toLowerCase().includes(q) ?? false)
+    )
   })
 
   function handleDelete(id: string, name: string) {
@@ -50,25 +37,15 @@ export default function PositionList({
 
   return (
     <div className="space-y-4">
-      {/* Search & Filters */}
+      {/* Search */}
       <div className="flex flex-wrap gap-3 items-center">
         <input
           type="text"
-          placeholder="Search by code or name..."
+          placeholder="Search by code, name, or description..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 min-w-[220px] max-w-sm border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="flex-1 min-w-[280px] max-w-sm border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-        >
-          <option value="">All Types</option>
-          <option value="day">Day</option>
-          <option value="evening">Evening</option>
-          <option value="night">Night</option>
-        </select>
         <span className="text-sm text-gray-400 ml-auto">
           {filtered.length} of {positions.length} positions
         </span>
@@ -79,7 +56,7 @@ export default function PositionList({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              {['Code', 'Name', 'Type', 'Description', ...(isAdmin ? ['Actions'] : [])].map((h) => (
+              {['Code', 'Name', 'Description', ...(isAdmin ? ['Actions'] : [])].map((h) => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {h}
                 </th>
@@ -89,7 +66,7 @@ export default function PositionList({
           <tbody className="divide-y divide-gray-100">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? 5 : 4} className="px-4 py-16 text-center">
+                <td colSpan={isAdmin ? 4 : 3} className="px-4 py-16 text-center">
                   <p className="text-sm font-medium text-gray-400">
                     {positions.length === 0
                       ? 'No positions defined yet.'
@@ -107,11 +84,6 @@ export default function PositionList({
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
                     {p.position_name}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${TYPE_COLORS[p.position_type]}`}>
-                      {TYPE_LABELS[p.position_type]}
-                    </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">
                     {p.description ?? '—'}

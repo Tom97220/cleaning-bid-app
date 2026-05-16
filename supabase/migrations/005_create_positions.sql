@@ -2,7 +2,6 @@ create table if not exists positions (
   id                uuid         primary key default gen_random_uuid(),
   position_code     text         not null unique,
   position_name     text         not null,
-  position_type     text         not null check (position_type in ('day', 'evening', 'night')),
   description       text,
   created_at        timestamptz  not null default now(),
   updated_at        timestamptz  not null default now()

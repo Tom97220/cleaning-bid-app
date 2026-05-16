@@ -36,31 +36,15 @@ export default function PositionForm({ position }: { position?: Position }) {
               name="position_code"
               type="text"
               required
+              maxLength={18}
               defaultValue={position?.position_code ?? ''}
               placeholder="e.g. DAY1"
               className={inputClass}
             />
-            <p className="text-xs text-gray-400 mt-1">Unique identifier — auto-uppercased</p>
+            <p className="text-xs text-gray-400 mt-1">Max 18 characters — auto-uppercased</p>
           </div>
 
           <div>
-            <label className={labelClass}>
-              Position Type <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="position_type"
-              required
-              defaultValue={position?.position_type ?? ''}
-              className={inputClass}
-            >
-              <option value="">Select type...</option>
-              <option value="day">Day</option>
-              <option value="evening">Evening</option>
-              <option value="night">Night</option>
-            </select>
-          </div>
-
-          <div className="col-span-2">
             <label className={labelClass}>
               Position Name <span className="text-red-500">*</span>
             </label>
@@ -68,13 +52,13 @@ export default function PositionForm({ position }: { position?: Position }) {
               name="position_name"
               type="text"
               required
+              maxLength={18}
               defaultValue={position?.position_name ?? ''}
               placeholder="e.g. Day Cleaner"
               className={inputClass}
             />
+            <p className="text-xs text-gray-400 mt-1">Max 18 characters</p>
           </div>
-
-
         </div>
       </section>
 
@@ -83,10 +67,12 @@ export default function PositionForm({ position }: { position?: Position }) {
         <textarea
           name="description"
           rows={4}
+          maxLength={255}
           defaultValue={position?.description ?? ''}
           placeholder="Optional description of duties and responsibilities..."
           className={inputClass}
         />
+        <p className="text-xs text-gray-400">Max 255 characters</p>
       </section>
 
       <div className="flex items-center gap-3 pb-6">
