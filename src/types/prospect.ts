@@ -11,8 +11,9 @@ export interface Prospect {
   contact_title: string | null
   phone: string | null
   email: string | null
-  address: string | null
-  city: string | null
+  address:   string | null
+  address_2: string | null
+  city:      string | null
   state: string | null
   zip: string | null
   prospect_type: ProspectType | null

@@ -14,6 +14,7 @@ function extractProspectData(formData: FormData) {
     phone:         (formData.get('phone')          as string)?.trim() || null,
     email:         (formData.get('email')          as string)?.trim() || null,
     address:       (formData.get('address')        as string)?.trim() || null,
+    address_2:     (formData.get('address_2')      as string)?.trim() || null,
     city:          (formData.get('city')           as string)?.trim() || null,
     state:         (formData.get('state')          as string)?.trim() || null,
     zip:           (formData.get('zip')            as string)?.trim() || null,

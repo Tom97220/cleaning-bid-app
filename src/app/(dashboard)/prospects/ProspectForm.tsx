@@ -130,6 +130,16 @@ export default function ProspectForm({ prospect }: Props) {
               className={inputClass}
             />
           </div>
+          <div className="col-span-2">
+            <label className={labelClass}>Address 2</label>
+            <input
+              name="address_2"
+              type="text"
+              defaultValue={prospect?.address_2 ?? ''}
+              placeholder="Suite, floor, unit, etc."
+              className={inputClass}
+            />
+          </div>
           <div>
             <label className={labelClass}>City</label>
             <input
