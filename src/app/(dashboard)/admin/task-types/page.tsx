@@ -15,7 +15,7 @@ export default async function TaskTypesPage() {
   const { data: taskTypes, error } = await supabase
     .from('task_types')
     .select('*')
-    .order('type_code')
+    .order('type_name')
 
   return (
     <div className="flex flex-col h-full">
