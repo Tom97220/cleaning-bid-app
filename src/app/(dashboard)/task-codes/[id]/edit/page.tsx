@@ -17,11 +17,11 @@ export default async function EditTaskCodePage({
   const { id } = await params
   const supabase = await createClient()
 
-  const { data: taskCode } = await supabase
-    .from('task_codes')
-    .select('*')
-    .eq('id', id)
-    .single()
+  const [{ data: taskCode }, { data: taskTypes }, { data: positions }] = await Promise.all([
+    supabase.from('task_codes').select('*').eq('id', id).single(),
+    supabase.from('task_types').select('id, type_name').order('type_name'),
+    supabase.from('positions').select('id, position_name').order('position_name'),
+  ])
 
   if (!taskCode) notFound()
 
@@ -31,8 +31,12 @@ export default async function EditTaskCodePage({
         title={`Edit: ${taskCode.task_name}`}
         description="Update task code details"
       />
-      <div className="p-6 max-w-2xl">
-        <TaskCodeForm taskCode={taskCode} />
+      <div className="p-6 max-w-3xl">
+        <TaskCodeForm
+          taskCode={taskCode}
+          taskTypes={taskTypes ?? []}
+          positions={positions ?? []}
+        />
       </div>
     </div>
   )

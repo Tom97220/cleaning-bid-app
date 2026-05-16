@@ -14,7 +14,7 @@ export default async function TaskCodesPage() {
 
   const { data: taskCodes, error } = await supabase
     .from('task_codes')
-    .select('*')
+    .select('*, task_types(type_name), positions(position_name)')
     .order('task_code')
 
   const isAdmin = role === 'admin'
@@ -23,7 +23,7 @@ export default async function TaskCodesPage() {
     <div className="flex flex-col h-full">
       <Header
         title="Task Codes"
-        description="Configure cleaning tasks and units of measure"
+        description="Configure cleaning tasks and production rates"
         actions={
           isAdmin ? (
             <Link
