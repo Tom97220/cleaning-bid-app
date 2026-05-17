@@ -3,8 +3,9 @@
 import { useState } from 'react'
 
 export interface SelectOption {
-  value: string
-  label: string
+  value:       string
+  label:       string
+  searchText?: string
 }
 
 const inputClass =
@@ -15,11 +16,13 @@ export default function SearchableSelect({
   options,
   defaultValue,
   placeholder = 'Search...',
+  onSelect,
 }: {
   name: string
   options: SelectOption[]
   defaultValue?: string | null
   placeholder?: string
+  onSelect?: (value: string) => void
 }) {
   const defaultOption               = options.find((o) => o.value === defaultValue)
   const [inputValue, setInputValue] = useState(defaultOption?.label ?? '')
@@ -28,7 +31,9 @@ export default function SearchableSelect({
   const [hasTyped, setHasTyped]     = useState(false)
 
   const filtered = hasTyped
-    ? options.filter((o) => o.label.toLowerCase().includes(inputValue.toLowerCase()))
+    ? options.filter((o) =>
+        (o.searchText ?? o.label).toLowerCase().includes(inputValue.toLowerCase())
+      )
     : options
 
   function select(value: string, label: string) {
@@ -36,6 +41,7 @@ export default function SearchableSelect({
     setInputValue(label)
     setHasTyped(false)
     setOpen(false)
+    onSelect?.(value)
   }
 
   function handleFocus() {

@@ -107,6 +107,12 @@ export default function AreaList({
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <Link
+                        href={`${basePath}/areas/${a.id}`}
+                        className="text-sm text-brand-600 hover:text-brand-800 font-medium"
+                      >
+                        View
+                      </Link>
+                      <Link
                         href={`${basePath}/areas/${a.id}/edit`}
                         className="text-sm text-brand-600 hover:text-brand-800 font-medium"
                       >
