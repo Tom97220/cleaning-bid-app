@@ -5,7 +5,7 @@ import Link from 'next/link'
 import SearchableSelect from '@/components/ui/SearchableSelect'
 import { createLaborLine, updateLaborLine, type ActionState } from '../actions'
 import type { BidLaborLine } from '@/types/bid'
-import { calcLaborLineCost } from '@/types/bid'
+import { calcPositionCost } from '@/types/bid'
 
 const inputClass = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500'
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
@@ -32,38 +32,15 @@ export default function LaborLineForm({
 
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(action, null)
 
-  const [annualHours,  setAnnualHours]  = useState(item?.annual_hours != null ? String(item.annual_hours) : '')
-  const [vacationPct,  setVacationPct]  = useState(String(item?.vacation_pct ?? 4))
-  const [sickHours,    setSickHours]    = useState(
-    item?.sick_hours != null ? String(item.sick_hours)
-      : item?.annual_hours ? String(+(item.annual_hours / 30).toFixed(2))
-      : ''
-  )
-  const [sickManual,   setSickManual]   = useState(item?.sick_hours != null)
-  const [rate,         setRate]         = useState(item?.rate != null ? String(item.rate) : '')
+  const [annualHours, setAnnualHours] = useState(item?.annual_hours != null ? String(item.annual_hours) : '')
+  const [rate,        setRate]        = useState(item?.rate != null ? String(item.rate) : '')
 
-  function handleHoursChange(val: string) {
-    setAnnualHours(val)
-    if (!sickManual) {
-      const h = parseFloat(val)
-      setSickHours(h ? +(h / 30).toFixed(2) + '' : '')
-    }
-  }
-
-  function handleSickChange(val: string) {
-    setSickHours(val)
-    setSickManual(true)
-  }
-
-  const cost = calcLaborLineCost(
+  const cost = calcPositionCost(
     parseFloat(annualHours) || null,
-    parseFloat(vacationPct) || 4,
-    parseFloat(sickHours) || null,
     parseFloat(rate) || null,
   )
 
   const cancelHref = `/prospects/${prospectId}/buildings/${buildingId}/bid`
-
   const positionOptions = positions.map((p) => ({ value: p.id, label: p.position_name }))
 
   return (
@@ -96,7 +73,7 @@ export default function LaborLineForm({
               min="0"
               step="any"
               value={annualHours}
-              onChange={(e) => handleHoursChange(e.target.value)}
+              onChange={(e) => setAnnualHours(e.target.value)}
               placeholder="e.g. 2080"
               className={inputClass}
             />
@@ -115,40 +92,8 @@ export default function LaborLineForm({
             />
           </div>
         </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={labelClass}>Vacation %</label>
-            <input
-              name="vacation_pct"
-              type="number"
-              min="0"
-              step="any"
-              value={vacationPct}
-              onChange={(e) => setVacationPct(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-          <div>
-            <label className={labelClass}>
-              Sick Hours
-              <span className="ml-1 text-xs text-gray-400 font-normal">(auto = hrs÷30)</span>
-            </label>
-            <input
-              name="sick_hours"
-              type="number"
-              min="0"
-              step="any"
-              value={sickHours}
-              onChange={(e) => handleSickChange(e.target.value)}
-              placeholder="Auto"
-              className={inputClass}
-            />
-          </div>
-        </div>
       </section>
 
-      {/* Calculated */}
       <section className="bg-gray-50 rounded-xl border border-gray-200 p-5">
         <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Calculated</h2>
         <div>
@@ -158,9 +103,7 @@ export default function LaborLineForm({
               ? cost.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
               : '—'}
           </dd>
-          <p className="text-xs text-gray-400 mt-1">
-            (Annual Hrs + Sick Hrs + Annual Hrs × Vacation%) × Rate
-          </p>
+          <p className="text-xs text-gray-400 mt-1">Annual Hours × Rate</p>
         </div>
       </section>
 

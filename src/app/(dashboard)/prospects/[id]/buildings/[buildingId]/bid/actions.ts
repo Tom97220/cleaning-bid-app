@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/supabase/auth'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { calcLaborLineCost, calcCostLine } from '@/types/bid'
+import { calcPositionCost, calcCostLine } from '@/types/bid'
 import type { CostType } from '@/types/bid'
 
 export type ActionState = { error: string } | null
@@ -35,25 +35,42 @@ function bidPath(prospectId: string, buildingId: string) {
 }
 
 async function fetchSection1Totals(supabase: Awaited<ReturnType<typeof createClient>>, buildingId: string) {
-  const { data: lines } = await supabase
-    .from('bid_labor_lines')
-    .select('annual_hours, vacation_pct, sick_hours, rate')
-    .eq('building_id', buildingId)
+  const [{ data: lines }, { data: summaryRow }] = await Promise.all([
+    supabase.from('bid_labor_lines').select('annual_hours, rate').eq('building_id', buildingId),
+    supabase.from('bid_summary')
+      .select('vacation_pct, vacation_hours_override, sick_hours_override, vacation_rate, sick_rate')
+      .eq('building_id', buildingId)
+      .maybeSingle(),
+  ])
 
   const rows = lines ?? []
-  const totalHours = rows.reduce((s: number, l: { annual_hours: number | null }) => s + (l.annual_hours ?? 0), 0)
-  const totalLabor = rows.reduce((s: number, l: { annual_hours: number | null; vacation_pct: number; sick_hours: number | null; rate: number | null }) =>
-    s + calcLaborLineCost(l.annual_hours, l.vacation_pct, l.sick_hours, l.rate), 0)
+  const totalPositionHours = rows.reduce((s: number, l: { annual_hours: number | null }) => s + (l.annual_hours ?? 0), 0)
+  const totalPositionCost  = rows.reduce((s: number, l: { annual_hours: number | null; rate: number | null }) =>
+    s + calcPositionCost(l.annual_hours, l.rate), 0)
+
+  const vacPct  = summaryRow?.vacation_pct ?? 4
+  const vacHrs  = summaryRow?.vacation_hours_override ?? totalPositionHours * vacPct / 100
+  const vacCost = vacHrs * (summaryRow?.vacation_rate ?? 0)
+  const sickHrs = summaryRow?.sick_hours_override ?? totalPositionHours / 30
+  const sickCost = sickHrs * (summaryRow?.sick_rate ?? 0)
+
+  const totalHours = totalPositionHours
+  const totalLabor = totalPositionCost + vacCost + sickCost
   return { totalHours, totalLabor }
 }
 
 // ─── Bid Summary ─────────────────────────────────────────────────────────────
 
 export async function updateBidSummary(
-  buildingId: string,
-  prospectId: string,
-  overhead_pct: number,
-  profit_markup_pct: number,
+  buildingId:              string,
+  prospectId:              string,
+  overhead_pct:            number,
+  profit_markup_pct:       number,
+  vacation_pct:            number,
+  vacation_hours_override: number | null,
+  sick_hours_override:     number | null,
+  vacation_rate:           number | null,
+  sick_rate:               number | null,
 ): Promise<ActionState> {
   const role = await getUserRole()
   if (!role) return { error: 'You must be signed in.' }
@@ -61,7 +78,19 @@ export async function updateBidSummary(
   const supabase = await createClient()
   const { error } = await supabase
     .from('bid_summary')
-    .upsert({ building_id: buildingId, overhead_pct, profit_markup_pct }, { onConflict: 'building_id' })
+    .upsert(
+      {
+        building_id: buildingId,
+        overhead_pct,
+        profit_markup_pct,
+        vacation_pct,
+        vacation_hours_override,
+        sick_hours_override,
+        vacation_rate,
+        sick_rate,
+      },
+      { onConflict: 'building_id' },
+    )
 
   if (error) return { error: error.message }
   revalidatePath(bidPath(prospectId, buildingId))
@@ -80,16 +109,14 @@ export async function createLaborLine(
   if (authError) return authError
 
   const annual_hours = n(formData, 'annual_hours')
-  const vacation_pct = n(formData, 'vacation_pct') ?? 4
-  const sick_hours   = n(formData, 'sick_hours') ?? (annual_hours ? annual_hours / 30 : null)
   const rate         = n(formData, 'rate')
-  const annual_cost  = calcLaborLineCost(annual_hours, vacation_pct, sick_hours, rate) || null
+  const annual_cost  = calcPositionCost(annual_hours, rate) || null
 
   const supabase = await createClient()
   const { error } = await supabase.from('bid_labor_lines').insert({
     building_id: buildingId,
     position_id: s(formData, 'position_id'),
-    annual_hours, vacation_pct, sick_hours, rate, annual_cost,
+    annual_hours, rate, annual_cost,
     sort_order: n(formData, 'sort_order'),
   })
   if (error) return { error: error.message }
@@ -109,15 +136,13 @@ export async function updateLaborLine(
   if (authError) return authError
 
   const annual_hours = n(formData, 'annual_hours')
-  const vacation_pct = n(formData, 'vacation_pct') ?? 4
-  const sick_hours   = n(formData, 'sick_hours') ?? (annual_hours ? annual_hours / 30 : null)
   const rate         = n(formData, 'rate')
-  const annual_cost  = calcLaborLineCost(annual_hours, vacation_pct, sick_hours, rate) || null
+  const annual_cost  = calcPositionCost(annual_hours, rate) || null
 
   const supabase = await createClient()
   const { error } = await supabase.from('bid_labor_lines').update({
     position_id: s(formData, 'position_id'),
-    annual_hours, vacation_pct, sick_hours, rate, annual_cost,
+    annual_hours, rate, annual_cost,
     sort_order: n(formData, 'sort_order'),
   }).eq('id', id)
   if (error) return { error: error.message }

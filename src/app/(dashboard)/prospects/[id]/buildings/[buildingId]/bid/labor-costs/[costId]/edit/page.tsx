@@ -4,7 +4,7 @@ import { getUserRole } from '@/lib/supabase/auth'
 import Header from '@/components/layout/Header'
 import CostLineForm from '../../../CostLineForm'
 import { updateLaborCost } from '../../../actions'
-import { calcLaborLineCost } from '@/types/bid'
+import { calcPositionCost } from '@/types/bid'
 import type { BidLaborCost } from '@/types/bid'
 
 export const metadata = { title: 'Edit Labor Cost | CleanBid Pro' }
@@ -18,18 +18,26 @@ export default async function EditLaborCostPage({
   const [role, supabase] = await Promise.all([getUserRole(), createClient()])
   if (!role) notFound()
 
-  const [{ data: item }, { data: lines }] = await Promise.all([
+  const [{ data: item }, { data: lines }, { data: summaryRow }] = await Promise.all([
     supabase.from('bid_labor_costs').select('*').eq('id', costId).eq('building_id', buildingId).single(),
-    supabase.from('bid_labor_lines').select('annual_hours, vacation_pct, sick_hours, rate').eq('building_id', buildingId),
+    supabase.from('bid_labor_lines').select('annual_hours, rate').eq('building_id', buildingId),
+    supabase.from('bid_summary')
+      .select('vacation_pct, vacation_hours_override, sick_hours_override, vacation_rate, sick_rate')
+      .eq('building_id', buildingId)
+      .maybeSingle(),
   ])
 
   if (!item) notFound()
 
-  const totalHours = (lines ?? []).reduce((s, l) => s + (l.annual_hours ?? 0), 0)
-  const totalLabor = (lines ?? []).reduce(
-    (s, l) => s + calcLaborLineCost(l.annual_hours, l.vacation_pct, l.sick_hours, l.rate),
-    0,
-  )
+  const totalPositionHours = (lines ?? []).reduce((s, l) => s + (l.annual_hours ?? 0), 0)
+  const totalPositionCost  = (lines ?? []).reduce((s, l) => s + calcPositionCost(l.annual_hours, l.rate), 0)
+  const vacPct   = summaryRow?.vacation_pct ?? 4
+  const vacHrs   = summaryRow?.vacation_hours_override ?? totalPositionHours * vacPct / 100
+  const vacCost  = vacHrs * (summaryRow?.vacation_rate ?? 0)
+  const sickHrs  = summaryRow?.sick_hours_override ?? totalPositionHours / 30
+  const sickCost = sickHrs * (summaryRow?.sick_rate ?? 0)
+  const totalHours = totalPositionHours
+  const totalLabor = totalPositionCost + vacCost + sickCost
 
   const cancelHref = `/prospects/${id}/buildings/${buildingId}/bid`
 
