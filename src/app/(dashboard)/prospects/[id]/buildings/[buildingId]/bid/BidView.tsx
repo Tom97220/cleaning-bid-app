@@ -109,6 +109,7 @@ function CostTable({
   totalHours,
   sectionTotal,
   isAdmin,
+  nameOptions,
 }: {
   title: string
   rows: CostRowLocal[]
@@ -118,6 +119,7 @@ function CostTable({
   totalHours: number
   sectionTotal: number
   isAdmin: boolean
+  nameOptions: string[]
 }) {
   const visible = rows.filter(r => !r.deleted)
   return (
@@ -140,13 +142,19 @@ function CostTable({
               return (
                 <tr key={row.key} className={isNew ? 'bg-gray-50/40' : 'hover:bg-gray-50'}>
                   <td className="px-2 py-1.5 min-w-[180px]">
-                    <input
-                      type="text"
+                    <select
                       value={row.description}
                       onChange={e => onUpdate(row.key, 'description', e.target.value)}
-                      placeholder="Description"
-                      className={cellInput}
-                    />
+                      className={cellSelect}
+                    >
+                      <option value="">— Select —</option>
+                      {nameOptions.map(n => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                      {row.description && !nameOptions.includes(row.description) && (
+                        <option value={row.description}>{row.description}</option>
+                      )}
+                    </select>
                   </td>
                   <td className="px-2 py-1.5 w-36">
                     <select
@@ -218,6 +226,8 @@ export default function BidView({
   sqft,
   isAdmin,
   positions,
+  laborCostTypeNames,
+  otherCostTypeNames,
 }: {
   laborLines: BidLaborLineRow[]
   laborCosts: BidLaborCost[]
@@ -225,9 +235,11 @@ export default function BidView({
   summary:    BidSummary | null
   buildingId: string
   prospectId: string
-  sqft:       number | null
-  isAdmin:    boolean
-  positions:  { id: string; position_name: string }[]
+  sqft:               number | null
+  isAdmin:            boolean
+  positions:          { id: string; position_name: string }[]
+  laborCostTypeNames: string[]
+  otherCostTypeNames: string[]
 }) {
   const router = useRouter()
 
@@ -566,6 +578,7 @@ export default function BidView({
           totalHours={totals.totalHours}
           sectionTotal={totals.totalLaborRelated}
           isAdmin={isAdmin}
+          nameOptions={laborCostTypeNames}
         />
 
         {/* Section 3 — Other Direct Costs */}
@@ -578,6 +591,7 @@ export default function BidView({
           totalHours={totals.totalHours}
           sectionTotal={totals.totalOtherDirect}
           isAdmin={isAdmin}
+          nameOptions={otherCostTypeNames}
         />
 
         {/* Save */}

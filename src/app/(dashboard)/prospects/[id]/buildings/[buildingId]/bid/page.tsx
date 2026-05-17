@@ -25,6 +25,8 @@ export default async function BidPage({
     { data: otherCosts },
     { data: summary },
     { data: positions },
+    { data: laborCostTypes },
+    { data: otherCostTypes },
   ] = await Promise.all([
     supabase
       .from('buildings')
@@ -59,6 +61,14 @@ export default async function BidPage({
       .from('positions')
       .select('id, position_name')
       .order('position_name'),
+    supabase
+      .from('labor_cost_types')
+      .select('name')
+      .order('name'),
+    supabase
+      .from('other_cost_types')
+      .select('name')
+      .order('name'),
   ])
 
   if (!building) notFound()
@@ -104,6 +114,8 @@ export default async function BidPage({
           sqft={building.square_feet}
           isAdmin={isAdmin}
           positions={(positions ?? []) as { id: string; position_name: string }[]}
+          laborCostTypeNames={(laborCostTypes ?? []).map((t) => t.name)}
+          otherCostTypeNames={(otherCostTypes ?? []).map((t) => t.name)}
         />
       </div>
     </div>

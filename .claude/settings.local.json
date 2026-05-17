@@ -10,7 +10,8 @@
       "PowerShell(New-Item *)",
       "Bash(npx tsc *)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\TomLambert\\\\Desktop\\\\cleaning-bid-app\" -Recurse -Force)",
-      "Bash(Select-Object -ExpandProperty FullName)"
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(npx next *)"
     ]
   }
 }
