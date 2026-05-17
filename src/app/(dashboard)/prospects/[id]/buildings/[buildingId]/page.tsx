@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/supabase/auth'
 import Header from '@/components/layout/Header'
 import AreaList from './areas/AreaList'
+import BuildingTabNav from './BuildingTabNav'
 import type { BuildingRow } from '@/types/building'
 
 export const metadata = { title: 'Building | CleanBid Pro' }
@@ -69,6 +70,8 @@ export default async function BuildingDetailPage({
           </div>
         }
       />
+
+      <BuildingTabNav prospectId={id} buildingId={buildingId} />
 
       <div className="p-6 space-y-6 max-w-5xl">
         {/* Info Cards */}
