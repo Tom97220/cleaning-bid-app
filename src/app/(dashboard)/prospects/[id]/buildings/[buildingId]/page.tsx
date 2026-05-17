@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/supabase/auth'
 import Header from '@/components/layout/Header'
 import AreaList from './areas/AreaList'
+import type { BuildingRow } from '@/types/building'
 
 export const metadata = { title: 'Building | CleanBid Pro' }
 
@@ -76,7 +77,7 @@ export default async function BuildingDetailPage({
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Details</h3>
             <dl className="space-y-2">
-              <InfoRow label="Building Type" value={(building as any).building_types?.type_name} />
+              <InfoRow label="Building Type" value={(building as BuildingRow).building_types?.type_name} />
               <InfoRow label="Square Feet" value={building.square_feet != null ? building.square_feet.toLocaleString() : null} />
               <InfoRow label="Floors" value={building.floors} />
             </dl>
