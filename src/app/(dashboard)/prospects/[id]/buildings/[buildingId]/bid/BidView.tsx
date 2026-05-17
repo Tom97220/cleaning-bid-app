@@ -16,8 +16,6 @@ import type { CostType } from '@/types/bid'
 const $ = (n: number | null) =>
   n == null ? '—' : n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 })
 
-const pct = (n: number) => `${n}%`
-
 function SectionHeader({ title, addHref }: { title: string; addHref: string }) {
   return (
     <div className="flex items-center justify-between">
@@ -104,7 +102,7 @@ export default function BidView({
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {laborLines.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">No labor lines yet — click "+ Add" to get started.</td></tr>
+                  <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400">No labor lines yet — click &quot;+ Add&quot; to get started.</td></tr>
                 ) : laborLines.map((l) => {
                   const cost = calcLaborLineCost(l.annual_hours, l.vacation_pct, l.sick_hours, l.rate)
                   const sick = l.sick_hours ?? (l.annual_hours ? l.annual_hours / 30 : null)
