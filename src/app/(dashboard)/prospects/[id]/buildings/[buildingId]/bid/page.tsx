@@ -24,6 +24,7 @@ export default async function BidPage({
     { data: laborCosts },
     { data: otherCosts },
     { data: summary },
+    { data: positions },
   ] = await Promise.all([
     supabase
       .from('buildings')
@@ -54,14 +55,18 @@ export default async function BidPage({
       .select('*')
       .eq('building_id', buildingId)
       .maybeSingle(),
+    supabase
+      .from('positions')
+      .select('id, position_name')
+      .order('position_name'),
   ])
 
   if (!building) notFound()
 
-  const isAdmin     = role === 'admin'
-  const address     = [building.address, building.address_2, building.city, building.state, building.zip]
+  const isAdmin  = role === 'admin'
+  const address  = [building.address, building.address_2, building.city, building.state, building.zip]
     .filter(Boolean).join(', ')
-  const laborLines  = (laborLinesRaw ?? []) as unknown as BidLaborLineRow[]
+  const laborLines = (laborLinesRaw ?? []) as unknown as BidLaborLineRow[]
 
   return (
     <div className="flex flex-col h-full">
@@ -98,6 +103,7 @@ export default async function BidPage({
           prospectId={id}
           sqft={building.square_feet}
           isAdmin={isAdmin}
+          positions={(positions ?? []) as { id: string; position_name: string }[]}
         />
       </div>
     </div>

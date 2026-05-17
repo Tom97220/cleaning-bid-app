@@ -1,4 +1,5 @@
-export type CostType = 'percent_markup' | 'per_hour' | 'per_year'
+export type CostType   = 'percent_markup' | 'per_hour' | 'per_year'
+export type MarginType = 'percent' | 'fixed_fee'
 
 export const COST_TYPE_LABELS: Record<CostType, string> = {
   percent_markup: '% of Labor',
@@ -9,8 +10,8 @@ export const COST_TYPE_LABELS: Record<CostType, string> = {
 export interface BidSummary {
   id:                      string
   building_id:             string
-  overhead_pct:            number
-  profit_markup_pct:       number
+  margin_type:             MarginType
+  margin_value:            number
   vacation_pct:            number
   vacation_hours_override: number | null
   sick_hours_override:     number | null
@@ -84,8 +85,8 @@ export function calcBidTotals(
   laborLines:          BidLaborLine[],
   laborCosts:          BidLaborCost[],
   otherCosts:          BidOtherCost[],
-  overhead_pct:        number,
-  profit_pct:          number,
+  margin_type:         MarginType,
+  margin_value:        number,
   sqft:                number | null,
   vacationPct:         number,
   vacationHrsOverride: number | null,
@@ -104,8 +105,8 @@ export function calcBidTotals(
   const sickHours        = sickHrsOverride ?? sickHoursDefault
   const sickCost         = sickHours * (sickRate ?? 0)
 
-  const totalHours  = totalPositionHours
-  const totalLabor  = totalPositionCost + vacationCost + sickCost
+  const totalHours = totalPositionHours
+  const totalLabor = totalPositionCost + vacationCost + sickCost
 
   const totalLaborRelated = laborCosts.reduce(
     (s, c) => s + calcCostLine(c.type, c.factor, totalLabor, totalHours),
@@ -115,11 +116,17 @@ export function calcBidTotals(
     (s, c) => s + calcCostLine(c.type, c.factor, totalLabor, totalHours),
     0,
   )
-  const totalOperating = totalLabor + totalLaborRelated + totalOtherDirect
-  const overhead       = totalOperating * overhead_pct / 100
-  const grandTotal     = totalOperating + overhead
-  const sellingPrice   = grandTotal * (1 + profit_pct / 100)
-  const pricePerMonth  = sellingPrice / 12
+  const totalCost = totalLabor + totalLaborRelated + totalOtherDirect
+
+  let sellingPrice: number
+  if (margin_type === 'percent') {
+    const gm = margin_value / 100
+    sellingPrice = gm < 1 ? totalCost / (1 - gm) : totalCost
+  } else {
+    sellingPrice = totalCost + margin_value
+  }
+
+  const pricePerMonth = sellingPrice / 12
 
   return {
     totalPositionHours,
@@ -134,9 +141,7 @@ export function calcBidTotals(
     totalLabor,
     totalLaborRelated,
     totalOtherDirect,
-    totalOperating,
-    overhead,
-    grandTotal,
+    totalCost,
     sellingPrice,
     pricePerMonth,
     sqftAnnual:  sqft ? sellingPrice / sqft : null,

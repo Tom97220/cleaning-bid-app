@@ -8,7 +8,9 @@
       "Bash(git commit *)",
       "Bash(git push *)",
       "PowerShell(New-Item *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\TomLambert\\\\Desktop\\\\cleaning-bid-app\" -Recurse -Force)",
+      "Bash(Select-Object -ExpandProperty FullName)"
     ]
   }
 }
