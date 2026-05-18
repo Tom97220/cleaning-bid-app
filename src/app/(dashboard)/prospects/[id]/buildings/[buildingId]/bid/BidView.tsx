@@ -163,8 +163,8 @@ function CostTable({
                       className={cellSelect}
                     >
                       <option value="percent_markup">% of Labor</option>
-                      <option value="per_hour">Per Hour</option>
-                      <option value="per_year">Per Year</option>
+                      <option value="per_hour">$/hr</option>
+                      <option value="per_year">$/year</option>
                     </select>
                   </td>
                   <td className="px-2 py-1.5 w-36">
