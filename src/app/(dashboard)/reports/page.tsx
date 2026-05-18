@@ -7,19 +7,24 @@ export const metadata = { title: 'Reports | CleanBid Pro' }
 export default async function ReportsPage() {
   const supabase = await createClient()
 
-  const { data: prospects } = await supabase
-    .from('prospects')
-    .select('id, company_name')
-    .order('company_name')
+  const [{ data: prospects }, { data: companySettings }] = await Promise.all([
+    supabase.from('prospects').select('id, company_name').order('company_name'),
+    supabase.from('company_settings').select('*').maybeSingle(),
+  ])
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Header
-        title="Reports"
-        description="Select a prospect and building, choose reports, then generate print-ready output"
-      />
+      <div className="print:hidden">
+        <Header
+          title="Reports"
+          description="Select a prospect and building, choose reports, then generate print-ready output"
+        />
+      </div>
       <div className="flex-1 overflow-hidden">
-        <ReportsView prospects={prospects ?? []} />
+        <ReportsView
+          prospects={prospects ?? []}
+          companySettings={companySettings ?? null}
+        />
       </div>
     </div>
   )

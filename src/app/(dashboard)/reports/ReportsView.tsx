@@ -14,6 +14,19 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export interface CompanySettings {
+  id: string
+  company_name: string | null
+  address_1: string | null
+  address_2: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
+  phone: string | null
+  email: string | null
+  logo_url: string | null
+}
+
 interface Prospect { id: string; company_name: string }
 interface Building { id: string; building_name: string; square_feet: number | null }
 
@@ -53,16 +66,18 @@ interface ReportData {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const REPORT_OPTIONS = [
-  { key: 'scope_no_codes',   label: 'Scope of Work (without task codes)', category: 'Workload', isScope: true },
-  { key: 'scope_with_codes', label: 'Scope of Work (with task codes)',    category: 'Workload', isScope: true },
-  { key: 'wl_summary',       label: 'Work Load Development Summary',      category: 'Workload', isScope: false },
-  { key: 'wl_detail',        label: 'Work Load Development Detail',       category: 'Workload', isScope: false },
-  { key: 'wl_by_position',   label: 'Work Load by Position',              category: 'Workload', isScope: false },
-  { key: 'investment_recap', label: 'Investment Recap / Bidding Report',  category: 'Bidding',  isScope: false },
+  { key: 'cover_page',       label: 'Cover Page',                          category: 'Document', isScope: false },
+  { key: 'scope_no_codes',   label: 'Scope of Work (without task codes)',   category: 'Workload', isScope: true  },
+  { key: 'scope_with_codes', label: 'Scope of Work (with task codes)',      category: 'Workload', isScope: true  },
+  { key: 'wl_summary',       label: 'Work Load Development Summary',        category: 'Workload', isScope: false },
+  { key: 'wl_detail',        label: 'Work Load Development Detail',         category: 'Workload', isScope: false },
+  { key: 'wl_by_position',   label: 'Work Load by Position',                category: 'Workload', isScope: false },
+  { key: 'investment_recap', label: 'Investment Recap / Bidding Report',    category: 'Bidding',  isScope: false },
 ]
 
-const WORKLOAD_REPORTS = REPORT_OPTIONS.filter(r => r.category === 'Workload')
-const BIDDING_REPORTS  = REPORT_OPTIONS.filter(r => r.category === 'Bidding')
+const DOCUMENT_REPORTS = REPORT_OPTIONS.filter(r => r.category === 'Document')
+const WORKLOAD_REPORTS  = REPORT_OPTIONS.filter(r => r.category === 'Workload')
+const BIDDING_REPORTS   = REPORT_OPTIONS.filter(r => r.category === 'Bidding')
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -75,18 +90,12 @@ const fmtHrs = (n: number | null | undefined) =>
 const fmtFreq = (freq: number | null): string => {
   if (!freq) return '—'
   const map: Record<number, string> = {
-    365: 'Daily (7 days)',
-    260: 'Daily (Mon–Fri)',
-    156: '3 days/week',
-    104: '2 days/week',
-    52:  'Weekly',
-    26:  'Bi-weekly',
-    24:  'Twice/month',
-    12:  'Monthly',
-    6:   'Every 2 months',
-    4:   'Quarterly',
-    2:   'Semi-annually',
-    1:   'Annually',
+    365: 'Daily (7 days)',  260: 'Daily (Mon–Fri)',
+    156: '3 days/week',    104: '2 days/week',
+    52:  'Weekly',         26:  'Bi-weekly',
+    24:  'Twice/month',    12:  'Monthly',
+    6:   'Every 2 months', 4:   'Quarterly',
+    2:   'Semi-annually',  1:   'Annually',
   }
   return map[freq] ?? `${freq}×/year`
 }
@@ -95,16 +104,136 @@ function todayStr() {
   return new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
-// ─── Shared Report Header ─────────────────────────────────────────────────────
+function companyAddressLines(c: CompanySettings): string[] {
+  const lines: string[] = []
+  if (c.address_1) lines.push(c.address_1)
+  if (c.address_2) lines.push(c.address_2)
+  const cityLine = [c.city, c.state, c.zip].filter(Boolean).join(', ')
+  if (cityLine) lines.push(cityLine)
+  if (c.phone) lines.push(c.phone)
+  if (c.email) lines.push(c.email)
+  return lines
+}
 
-function ReportHeader({ title, prospect, building }: { title: string; prospect: Prospect; building: Building }) {
+// ─── Table styles ─────────────────────────────────────────────────────────────
+
+const th = 'border border-gray-300 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+const thR = 'border border-gray-300 px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+const td = 'border border-gray-300 px-3 py-1.5 text-sm text-gray-700'
+const tdR = 'border border-gray-300 px-3 py-1.5 text-sm text-right tabular-nums text-gray-700'
+const tfootTd = 'border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-100'
+const tfootTdR = 'border border-gray-300 px-3 py-2 text-sm font-semibold text-right tabular-nums text-gray-900 bg-gray-100'
+
+// ─── Report Header ────────────────────────────────────────────────────────────
+
+function ReportHeader({
+  title,
+  prospect,
+  building,
+  company,
+}: {
+  title: string
+  prospect: Prospect
+  building: Building
+  company: CompanySettings | null
+}) {
   return (
-    <div className="mb-6 pb-4 border-b-2 border-gray-800">
-      <h2 className="text-xl font-bold text-gray-900">{title}</h2>
-      <div className="mt-2 flex flex-wrap gap-x-8 gap-y-1 text-sm text-gray-600">
-        <span><span className="font-semibold text-gray-800">Prospect:</span> {prospect.company_name}</span>
-        <span><span className="font-semibold text-gray-800">Building:</span> {building.building_name}</span>
-        <span><span className="font-semibold text-gray-800">Date:</span> {todayStr()}</span>
+    <div className="mb-8">
+      {/* Date + company name row */}
+      <div className="flex justify-between items-baseline mb-3">
+        <span className="text-sm text-gray-500">{todayStr()}</span>
+        {company?.company_name && (
+          <span className="text-sm font-medium text-gray-600">{company.company_name}</span>
+        )}
+      </div>
+
+      {/* Double-line separator */}
+      <div className="border-t-2 border-gray-800 mb-0.5" />
+      <div className="border-t border-gray-800 mb-7" />
+
+      {/* Centered title block */}
+      <div className="text-center">
+        <h2 className="text-base font-bold uppercase tracking-widest text-gray-900 leading-snug">
+          {title}
+        </h2>
+        <p className="mt-2 text-sm text-gray-600">
+          <span className="font-medium">{prospect.company_name}</span>
+          {building.building_name && (
+            <> &mdash; {building.building_name}</>
+          )}
+        </p>
+      </div>
+
+      {/* Thin rule below header block */}
+      <div className="mt-6 border-t border-gray-300" />
+    </div>
+  )
+}
+
+// ─── Cover Page ───────────────────────────────────────────────────────────────
+
+function CoverPage({
+  data,
+  company,
+}: {
+  data: ReportData
+  company: CompanySettings | null
+}) {
+  return (
+    <div
+      className="cover-page relative flex flex-col bg-white"
+      style={{ minHeight: '1050px' }}
+    >
+      {/* Top: logo + company name */}
+      <div className="text-center pt-16 px-16">
+        {company?.logo_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={company.logo_url}
+            alt="Company logo"
+            className="h-16 w-auto object-contain mx-auto mb-4"
+          />
+        )}
+        {company?.company_name && (
+          <p className="text-xl font-bold tracking-wide text-gray-900">{company.company_name}</p>
+        )}
+      </div>
+
+      {/* Middle: centered document title + building */}
+      <div className="flex-1 flex flex-col items-center justify-center px-16 text-center">
+        <div className="w-full border-t-2 border-gray-800 mb-0.5" />
+        <div className="w-full border-t border-gray-800 mb-10" />
+
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-4">
+          Building Services Analysis
+        </p>
+        <h1 className="text-4xl font-bold text-gray-900 mb-2 leading-tight">
+          {data.building.building_name}
+        </h1>
+        <p className="text-lg text-gray-600 mb-10">{data.prospect.company_name}</p>
+
+        <div className="w-full border-t border-gray-800 mb-0.5" />
+        <div className="w-full border-t-2 border-gray-800" />
+      </div>
+
+      {/* Bottom: presented by */}
+      <div className="text-center pb-16 px-16">
+        <p className="text-xs uppercase tracking-widest text-gray-400 mb-3">Presented by</p>
+        {company ? (
+          <div className="space-y-0.5">
+            {company.company_name && (
+              <p className="font-semibold text-gray-800">{company.company_name}</p>
+            )}
+            {companyAddressLines(company).map((line, i) => (
+              <p key={i} className="text-sm text-gray-600">{line}</p>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400 italic">
+            Add company details in Admin &rsaquo; Company Settings
+          </p>
+        )}
+        <p className="text-xs text-gray-400 mt-5">{todayStr()}</p>
       </div>
     </div>
   )
@@ -117,36 +246,26 @@ interface PieSegment { label: string; value: number; color: string; pct: string 
 function PieChart({ segments }: { segments: PieSegment[] }) {
   const total = segments.reduce((s, seg) => s + seg.value, 0)
   if (total === 0) return null
-
   const cx = 90, cy = 90, r = 82
   let cumAngle = -Math.PI / 2
-
   const paths = segments.map(seg => {
     const slice = (seg.value / total) * 2 * Math.PI
-    const startAngle = cumAngle
-    cumAngle += slice
-    const endAngle = cumAngle
-    const x1 = cx + r * Math.cos(startAngle)
-    const y1 = cy + r * Math.sin(startAngle)
-    const x2 = cx + r * Math.cos(endAngle)
-    const y2 = cy + r * Math.sin(endAngle)
-    const largeArc = slice > Math.PI ? 1 : 0
-    return { ...seg, d: `M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${largeArc},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z` }
+    const start = cumAngle; cumAngle += slice
+    const x1 = cx + r * Math.cos(start),  y1 = cy + r * Math.sin(start)
+    const x2 = cx + r * Math.cos(cumAngle), y2 = cy + r * Math.sin(cumAngle)
+    return { ...seg, d: `M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${slice > Math.PI ? 1 : 0},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z` }
   })
-
   return (
     <div className="flex items-center gap-6">
       <svg width="180" height="180" viewBox="0 0 180 180" className="flex-shrink-0">
-        {paths.map((p, i) => (
-          <path key={i} d={p.d} fill={p.color} stroke="white" strokeWidth="2" />
-        ))}
+        {paths.map((p, i) => <path key={i} d={p.d} fill={p.color} stroke="white" strokeWidth="2" />)}
       </svg>
       <div className="space-y-2">
         {segments.map(seg => (
           <div key={seg.label} className="flex items-center gap-2 text-sm">
             <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
             <span className="text-gray-700">{seg.label}</span>
-            <span className="font-semibold text-gray-900 ml-auto pl-4 tabular-nums">{seg.pct}</span>
+            <span className="font-semibold text-gray-900 ml-auto pl-6 tabular-nums">{seg.pct}</span>
           </div>
         ))}
       </div>
@@ -157,13 +276,9 @@ function PieChart({ segments }: { segments: PieSegment[] }) {
 // ─── Report 1 & 2: Scope of Work ─────────────────────────────────────────────
 
 function ScopeOfWorkReport({
-  data,
-  withTaskCodes,
-  includeSpanish,
+  data, withTaskCodes, includeSpanish, company,
 }: {
-  data: ReportData
-  withTaskCodes: boolean
-  includeSpanish: boolean
+  data: ReportData; withTaskCodes: boolean; includeSpanish: boolean; company: CompanySettings | null
 }) {
   const title = withTaskCodes
     ? 'Work Load Specifications / Scope of Work (with Task Codes)'
@@ -177,25 +292,21 @@ function ScopeOfWorkReport({
 
   return (
     <div className="report-section">
-      <ReportHeader title={title} prospect={data.prospect} building={data.building} />
+      <ReportHeader title={title} prospect={data.prospect} building={data.building} company={company} />
       <table className="w-full text-sm border-collapse">
         <thead>
-          <tr className="bg-gray-100">
-            {withTaskCodes && (
-              <th className="border border-gray-300 px-3 py-2 text-left font-semibold whitespace-nowrap">Task Code</th>
-            )}
-            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Area</th>
-            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Task Description</th>
-            {includeSpanish && (
-              <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Descripción (es)</th>
-            )}
-            <th className="border border-gray-300 px-3 py-2 text-left font-semibold whitespace-nowrap">Frequency</th>
+          <tr>
+            {withTaskCodes && <th className={th}>Task Code</th>}
+            <th className={th}>Area</th>
+            <th className={th}>Task Description</th>
+            {includeSpanish && <th className={th}>Descripción (es)</th>}
+            <th className={th}>Frequency</th>
           </tr>
         </thead>
         <tbody>
           {printAreas.length === 0 ? (
             <tr>
-              <td colSpan={colCount} className="border border-gray-300 px-3 py-6 text-center text-gray-400 italic">
+              <td colSpan={colCount} className={`${td} text-center italic text-gray-400 py-6`}>
                 No printable tasks found for this building
               </td>
             </tr>
@@ -204,24 +315,18 @@ function ScopeOfWorkReport({
               area.task_line_items.map((task, ti) => (
                 <tr key={task.id} className={ai % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                   {withTaskCodes && (
-                    <td className="border border-gray-300 px-3 py-1.5 font-mono text-xs text-gray-500 whitespace-nowrap">
+                    <td className={`${td} font-mono text-xs text-gray-500 whitespace-nowrap`}>
                       {task.task_codes?.task_code ?? '—'}
                     </td>
                   )}
-                  <td className="border border-gray-300 px-3 py-1.5 font-medium text-gray-800 whitespace-nowrap">
+                  <td className={`${td} font-medium whitespace-nowrap`}>
                     {ti === 0 ? area.area_name : ''}
                   </td>
-                  <td className="border border-gray-300 px-3 py-1.5 text-gray-700">
-                    {task.task_name ?? '—'}
-                  </td>
+                  <td className={td}>{task.task_name ?? '—'}</td>
                   {includeSpanish && (
-                    <td className="border border-gray-300 px-3 py-1.5 text-gray-500 italic">
-                      {task.task_codes?.task_name ?? '—'}
-                    </td>
+                    <td className={`${td} italic text-gray-500`}>{task.task_codes?.task_name ?? '—'}</td>
                   )}
-                  <td className="border border-gray-300 px-3 py-1.5 whitespace-nowrap text-gray-600">
-                    {fmtFreq(task.frequency)}
-                  </td>
+                  <td className={`${td} whitespace-nowrap`}>{fmtFreq(task.frequency)}</td>
                 </tr>
               ))
             )
@@ -234,45 +339,39 @@ function ScopeOfWorkReport({
 
 // ─── Report 3: Work Load Development Summary ──────────────────────────────────
 
-function WorkLoadSummaryReport({ data }: { data: ReportData }) {
+function WorkLoadSummaryReport({ data, company }: { data: ReportData; company: CompanySettings | null }) {
   const allTasks    = data.areas.flatMap(a => a.task_line_items)
   const annualHours = allTasks.reduce((s, t) => s + (t.yearly_hrs ?? 0), 0)
-  const monthlyAvg  = annualHours / 12
-  const weeklyAvg   = annualHours / 52
-  const dailyAvg    = annualHours / 260
 
-  // Use mode of area frequencies as site frequency for staff calc
-  const freqs = data.areas.map(a => a.frequency).filter((f): f is number => f != null)
+  const freqs    = data.areas.map(a => a.frequency).filter((f): f is number => f != null)
   const siteFreq = freqs.length > 0
-    ? freqs.sort((a, b) =>
-        freqs.filter(f => f === b).length - freqs.filter(f => f === a).length
-      )[0]
+    ? freqs.sort((a, b) => freqs.filter(f => f === b).length - freqs.filter(f => f === a).length)[0]
     : 260
-  const staffRequired = siteFreq > 0 ? annualHours / 8 / siteFreq : 0
+  const staff = siteFreq > 0 ? annualHours / 8 / siteFreq : 0
 
   const rows = [
     { label: 'Total Annual Hours',    value: `${fmtHrs(annualHours)} hrs` },
-    { label: 'Monthly Average Hours', value: `${fmtHrs(monthlyAvg)} hrs` },
-    { label: 'Weekly Average Hours',  value: `${fmtHrs(weeklyAvg)} hrs` },
-    { label: 'Daily Average Hours',   value: `${fmtHrs(dailyAvg)} hrs` },
-    { label: 'Total Staff Required',  value: staffRequired.toFixed(2) },
+    { label: 'Monthly Average Hours', value: `${fmtHrs(annualHours / 12)} hrs` },
+    { label: 'Weekly Average Hours',  value: `${fmtHrs(annualHours / 52)} hrs` },
+    { label: 'Daily Average Hours',   value: `${fmtHrs(annualHours / 260)} hrs` },
+    { label: 'Total Staff Required',  value: staff.toFixed(2) },
   ]
 
   return (
     <div className="report-section">
-      <ReportHeader title="Work Load Development Summary" prospect={data.prospect} building={data.building} />
+      <ReportHeader title="Work Load Development Summary" prospect={data.prospect} building={data.building} company={company} />
       <div className="max-w-sm">
         <table className="w-full text-sm">
           <tbody className="divide-y divide-gray-100">
             {rows.map(row => (
               <tr key={row.label}>
-                <td className="py-2.5 pr-8 text-gray-600">{row.label}</td>
-                <td className="py-2.5 text-right font-semibold tabular-nums text-gray-900">{row.value}</td>
+                <td className="py-3 pr-8 text-gray-600">{row.label}</td>
+                <td className="py-3 text-right font-semibold tabular-nums text-gray-900">{row.value}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        <p className="mt-4 text-xs text-gray-400">
+        <p className="mt-5 text-xs text-gray-400">
           Staff Required = Annual Hours ÷ 8 hrs/shift ÷ {siteFreq} visits/year
         </p>
       </div>
@@ -282,67 +381,70 @@ function WorkLoadSummaryReport({ data }: { data: ReportData }) {
 
 // ─── Report 4: Work Load Development Detail ───────────────────────────────────
 
-function WorkLoadDetailReport({ data }: { data: ReportData }) {
+function WorkLoadDetailReport({ data, company }: { data: ReportData; company: CompanySettings | null }) {
   const allTasks = data.areas.flatMap(a => a.task_line_items)
-  const grandYearly  = allTasks.reduce((s, t) => s + (t.yearly_hrs  ?? 0), 0)
-  const grandMonthly = allTasks.reduce((s, t) => s + (t.monthly_hrs ?? 0), 0)
-  const grandWeekly  = allTasks.reduce((s, t) => s + (t.weekly_hrs  ?? 0), 0)
-  const grandDaily   = allTasks.reduce((s, t) => s + (t.daily_hrs   ?? 0), 0)
+  const grand = {
+    yearly:  allTasks.reduce((s, t) => s + (t.yearly_hrs  ?? 0), 0),
+    monthly: allTasks.reduce((s, t) => s + (t.monthly_hrs ?? 0), 0),
+    weekly:  allTasks.reduce((s, t) => s + (t.weekly_hrs  ?? 0), 0),
+    daily:   allTasks.reduce((s, t) => s + (t.daily_hrs   ?? 0), 0),
+  }
 
   return (
     <div className="report-section">
-      <ReportHeader title="Work Load Development Detail" prospect={data.prospect} building={data.building} />
+      <ReportHeader title="Work Load Development Detail" prospect={data.prospect} building={data.building} company={company} />
       <table className="w-full text-sm border-collapse">
         <thead>
-          <tr className="bg-gray-100">
-            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Area / Task</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold whitespace-nowrap">Annual Hrs</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold whitespace-nowrap">Monthly Hrs</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold whitespace-nowrap">Weekly Hrs</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold whitespace-nowrap">Daily Hrs</th>
+          <tr>
+            <th className={th}>Area / Task</th>
+            <th className={thR}>Annual Hrs</th>
+            <th className={thR}>Monthly Hrs</th>
+            <th className={thR}>Weekly Hrs</th>
+            <th className={thR}>Daily Hrs</th>
           </tr>
         </thead>
         <tbody>
           {data.areas.map(area => {
-            const areaYearly  = area.task_line_items.reduce((s, t) => s + (t.yearly_hrs  ?? 0), 0)
-            const areaMonthly = area.task_line_items.reduce((s, t) => s + (t.monthly_hrs ?? 0), 0)
-            const areaWeekly  = area.task_line_items.reduce((s, t) => s + (t.weekly_hrs  ?? 0), 0)
-            const areaDaily   = area.task_line_items.reduce((s, t) => s + (t.daily_hrs   ?? 0), 0)
-
+            const sub = {
+              yearly:  area.task_line_items.reduce((s, t) => s + (t.yearly_hrs  ?? 0), 0),
+              monthly: area.task_line_items.reduce((s, t) => s + (t.monthly_hrs ?? 0), 0),
+              weekly:  area.task_line_items.reduce((s, t) => s + (t.weekly_hrs  ?? 0), 0),
+              daily:   area.task_line_items.reduce((s, t) => s + (t.daily_hrs   ?? 0), 0),
+            }
             return (
               <>
-                <tr key={`h-${area.id}`} className="bg-gray-50">
-                  <td colSpan={5} className="border border-gray-300 px-3 py-1.5 font-semibold text-gray-800">
+                <tr key={`h-${area.id}`}>
+                  <td colSpan={5} className="border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50">
                     {area.area_name}
                   </td>
                 </tr>
                 {area.task_line_items.map(task => (
                   <tr key={task.id}>
-                    <td className="border border-gray-300 px-3 py-1 pl-7 text-gray-700">{task.task_name ?? '—'}</td>
-                    <td className="border border-gray-300 px-3 py-1 text-right tabular-nums">{fmtHrs(task.yearly_hrs)}</td>
-                    <td className="border border-gray-300 px-3 py-1 text-right tabular-nums">{fmtHrs(task.monthly_hrs)}</td>
-                    <td className="border border-gray-300 px-3 py-1 text-right tabular-nums">{fmtHrs(task.weekly_hrs)}</td>
-                    <td className="border border-gray-300 px-3 py-1 text-right tabular-nums">{fmtHrs(task.daily_hrs)}</td>
+                    <td className={`${td} pl-7`}>{task.task_name ?? '—'}</td>
+                    <td className={tdR}>{fmtHrs(task.yearly_hrs)}</td>
+                    <td className={tdR}>{fmtHrs(task.monthly_hrs)}</td>
+                    <td className={tdR}>{fmtHrs(task.weekly_hrs)}</td>
+                    <td className={tdR}>{fmtHrs(task.daily_hrs)}</td>
                   </tr>
                 ))}
-                <tr key={`s-${area.id}`} className="bg-gray-50 font-semibold text-gray-700">
-                  <td className="border border-gray-300 px-3 py-1 pl-7 text-xs italic text-gray-400">Area Subtotal</td>
-                  <td className="border border-gray-300 px-3 py-1 text-right tabular-nums">{fmtHrs(areaYearly)}</td>
-                  <td className="border border-gray-300 px-3 py-1 text-right tabular-nums">{fmtHrs(areaMonthly)}</td>
-                  <td className="border border-gray-300 px-3 py-1 text-right tabular-nums">{fmtHrs(areaWeekly)}</td>
-                  <td className="border border-gray-300 px-3 py-1 text-right tabular-nums">{fmtHrs(areaDaily)}</td>
+                <tr key={`s-${area.id}`}>
+                  <td className={`${td} pl-7 italic text-xs text-gray-400`}>Area Subtotal</td>
+                  <td className={`${tdR} font-semibold`}>{fmtHrs(sub.yearly)}</td>
+                  <td className={`${tdR} font-semibold`}>{fmtHrs(sub.monthly)}</td>
+                  <td className={`${tdR} font-semibold`}>{fmtHrs(sub.weekly)}</td>
+                  <td className={`${tdR} font-semibold`}>{fmtHrs(sub.daily)}</td>
                 </tr>
               </>
             )
           })}
         </tbody>
         <tfoot>
-          <tr className="bg-gray-200 font-bold">
-            <td className="border border-gray-300 px-3 py-2">Grand Total</td>
-            <td className="border border-gray-300 px-3 py-2 text-right tabular-nums">{fmtHrs(grandYearly)}</td>
-            <td className="border border-gray-300 px-3 py-2 text-right tabular-nums">{fmtHrs(grandMonthly)}</td>
-            <td className="border border-gray-300 px-3 py-2 text-right tabular-nums">{fmtHrs(grandWeekly)}</td>
-            <td className="border border-gray-300 px-3 py-2 text-right tabular-nums">{fmtHrs(grandDaily)}</td>
+          <tr>
+            <td className={tfootTd}>Grand Total</td>
+            <td className={tfootTdR}>{fmtHrs(grand.yearly)}</td>
+            <td className={tfootTdR}>{fmtHrs(grand.monthly)}</td>
+            <td className={tfootTdR}>{fmtHrs(grand.weekly)}</td>
+            <td className={tfootTdR}>{fmtHrs(grand.daily)}</td>
           </tr>
         </tfoot>
       </table>
@@ -352,7 +454,7 @@ function WorkLoadDetailReport({ data }: { data: ReportData }) {
 
 // ─── Report 5: Work Load by Position ─────────────────────────────────────────
 
-function WorkLoadByPositionReport({ data }: { data: ReportData }) {
+function WorkLoadByPositionReport({ data, company }: { data: ReportData; company: CompanySettings | null }) {
   const allTasks    = data.areas.flatMap(a => a.task_line_items)
   const totalYearly = allTasks.reduce((s, t) => s + (t.yearly_hrs ?? 0), 0)
 
@@ -366,48 +468,41 @@ function WorkLoadByPositionReport({ data }: { data: ReportData }) {
       weekly:  cur.weekly  + (task.weekly_hrs  ?? 0),
     })
   }
-
   const rows = [...byPosition.entries()].sort((a, b) => b[1].yearly - a[1].yearly)
 
   return (
     <div className="report-section">
-      <ReportHeader title="Work Load by Position" prospect={data.prospect} building={data.building} />
+      <ReportHeader title="Work Load by Position" prospect={data.prospect} building={data.building} company={company} />
       <table className="w-full text-sm border-collapse">
         <thead>
-          <tr className="bg-gray-100">
-            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Position</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold whitespace-nowrap">Annual Hours</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold whitespace-nowrap">Monthly Hours</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold whitespace-nowrap">Weekly Hours</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold whitespace-nowrap">% of Total</th>
+          <tr>
+            <th className={th}>Position</th>
+            <th className={thR}>Annual Hours</th>
+            <th className={thR}>Monthly Hours</th>
+            <th className={thR}>Weekly Hours</th>
+            <th className={thR}>% of Total</th>
           </tr>
         </thead>
         <tbody>
           {rows.map(([position, hrs]) => (
-            <tr key={position} className="border-b border-gray-100">
-              <td className="border border-gray-300 px-3 py-1.5 font-medium text-gray-800">{position}</td>
-              <td className="border border-gray-300 px-3 py-1.5 text-right tabular-nums">{fmtHrs(hrs.yearly)}</td>
-              <td className="border border-gray-300 px-3 py-1.5 text-right tabular-nums">{fmtHrs(hrs.monthly)}</td>
-              <td className="border border-gray-300 px-3 py-1.5 text-right tabular-nums">{fmtHrs(hrs.weekly)}</td>
-              <td className="border border-gray-300 px-3 py-1.5 text-right tabular-nums">
+            <tr key={position}>
+              <td className={`${td} font-medium`}>{position}</td>
+              <td className={tdR}>{fmtHrs(hrs.yearly)}</td>
+              <td className={tdR}>{fmtHrs(hrs.monthly)}</td>
+              <td className={tdR}>{fmtHrs(hrs.weekly)}</td>
+              <td className={tdR}>
                 {totalYearly > 0 ? `${((hrs.yearly / totalYearly) * 100).toFixed(1)}%` : '—'}
               </td>
             </tr>
           ))}
         </tbody>
         <tfoot>
-          <tr className="bg-gray-100 font-bold">
-            <td className="border border-gray-300 px-3 py-2">Total</td>
-            <td className="border border-gray-300 px-3 py-2 text-right tabular-nums">
-              {fmtHrs(rows.reduce((s, [, h]) => s + h.yearly, 0))}
-            </td>
-            <td className="border border-gray-300 px-3 py-2 text-right tabular-nums">
-              {fmtHrs(rows.reduce((s, [, h]) => s + h.monthly, 0))}
-            </td>
-            <td className="border border-gray-300 px-3 py-2 text-right tabular-nums">
-              {fmtHrs(rows.reduce((s, [, h]) => s + h.weekly, 0))}
-            </td>
-            <td className="border border-gray-300 px-3 py-2 text-right tabular-nums">100%</td>
+          <tr>
+            <td className={tfootTd}>Total</td>
+            <td className={tfootTdR}>{fmtHrs(rows.reduce((s, [, h]) => s + h.yearly,  0))}</td>
+            <td className={tfootTdR}>{fmtHrs(rows.reduce((s, [, h]) => s + h.monthly, 0))}</td>
+            <td className={tfootTdR}>{fmtHrs(rows.reduce((s, [, h]) => s + h.weekly,  0))}</td>
+            <td className={tfootTdR}>100%</td>
           </tr>
         </tfoot>
       </table>
@@ -417,35 +512,29 @@ function WorkLoadByPositionReport({ data }: { data: ReportData }) {
 
 // ─── Report 6: Investment Recap ───────────────────────────────────────────────
 
-function InvestmentRecapReport({ data }: { data: ReportData }) {
+function InvestmentRecapReport({ data, company }: { data: ReportData; company: CompanySettings | null }) {
   const { bidSummary, bidLaborLines, bidLaborCosts, bidOtherCosts, building } = data
 
   if (!bidSummary) {
     return (
       <div className="report-section">
-        <ReportHeader title="Investment Recap / Bidding Report" prospect={data.prospect} building={data.building} />
+        <ReportHeader title="Investment Recap / Bidding Report" prospect={data.prospect} building={data.building} company={company} />
         <p className="text-gray-400 italic text-sm">No bid data available for this building.</p>
       </div>
     )
   }
 
   const totals = calcBidTotals(
-    bidLaborLines,
-    bidLaborCosts,
-    bidOtherCosts,
-    bidSummary.margin_type,
-    bidSummary.margin_value,
+    bidLaborLines, bidLaborCosts, bidOtherCosts,
+    bidSummary.margin_type, bidSummary.margin_value,
     building.square_feet,
-    bidSummary.vacation_pct,
-    bidSummary.vacation_hours_override,
-    bidSummary.sick_hours_override,
-    bidSummary.vacation_rate,
-    bidSummary.sick_rate,
+    bidSummary.vacation_pct, bidSummary.vacation_hours_override,
+    bidSummary.sick_hours_override, bidSummary.vacation_rate, bidSummary.sick_rate,
   )
 
   const profit = totals.sellingPrice - totals.totalCost
   const pieSegments: PieSegment[] = [
-    { label: 'Total Labor',         value: totals.totalLabor,       color: '#2563eb' },
+    { label: 'Total Labor',         value: totals.totalLabor,        color: '#2563eb' },
     { label: 'Labor Related Costs', value: totals.totalLaborRelated, color: '#16a34a' },
     { label: 'Other Direct Costs',  value: totals.totalOtherDirect,  color: '#ea580c' },
     { label: 'Profit',              value: Math.max(0, profit),      color: '#7c3aed' },
@@ -460,181 +549,150 @@ function InvestmentRecapReport({ data }: { data: ReportData }) {
 
   const costTypeLabel = (type: string) =>
     type === 'percent_markup' ? '% of Labor' : type === 'per_hour' ? '$/hr' : '$/yr'
+  const factorDisplay = (type: string, factor: number | null) =>
+    factor == null ? '—' : type === 'percent_markup' ? `${factor}%` : fmt$(factor)
 
-  const factorDisplay = (type: string, factor: number | null) => {
-    if (factor == null) return '—'
-    return type === 'percent_markup' ? `${factor}%` : fmt$(factor)
-  }
+  const sectionHeader = (label: string) => (
+    <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3 mt-8 first:mt-0">
+      {label}
+    </h3>
+  )
 
   return (
     <div className="report-section">
-      <ReportHeader title="Investment Recap / Bidding Report" prospect={data.prospect} building={data.building} />
+      <ReportHeader title="Investment Recap / Bidding Report" prospect={data.prospect} building={data.building} company={company} />
 
-      {/* Section 1 — Labor */}
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
-        Section 1 — Labor by Position
-      </h3>
-      <table className="w-full text-sm border-collapse mb-7">
+      {sectionHeader('Section 1 — Labor by Position')}
+      <table className="w-full text-sm border-collapse mb-2">
         <thead>
-          <tr className="bg-gray-100">
-            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Position</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold whitespace-nowrap">Annual Hours</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold whitespace-nowrap">Rate ($/hr)</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold whitespace-nowrap">Annual Cost</th>
+          <tr>
+            <th className={th}>Position</th>
+            <th className={thR}>Annual Hours</th>
+            <th className={thR}>Rate ($/hr)</th>
+            <th className={thR}>Annual Cost</th>
           </tr>
         </thead>
         <tbody>
           {bidLaborLines.map(line => (
-            <tr key={line.id} className="border-b border-gray-100">
-              <td className="border border-gray-300 px-3 py-1.5">{line.positions?.position_name ?? '—'}</td>
-              <td className="border border-gray-300 px-3 py-1.5 text-right tabular-nums">{fmtHrs(line.annual_hours)}</td>
-              <td className="border border-gray-300 px-3 py-1.5 text-right tabular-nums">{fmt$(line.rate)}</td>
-              <td className="border border-gray-300 px-3 py-1.5 text-right tabular-nums">
-                {fmt$(calcPositionCost(line.annual_hours, line.rate))}
-              </td>
+            <tr key={line.id}>
+              <td className={td}>{line.positions?.position_name ?? '—'}</td>
+              <td className={tdR}>{fmtHrs(line.annual_hours)}</td>
+              <td className={tdR}>{fmt$(line.rate)}</td>
+              <td className={tdR}>{fmt$(calcPositionCost(line.annual_hours, line.rate))}</td>
             </tr>
           ))}
-          <tr className="bg-gray-50 text-xs text-gray-500 italic">
-            <td colSpan={3} className="border border-gray-300 px-3 py-1.5">
+          <tr className="bg-gray-50">
+            <td colSpan={3} className={`${td} italic text-xs text-gray-500`}>
               Vacation ({bidSummary.vacation_pct}% / {totals.vacationHours.toFixed(1)} hrs @ {fmt$(bidSummary.vacation_rate)}/hr)
             </td>
-            <td className="border border-gray-300 px-3 py-1.5 text-right tabular-nums not-italic text-gray-700 font-medium">
-              {fmt$(totals.vacationCost)}
-            </td>
+            <td className={`${tdR} font-medium`}>{fmt$(totals.vacationCost)}</td>
           </tr>
-          <tr className="bg-gray-50 text-xs text-gray-500 italic">
-            <td colSpan={3} className="border border-gray-300 px-3 py-1.5">
+          <tr className="bg-gray-50">
+            <td colSpan={3} className={`${td} italic text-xs text-gray-500`}>
               Sick Time ({totals.sickHours.toFixed(1)} hrs @ {fmt$(bidSummary.sick_rate)}/hr)
             </td>
-            <td className="border border-gray-300 px-3 py-1.5 text-right tabular-nums not-italic text-gray-700 font-medium">
-              {fmt$(totals.sickCost)}
-            </td>
+            <td className={`${tdR} font-medium`}>{fmt$(totals.sickCost)}</td>
           </tr>
         </tbody>
         <tfoot>
-          <tr className="bg-gray-200 font-bold">
-            <td colSpan={3} className="border border-gray-300 px-3 py-2">Total Labor</td>
-            <td className="border border-gray-300 px-3 py-2 text-right tabular-nums">{fmt$(totals.totalLabor)}</td>
+          <tr>
+            <td colSpan={3} className={tfootTd}>Total Labor</td>
+            <td className={tfootTdR}>{fmt$(totals.totalLabor)}</td>
           </tr>
         </tfoot>
       </table>
 
-      {/* Section 2 — Labor Related Costs */}
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
-        Section 2 — Labor Related Costs
-      </h3>
-      <table className="w-full text-sm border-collapse mb-7">
+      {sectionHeader('Section 2 — Labor Related Costs')}
+      <table className="w-full text-sm border-collapse mb-2">
         <thead>
-          <tr className="bg-gray-100">
-            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Description</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold">Type</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold">Factor</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold whitespace-nowrap">Annual Cost</th>
+          <tr>
+            <th className={th}>Description</th>
+            <th className={thR}>Type</th>
+            <th className={thR}>Factor</th>
+            <th className={thR}>Annual Cost</th>
           </tr>
         </thead>
         <tbody>
           {bidLaborCosts.map(cost => (
-            <tr key={cost.id} className="border-b border-gray-100">
-              <td className="border border-gray-300 px-3 py-1.5">{cost.description ?? '—'}</td>
-              <td className="border border-gray-300 px-3 py-1.5 text-right text-xs text-gray-500">
-                {costTypeLabel(cost.type)}
-              </td>
-              <td className="border border-gray-300 px-3 py-1.5 text-right tabular-nums">
-                {factorDisplay(cost.type, cost.factor)}
-              </td>
-              <td className="border border-gray-300 px-3 py-1.5 text-right tabular-nums">
-                {fmt$(calcCostLine(cost.type, cost.factor, totals.totalLabor, totals.totalHours))}
-              </td>
+            <tr key={cost.id}>
+              <td className={td}>{cost.description ?? '—'}</td>
+              <td className={`${tdR} text-xs text-gray-500`}>{costTypeLabel(cost.type)}</td>
+              <td className={tdR}>{factorDisplay(cost.type, cost.factor)}</td>
+              <td className={tdR}>{fmt$(calcCostLine(cost.type, cost.factor, totals.totalLabor, totals.totalHours))}</td>
             </tr>
           ))}
         </tbody>
         <tfoot>
-          <tr className="bg-gray-200 font-bold">
-            <td colSpan={3} className="border border-gray-300 px-3 py-2">Total Labor Related Costs</td>
-            <td className="border border-gray-300 px-3 py-2 text-right tabular-nums">
-              {fmt$(totals.totalLaborRelated)}
-            </td>
+          <tr>
+            <td colSpan={3} className={tfootTd}>Total Labor Related Costs</td>
+            <td className={tfootTdR}>{fmt$(totals.totalLaborRelated)}</td>
           </tr>
         </tfoot>
       </table>
 
-      {/* Section 3 — Other Direct Costs */}
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">
-        Section 3 — Other Direct Costs
-      </h3>
-      <table className="w-full text-sm border-collapse mb-7">
+      {sectionHeader('Section 3 — Other Direct Costs')}
+      <table className="w-full text-sm border-collapse mb-2">
         <thead>
-          <tr className="bg-gray-100">
-            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">Description</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold">Type</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold">Factor</th>
-            <th className="border border-gray-300 px-3 py-2 text-right font-semibold whitespace-nowrap">Annual Cost</th>
+          <tr>
+            <th className={th}>Description</th>
+            <th className={thR}>Type</th>
+            <th className={thR}>Factor</th>
+            <th className={thR}>Annual Cost</th>
           </tr>
         </thead>
         <tbody>
           {bidOtherCosts.map(cost => (
-            <tr key={cost.id} className="border-b border-gray-100">
-              <td className="border border-gray-300 px-3 py-1.5">{cost.description ?? '—'}</td>
-              <td className="border border-gray-300 px-3 py-1.5 text-right text-xs text-gray-500">
-                {costTypeLabel(cost.type)}
-              </td>
-              <td className="border border-gray-300 px-3 py-1.5 text-right tabular-nums">
-                {factorDisplay(cost.type, cost.factor)}
-              </td>
-              <td className="border border-gray-300 px-3 py-1.5 text-right tabular-nums">
-                {fmt$(calcCostLine(cost.type, cost.factor, totals.totalLabor, totals.totalHours))}
-              </td>
+            <tr key={cost.id}>
+              <td className={td}>{cost.description ?? '—'}</td>
+              <td className={`${tdR} text-xs text-gray-500`}>{costTypeLabel(cost.type)}</td>
+              <td className={tdR}>{factorDisplay(cost.type, cost.factor)}</td>
+              <td className={tdR}>{fmt$(calcCostLine(cost.type, cost.factor, totals.totalLabor, totals.totalHours))}</td>
             </tr>
           ))}
         </tbody>
         <tfoot>
-          <tr className="bg-gray-200 font-bold">
-            <td colSpan={3} className="border border-gray-300 px-3 py-2">Total Other Direct Costs</td>
-            <td className="border border-gray-300 px-3 py-2 text-right tabular-nums">
-              {fmt$(totals.totalOtherDirect)}
-            </td>
+          <tr>
+            <td colSpan={3} className={tfootTd}>Total Other Direct Costs</td>
+            <td className={tfootTdR}>{fmt$(totals.totalOtherDirect)}</td>
           </tr>
         </tfoot>
       </table>
 
-      {/* Pricing Summary + Pie Chart */}
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">
-        Pricing Summary
-      </h3>
-      <div className="flex flex-wrap gap-10 items-start">
+      {sectionHeader('Pricing Summary')}
+      <div className="flex flex-wrap gap-12 items-start">
         <table className="text-sm">
           <tbody className="divide-y divide-gray-100">
             <tr>
-              <td className="py-1.5 pr-10 text-gray-600">Total Cost</td>
-              <td className="py-1.5 text-right tabular-nums font-medium">{fmt$(totals.totalCost)}</td>
+              <td className="py-2 pr-10 text-gray-600">Total Cost</td>
+              <td className="py-2 text-right tabular-nums font-medium">{fmt$(totals.totalCost)}</td>
             </tr>
             <tr>
-              <td className="py-1.5 pr-10 text-gray-600">
+              <td className="py-2 pr-10 text-gray-600">
                 {bidSummary.margin_type === 'percent'
                   ? `Gross Margin (${bidSummary.margin_value}%)`
                   : 'Fixed Fee'}
               </td>
-              <td className="py-1.5 text-right tabular-nums font-medium">{fmt$(profit)}</td>
+              <td className="py-2 text-right tabular-nums font-medium">{fmt$(profit)}</td>
             </tr>
             <tr className="border-t-2 border-gray-800 font-bold text-gray-900">
-              <td className="py-2 pr-10">Selling Price / Year</td>
-              <td className="py-2 text-right tabular-nums text-lg">{fmt$(totals.sellingPrice)}</td>
+              <td className="py-2.5 pr-10">Selling Price / Year</td>
+              <td className="py-2.5 text-right tabular-nums text-lg">{fmt$(totals.sellingPrice)}</td>
             </tr>
             <tr>
-              <td className="py-1.5 pr-10 text-gray-600">Price / Month</td>
-              <td className="py-1.5 text-right tabular-nums font-medium">{fmt$(totals.pricePerMonth)}</td>
+              <td className="py-2 pr-10 text-gray-600">Price / Month</td>
+              <td className="py-2 text-right tabular-nums font-medium">{fmt$(totals.pricePerMonth)}</td>
             </tr>
             {building.square_feet != null && (
               <>
                 <tr>
-                  <td className="py-1.5 pr-10 text-gray-600">$/Sq Ft (Annual)</td>
-                  <td className="py-1.5 text-right tabular-nums font-medium">
+                  <td className="py-2 pr-10 text-gray-600">$/Sq Ft (Annual)</td>
+                  <td className="py-2 text-right tabular-nums font-medium">
                     {totals.sqftAnnual != null ? `$${totals.sqftAnnual.toFixed(4)}` : '—'}
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-1.5 pr-10 text-gray-600">$/Sq Ft (Monthly)</td>
-                  <td className="py-1.5 text-right tabular-nums font-medium">
+                  <td className="py-2 pr-10 text-gray-600">$/Sq Ft (Monthly)</td>
+                  <td className="py-2 text-right tabular-nums font-medium">
                     {totals.sqftMonthly != null ? `$${totals.sqftMonthly.toFixed(4)}` : '—'}
                   </td>
                 </tr>
@@ -644,7 +702,7 @@ function InvestmentRecapReport({ data }: { data: ReportData }) {
         </table>
 
         <div>
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Cost Breakdown</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-4">Cost Breakdown</p>
           <PieChart segments={pieSegments} />
         </div>
       </div>
@@ -654,15 +712,21 @@ function InvestmentRecapReport({ data }: { data: ReportData }) {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-export default function ReportsView({ prospects }: { prospects: Prospect[] }) {
+export default function ReportsView({
+  prospects,
+  companySettings,
+}: {
+  prospects: Prospect[]
+  companySettings: CompanySettings | null
+}) {
   const [selectedProspectId, setSelectedProspectId] = useState('')
   const [selectedBuildingId, setSelectedBuildingId] = useState('')
-  const [buildings, setBuildings] = useState<Building[]>([])
-  const [checked, setChecked] = useState<Set<string>>(new Set())
+  const [buildings, setBuildings]   = useState<Building[]>([])
+  const [checked, setChecked]       = useState<Set<string>>(new Set())
   const [includeSpanish, setIncludeSpanish] = useState(false)
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError]           = useState<string | null>(null)
 
   const supabase = useMemo(() => createClient(), [])
 
@@ -686,9 +750,7 @@ export default function ReportsView({ prospects }: { prospects: Prospect[] }) {
     void fetchBuildings()
   }, [selectedProspectId, supabase])
 
-  useEffect(() => {
-    setReportData(null)
-  }, [selectedBuildingId])
+  useEffect(() => { setReportData(null) }, [selectedBuildingId])
 
   function toggleReport(key: string) {
     setChecked(prev => {
@@ -720,41 +782,19 @@ export default function ReportsView({ prospects }: { prospects: Prospect[] }) {
           .eq('building_id', selectedBuildingId)
           .order('print_order', { nullsFirst: false })
           .order('created_at'),
-        supabase
-          .from('bid_summary')
-          .select('*')
-          .eq('building_id', selectedBuildingId)
-          .maybeSingle(),
-        supabase
-          .from('bid_labor_lines')
-          .select('*, positions(position_name)')
-          .eq('building_id', selectedBuildingId)
-          .order('sort_order', { nullsFirst: false })
-          .order('created_at'),
-        supabase
-          .from('bid_labor_costs')
-          .select('*')
-          .eq('building_id', selectedBuildingId)
-          .order('sort_order', { nullsFirst: false })
-          .order('created_at'),
-        supabase
-          .from('bid_other_costs')
-          .select('*')
-          .eq('building_id', selectedBuildingId)
-          .order('sort_order', { nullsFirst: false })
-          .order('created_at'),
+        supabase.from('bid_summary').select('*').eq('building_id', selectedBuildingId).maybeSingle(),
+        supabase.from('bid_labor_lines').select('*, positions(position_name)').eq('building_id', selectedBuildingId).order('sort_order', { nullsFirst: false }).order('created_at'),
+        supabase.from('bid_labor_costs').select('*').eq('building_id', selectedBuildingId).order('sort_order', { nullsFirst: false }).order('created_at'),
+        supabase.from('bid_other_costs').select('*').eq('building_id', selectedBuildingId).order('sort_order', { nullsFirst: false }).order('created_at'),
       ])
 
       if (areasErr) throw areasErr
 
       const sortedAreas: Area[] = ((areas ?? []) as Area[]).map(a => ({
         ...a,
-        task_line_items: [...a.task_line_items].sort((x, y) => {
-          if (x.created_at && y.created_at) {
-            return new Date(x.created_at).getTime() - new Date(y.created_at).getTime()
-          }
-          return 0
-        }),
+        task_line_items: [...a.task_line_items].sort((x, y) =>
+          new Date(x.created_at).getTime() - new Date(y.created_at).getTime()
+        ),
       }))
 
       setReportData({
@@ -773,29 +813,26 @@ export default function ReportsView({ prospects }: { prospects: Prospect[] }) {
     }
   }
 
-  const canGenerate   = !!selectedProspectId && !!selectedBuildingId && checked.size > 0
-  const anyScope      = checked.has('scope_no_codes') || checked.has('scope_with_codes')
+  const canGenerate = !!selectedProspectId && !!selectedBuildingId && checked.size > 0
+  const anyScope    = checked.has('scope_no_codes') || checked.has('scope_with_codes')
+
+  // Content-only reports (exclude cover_page from "no reports" check when it's the only one)
+  const hasContentReports = [...checked].some(k => k !== 'cover_page')
 
   return (
     <>
-      {/* Print styles: show only report output, hide dashboard chrome */}
+      {/* Print styles */}
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          #report-print-area, #report-print-area * { visibility: visible; }
-          #report-print-area {
-            position: fixed; top: 0; left: 0;
-            width: 100%; padding: 32px;
-            background: white;
-          }
-          .report-section { break-before: page; padding-top: 24px; }
-          .report-section:first-child { break-before: avoid; padding-top: 0; }
+          .cover-page  { break-after: page; height: 100vh !important; min-height: unset !important; }
+          .report-section { break-before: page; }
+          .report-section:first-child { break-before: auto; }
         }
       `}</style>
 
       <div className="flex h-full overflow-hidden">
 
-        {/* ── Controls sidebar ──────────────────────────────────────── */}
+        {/* ── Controls sidebar ──────────────────────────────── */}
         <div className="w-72 flex-shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto flex flex-col gap-5 p-5 print:hidden">
 
           {/* Prospect */}
@@ -809,9 +846,7 @@ export default function ReportsView({ prospects }: { prospects: Prospect[] }) {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <option value="">Select prospect…</option>
-              {prospects.map(p => (
-                <option key={p.id} value={p.id}>{p.company_name}</option>
-              ))}
+              {prospects.map(p => <option key={p.id} value={p.id}>{p.company_name}</option>)}
             </select>
           </div>
 
@@ -829,42 +864,35 @@ export default function ReportsView({ prospects }: { prospects: Prospect[] }) {
               <option value="">
                 {selectedProspectId && buildings.length === 0 ? 'No buildings found' : 'Select building…'}
               </option>
-              {buildings.map(b => (
-                <option key={b.id} value={b.id}>{b.building_name}</option>
-              ))}
+              {buildings.map(b => <option key={b.id} value={b.id}>{b.building_name}</option>)}
             </select>
           </div>
 
           {/* Report selection */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Reports</span>
               <div className="flex gap-2 text-xs">
-                <button
-                  onClick={() => setChecked(new Set(REPORT_OPTIONS.map(r => r.key)))}
-                  className="text-brand-600 hover:text-brand-800"
-                >
-                  All
-                </button>
+                <button onClick={() => setChecked(new Set(REPORT_OPTIONS.map(r => r.key)))}
+                  className="text-brand-600 hover:text-brand-800">All</button>
                 <span className="text-gray-300">|</span>
-                <button
-                  onClick={() => setChecked(new Set())}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  None
-                </button>
+                <button onClick={() => setChecked(new Set())}
+                  className="text-gray-500 hover:text-gray-700">None</button>
               </div>
             </div>
 
-            <p className="text-xs text-gray-400 font-medium mt-1 mb-0.5">Workload</p>
+            <p className="text-xs text-gray-400 font-medium mb-0.5">Document</p>
+            {DOCUMENT_REPORTS.map(r => (
+              <label key={r.key} className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer">
+                <input type="checkbox" checked={checked.has(r.key)} onChange={() => toggleReport(r.key)} className="mt-0.5 accent-brand-600" />
+                <span className="text-sm text-gray-700 leading-snug">{r.label}</span>
+              </label>
+            ))}
+
+            <p className="text-xs text-gray-400 font-medium mt-2 mb-0.5">Workload</p>
             {WORKLOAD_REPORTS.map(r => (
               <label key={r.key} className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={checked.has(r.key)}
-                  onChange={() => toggleReport(r.key)}
-                  className="mt-0.5 accent-brand-600"
-                />
+                <input type="checkbox" checked={checked.has(r.key)} onChange={() => toggleReport(r.key)} className="mt-0.5 accent-brand-600" />
                 <span className="text-sm text-gray-700 leading-snug">{r.label}</span>
               </label>
             ))}
@@ -872,30 +900,27 @@ export default function ReportsView({ prospects }: { prospects: Prospect[] }) {
             <p className="text-xs text-gray-400 font-medium mt-2 mb-0.5">Bidding</p>
             {BIDDING_REPORTS.map(r => (
               <label key={r.key} className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={checked.has(r.key)}
-                  onChange={() => toggleReport(r.key)}
-                  className="mt-0.5 accent-brand-600"
-                />
+                <input type="checkbox" checked={checked.has(r.key)} onChange={() => toggleReport(r.key)} className="mt-0.5 accent-brand-600" />
                 <span className="text-sm text-gray-700 leading-snug">{r.label}</span>
               </label>
             ))}
           </div>
 
-          {/* Spanish option (only relevant for scope reports) */}
+          {/* Spanish option */}
           {anyScope && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Options</p>
               <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={includeSpanish}
-                  onChange={e => setIncludeSpanish(e.target.checked)}
-                  className="accent-brand-600"
-                />
+                <input type="checkbox" checked={includeSpanish} onChange={e => setIncludeSpanish(e.target.checked)} className="accent-brand-600" />
                 <span className="text-sm text-gray-700">Include Spanish column</span>
               </label>
+            </div>
+          )}
+
+          {/* Company settings notice */}
+          {!companySettings?.company_name && (
+            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              Add company info in <span className="font-medium">Admin &rsaquo; Company Settings</span> to include it on reports.
             </div>
           )}
 
@@ -904,7 +929,7 @@ export default function ReportsView({ prospects }: { prospects: Prospect[] }) {
             {error && <p className="text-xs text-red-600">{error}</p>}
             <button
               onClick={handleGenerate}
-              disabled={!canGenerate || isGenerating}
+              disabled={!canGenerate || isGenerating || !hasContentReports}
               className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
             >
               {isGenerating ? 'Generating…' : 'Generate Reports'}
@@ -912,11 +937,11 @@ export default function ReportsView({ prospects }: { prospects: Prospect[] }) {
           </div>
         </div>
 
-        {/* ── Report output area ─────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto">
+        {/* ── Report output ─────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto bg-gray-100 print:bg-white">
           {!reportData ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 gap-3">
-              <svg className="w-16 h-16 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 gap-3 print:hidden">
+              <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -928,13 +953,13 @@ export default function ReportsView({ prospects }: { prospects: Prospect[] }) {
           ) : (
             <>
               {/* Toolbar */}
-              <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200 print:hidden">
+              <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200 shadow-sm print:hidden">
                 <p className="text-sm text-gray-600">
                   <span className="font-medium text-gray-900">{reportData.prospect.company_name}</span>
                   <span className="mx-2 text-gray-300">·</span>
                   {reportData.building.building_name}
                   <span className="mx-2 text-gray-300">·</span>
-                  <span className="text-gray-400">{checked.size} report{checked.size !== 1 ? 's' : ''}</span>
+                  <span className="text-gray-400">{[...checked].filter(k => k !== 'cover_page').length} report{[...checked].filter(k => k !== 'cover_page').length !== 1 ? 's' : ''}</span>
                 </p>
                 <button
                   onClick={() => window.print()}
@@ -948,26 +973,43 @@ export default function ReportsView({ prospects }: { prospects: Prospect[] }) {
                 </button>
               </div>
 
-              {/* Report pages */}
-              <div id="report-print-area" className="p-8 max-w-5xl mx-auto space-y-14">
-                {checked.has('scope_no_codes') && (
-                  <ScopeOfWorkReport data={reportData} withTaskCodes={false} includeSpanish={includeSpanish} />
+              {/* Pages — each wrapped in a white A4-ish card on screen */}
+              <div className="py-8 px-6 space-y-6 print:p-0 print:space-y-0">
+
+                {checked.has('cover_page') && (
+                  <div className="bg-white shadow-sm rounded-sm mx-auto print:shadow-none print:rounded-none" style={{ maxWidth: '816px' }}>
+                    <div className="px-16 py-12">
+                      <CoverPage data={reportData} company={companySettings} />
+                    </div>
+                  </div>
                 )}
-                {checked.has('scope_with_codes') && (
-                  <ScopeOfWorkReport data={reportData} withTaskCodes={true} includeSpanish={includeSpanish} />
-                )}
-                {checked.has('wl_summary') && (
-                  <WorkLoadSummaryReport data={reportData} />
-                )}
-                {checked.has('wl_detail') && (
-                  <WorkLoadDetailReport data={reportData} />
-                )}
-                {checked.has('wl_by_position') && (
-                  <WorkLoadByPositionReport data={reportData} />
-                )}
-                {checked.has('investment_recap') && (
-                  <InvestmentRecapReport data={reportData} />
-                )}
+
+                {[
+                  checked.has('scope_no_codes') && (
+                    <ScopeOfWorkReport key="scope_no" data={reportData} withTaskCodes={false} includeSpanish={includeSpanish} company={companySettings} />
+                  ),
+                  checked.has('scope_with_codes') && (
+                    <ScopeOfWorkReport key="scope_codes" data={reportData} withTaskCodes={true} includeSpanish={includeSpanish} company={companySettings} />
+                  ),
+                  checked.has('wl_summary') && (
+                    <WorkLoadSummaryReport key="wl_sum" data={reportData} company={companySettings} />
+                  ),
+                  checked.has('wl_detail') && (
+                    <WorkLoadDetailReport key="wl_det" data={reportData} company={companySettings} />
+                  ),
+                  checked.has('wl_by_position') && (
+                    <WorkLoadByPositionReport key="wl_pos" data={reportData} company={companySettings} />
+                  ),
+                  checked.has('investment_recap') && (
+                    <InvestmentRecapReport key="inv" data={reportData} company={companySettings} />
+                  ),
+                ].filter(Boolean).map((el, i) => (
+                  <div key={i} className="bg-white shadow-sm rounded-sm mx-auto print:shadow-none print:rounded-none" style={{ maxWidth: '816px' }}>
+                    <div className="px-12 py-10">
+                      {el}
+                    </div>
+                  </div>
+                ))}
               </div>
             </>
           )}
