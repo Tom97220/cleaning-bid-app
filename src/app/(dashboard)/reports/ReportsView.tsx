@@ -359,14 +359,12 @@ function ScopeOfWorkReport({
                       {withTaskCodes ? (
                         <span className="text-gray-700">{task.task_codes?.description ?? ''}</span>
                       ) : (
-                        <>
-                          <div className="text-gray-800 leading-snug">{task.task_name ?? '—'}</div>
+                        <span className="text-gray-800">
+                          {task.task_name ?? '—'}
                           {task.task_codes?.description && (
-                            <div className="text-xs text-gray-500 mt-0.5 leading-snug">
-                              {task.task_codes.description}
-                            </div>
+                            <span className="text-gray-500"> &mdash; {task.task_codes.description}</span>
                           )}
-                        </>
+                        </span>
                       )}
                     </td>
                     {includeAltLang && (
