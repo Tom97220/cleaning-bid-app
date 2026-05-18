@@ -288,8 +288,8 @@ function ScopeOfWorkReport({
     .map(area => ({ ...area, task_line_items: area.task_line_items.filter(t => t.print) }))
     .filter(area => area.task_line_items.length > 0)
 
-  // colCount: Task Code? + Task Name (codes only) + Description + Alt Lang? + Service Days
-  const colCount = (withTaskCodes ? 2 : 1) + (includeAltLang ? 1 : 0) + 1
+  // colCount: Task Code? + Task Name + Description + Alt Lang? + Frequency
+  const colCount = (withTaskCodes ? 4 : 3) + (includeAltLang ? 1 : 0)
 
   return (
     <div className="report-section">
@@ -298,15 +298,13 @@ function ScopeOfWorkReport({
         <thead>
           <tr>
             {withTaskCodes && (
-              <>
-                <th className="text-left font-bold text-gray-900 pb-2.5 pr-6 border-b-2 border-gray-800 w-24 whitespace-nowrap">
-                  Task Code
-                </th>
-                <th className="text-left font-bold text-gray-900 pb-2.5 pr-6 border-b-2 border-gray-800 w-40 whitespace-nowrap">
-                  Task Name
-                </th>
-              </>
+              <th className="text-left font-bold text-gray-900 pb-2.5 pr-6 border-b-2 border-gray-800 w-24 whitespace-nowrap">
+                Task Code
+              </th>
             )}
+            <th className="text-left font-bold text-gray-900 pb-2.5 pr-6 border-b-2 border-gray-800 w-40 whitespace-nowrap">
+              Task Name
+            </th>
             <th className="text-left font-bold text-gray-900 pb-2.5 border-b-2 border-gray-800">
               Description
             </th>
@@ -316,7 +314,7 @@ function ScopeOfWorkReport({
               </th>
             )}
             <th className="text-right font-bold text-gray-900 pb-2.5 pl-8 border-b-2 border-gray-800 w-32 whitespace-nowrap">
-              Service Days
+              Frequency
             </th>
           </tr>
         </thead>
@@ -344,28 +342,17 @@ function ScopeOfWorkReport({
                 {area.task_line_items.map(task => (
                   <tr key={task.id}>
                     {withTaskCodes && (
-                      <>
-                        <td className="py-1 pr-6 align-top whitespace-nowrap">
-                          <span className="font-mono text-xs text-gray-500">
-                            {task.task_codes?.task_code ?? ''}
-                          </span>
-                        </td>
-                        <td className="py-1 pr-6 align-top text-gray-800">
-                          {task.task_name ?? '—'}
-                        </td>
-                      </>
-                    )}
-                    <td className="py-1 pr-8 align-top">
-                      {withTaskCodes ? (
-                        <span className="text-gray-700">{task.task_codes?.description ?? ''}</span>
-                      ) : (
-                        <span className="text-gray-800">
-                          {task.task_name ?? '—'}
-                          {task.task_codes?.description && (
-                            <span className="text-gray-500"> &mdash; {task.task_codes.description}</span>
-                          )}
+                      <td className="py-1 pr-6 align-top whitespace-nowrap">
+                        <span className="font-mono text-xs text-gray-500">
+                          {task.task_codes?.task_code ?? ''}
                         </span>
-                      )}
+                      </td>
+                    )}
+                    <td className="py-1 pr-6 align-top text-gray-800">
+                      {task.task_name ?? '—'}
+                    </td>
+                    <td className="py-1 pr-8 align-top text-gray-700">
+                      {task.task_codes?.description ?? ''}
                     </td>
                     {includeAltLang && (
                       <td className="py-1 pl-6 pr-8 align-top text-gray-500 italic">
