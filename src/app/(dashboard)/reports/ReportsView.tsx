@@ -17,14 +17,20 @@ import {
 export interface CompanySettings {
   id: string
   company_name: string | null
+  phone: string | null
+  email: string | null
+  logo_url: string | null
+}
+
+export interface CompanyLocation {
+  id: string
+  location_name: string
   address_1: string | null
   address_2: string | null
   city: string | null
   state: string | null
   zip: string | null
-  phone: string | null
-  email: string | null
-  logo_url: string | null
+  is_default: boolean
 }
 
 interface Prospect { id: string; company_name: string }
@@ -104,14 +110,12 @@ function todayStr() {
   return new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
-function companyAddressLines(c: CompanySettings): string[] {
+function locationAddressLines(loc: CompanyLocation): string[] {
   const lines: string[] = []
-  if (c.address_1) lines.push(c.address_1)
-  if (c.address_2) lines.push(c.address_2)
-  const cityLine = [c.city, c.state, c.zip].filter(Boolean).join(', ')
+  if (loc.address_1) lines.push(loc.address_1)
+  if (loc.address_2) lines.push(loc.address_2)
+  const cityLine = [loc.city, loc.state, loc.zip].filter(Boolean).join(', ')
   if (cityLine) lines.push(cityLine)
-  if (c.phone) lines.push(c.phone)
-  if (c.email) lines.push(c.email)
   return lines
 }
 
@@ -131,19 +135,32 @@ function ReportHeader({
   prospect,
   building,
   company,
+  location,
 }: {
   title: string
   prospect: Prospect
   building: Building
   company: CompanySettings | null
+  location?: CompanyLocation | null
 }) {
+  const addrLines = location ? locationAddressLines(location) : []
   return (
     <div className="mb-8">
-      {/* Date + company name row */}
-      <div className="flex justify-between items-baseline mb-3">
-        <span className="text-sm text-gray-500">{todayStr()}</span>
-        {company?.company_name && (
-          <span className="text-sm font-medium text-gray-600">{company.company_name}</span>
+      {/* Date + company name / location row */}
+      <div className="flex justify-between items-start mb-3">
+        <span className="text-sm text-gray-500 pt-0.5">{todayStr()}</span>
+        {(company?.company_name || location) && (
+          <div className="text-right">
+            {company?.company_name && (
+              <p className="text-sm font-medium text-gray-600">{company.company_name}</p>
+            )}
+            {location && (
+              <p className="text-xs text-gray-400">{location.location_name}</p>
+            )}
+            {addrLines.map((line, i) => (
+              <p key={i} className="text-xs text-gray-400">{line}</p>
+            ))}
+          </div>
         )}
       </div>
 
@@ -175,9 +192,11 @@ function ReportHeader({
 function CoverPage({
   data,
   company,
+  location,
 }: {
   data: ReportData
   company: CompanySettings | null
+  location: CompanyLocation | null
 }) {
   return (
     <div
@@ -219,14 +238,21 @@ function CoverPage({
       {/* Bottom: presented by */}
       <div className="text-center pb-16 px-16">
         <p className="text-xs uppercase tracking-widest text-gray-400 mb-3">Presented by</p>
-        {company ? (
+        {(company || location) ? (
           <div className="space-y-0.5">
-            {company.company_name && (
+            {company?.company_name && (
               <p className="font-semibold text-gray-800">{company.company_name}</p>
             )}
-            {companyAddressLines(company).map((line, i) => (
-              <p key={i} className="text-sm text-gray-600">{line}</p>
-            ))}
+            {location && (
+              <>
+                <p className="text-sm font-medium text-gray-700">{location.location_name}</p>
+                {locationAddressLines(location).map((line, i) => (
+                  <p key={i} className="text-sm text-gray-600">{line}</p>
+                ))}
+              </>
+            )}
+            {company?.phone && <p className="text-sm text-gray-600">{company.phone}</p>}
+            {company?.email && <p className="text-sm text-gray-600">{company.email}</p>}
           </div>
         ) : (
           <p className="text-sm text-gray-400 italic">
@@ -276,9 +302,9 @@ function PieChart({ segments }: { segments: PieSegment[] }) {
 // ─── Report 1 & 2: Scope of Work ─────────────────────────────────────────────
 
 function ScopeOfWorkReport({
-  data, withTaskCodes, includeAltLang, company,
+  data, withTaskCodes, includeAltLang, company, location,
 }: {
-  data: ReportData; withTaskCodes: boolean; includeAltLang: boolean; company: CompanySettings | null
+  data: ReportData; withTaskCodes: boolean; includeAltLang: boolean; company: CompanySettings | null; location: CompanyLocation | null
 }) {
   const title = withTaskCodes
     ? 'Work Load Specifications / Scope of Work (with Task Codes)'
@@ -293,7 +319,7 @@ function ScopeOfWorkReport({
 
   return (
     <div className="report-section">
-      <ReportHeader title={title} prospect={data.prospect} building={data.building} company={company} />
+      <ReportHeader title={title} prospect={data.prospect} building={data.building} company={company} location={location} />
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
@@ -375,7 +401,7 @@ function ScopeOfWorkReport({
 
 // ─── Report 3: Work Load Development Summary ──────────────────────────────────
 
-function WorkLoadSummaryReport({ data, company }: { data: ReportData; company: CompanySettings | null }) {
+function WorkLoadSummaryReport({ data, company, location }: { data: ReportData; company: CompanySettings | null; location: CompanyLocation | null }) {
   const allTasks    = data.areas.flatMap(a => a.task_line_items)
   const annualHours = allTasks.reduce((s, t) => s + (t.yearly_hrs ?? 0), 0)
 
@@ -395,7 +421,7 @@ function WorkLoadSummaryReport({ data, company }: { data: ReportData; company: C
 
   return (
     <div className="report-section">
-      <ReportHeader title="Work Load Development Summary" prospect={data.prospect} building={data.building} company={company} />
+      <ReportHeader title="Work Load Development Summary" prospect={data.prospect} building={data.building} company={company} location={location} />
       <div className="max-w-sm">
         <table className="w-full text-sm">
           <tbody className="divide-y divide-gray-100">
@@ -414,7 +440,7 @@ function WorkLoadSummaryReport({ data, company }: { data: ReportData; company: C
 
 // ─── Report 4: Work Load Development Detail ───────────────────────────────────
 
-function WorkLoadDetailReport({ data, company }: { data: ReportData; company: CompanySettings | null }) {
+function WorkLoadDetailReport({ data, company, location }: { data: ReportData; company: CompanySettings | null; location: CompanyLocation | null }) {
   const allTasks = data.areas.flatMap(a => a.task_line_items)
   const grand = {
     yearly:  allTasks.reduce((s, t) => s + (t.yearly_hrs  ?? 0), 0),
@@ -425,7 +451,7 @@ function WorkLoadDetailReport({ data, company }: { data: ReportData; company: Co
 
   return (
     <div className="report-section">
-      <ReportHeader title="Work Load Development Detail" prospect={data.prospect} building={data.building} company={company} />
+      <ReportHeader title="Work Load Development Detail" prospect={data.prospect} building={data.building} company={company} location={location} />
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr>
@@ -487,7 +513,7 @@ function WorkLoadDetailReport({ data, company }: { data: ReportData; company: Co
 
 // ─── Report 5: Work Load by Position ─────────────────────────────────────────
 
-function WorkLoadByPositionReport({ data, company }: { data: ReportData; company: CompanySettings | null }) {
+function WorkLoadByPositionReport({ data, company, location }: { data: ReportData; company: CompanySettings | null; location: CompanyLocation | null }) {
   const allTasks    = data.areas.flatMap(a => a.task_line_items)
   const totalYearly = allTasks.reduce((s, t) => s + (t.yearly_hrs ?? 0), 0)
 
@@ -506,7 +532,7 @@ function WorkLoadByPositionReport({ data, company }: { data: ReportData; company
 
   return (
     <div className="report-section">
-      <ReportHeader title="Work Load by Position" prospect={data.prospect} building={data.building} company={company} />
+      <ReportHeader title="Work Load by Position" prospect={data.prospect} building={data.building} company={company} location={location} />
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr>
@@ -544,13 +570,13 @@ function WorkLoadByPositionReport({ data, company }: { data: ReportData; company
 
 // ─── Report 6: Investment Recap ───────────────────────────────────────────────
 
-function InvestmentRecapReport({ data, company }: { data: ReportData; company: CompanySettings | null }) {
+function InvestmentRecapReport({ data, company, location }: { data: ReportData; company: CompanySettings | null; location: CompanyLocation | null }) {
   const { bidSummary, bidLaborLines, bidLaborCosts, bidOtherCosts, building } = data
 
   if (!bidSummary) {
     return (
       <div className="report-section">
-        <ReportHeader title="Investment Recap / Bidding Report" prospect={data.prospect} building={data.building} company={company} />
+        <ReportHeader title="Investment Recap / Bidding Report" prospect={data.prospect} building={data.building} company={company} location={location} />
         <p className="text-gray-400 italic text-sm">No bid data available for this building.</p>
       </div>
     )
@@ -749,18 +775,25 @@ function InvestmentRecapReport({ data, company }: { data: ReportData; company: C
 export default function ReportsView({
   prospects,
   companySettings,
+  locations,
 }: {
   prospects: Prospect[]
   companySettings: CompanySettings | null
+  locations: CompanyLocation[]
 }) {
+  const defaultLocation = locations.find(l => l.is_default) ?? locations[0] ?? null
+
   const [selectedProspectId, setSelectedProspectId] = useState('')
   const [selectedBuildingId, setSelectedBuildingId] = useState('')
+  const [selectedLocationId, setSelectedLocationId] = useState(defaultLocation?.id ?? '')
   const [buildings, setBuildings]   = useState<Building[]>([])
   const [checked, setChecked]       = useState<Set<string>>(new Set())
   const [includeAltLang, setIncludeAltLang] = useState(false)
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError]           = useState<string | null>(null)
+
+  const selectedLocation = locations.find(l => l.id === selectedLocationId) ?? null
 
   const supabase = useMemo(() => createClient(), [])
 
@@ -902,6 +935,27 @@ export default function ReportsView({
             </select>
           </div>
 
+          {/* Presented by Location */}
+          {locations.length > 0 && (
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
+                Presented by Location
+              </label>
+              <select
+                value={selectedLocationId}
+                onChange={e => setSelectedLocationId(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value="">No location</option>
+                {locations.map(l => (
+                  <option key={l.id} value={l.id}>
+                    {l.location_name}{l.is_default ? ' (default)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Report selection */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -1013,29 +1067,29 @@ export default function ReportsView({
                 {checked.has('cover_page') && (
                   <div className="bg-white shadow-sm rounded-sm mx-auto print:shadow-none print:rounded-none" style={{ maxWidth: '816px' }}>
                     <div className="px-16 py-12">
-                      <CoverPage data={reportData} company={companySettings} />
+                      <CoverPage data={reportData} company={companySettings} location={selectedLocation} />
                     </div>
                   </div>
                 )}
 
                 {[
                   checked.has('scope_no_codes') && (
-                    <ScopeOfWorkReport key="scope_no" data={reportData} withTaskCodes={false} includeAltLang={includeAltLang} company={companySettings} />
+                    <ScopeOfWorkReport key="scope_no" data={reportData} withTaskCodes={false} includeAltLang={includeAltLang} company={companySettings} location={selectedLocation} />
                   ),
                   checked.has('scope_with_codes') && (
-                    <ScopeOfWorkReport key="scope_codes" data={reportData} withTaskCodes={true} includeAltLang={includeAltLang} company={companySettings} />
+                    <ScopeOfWorkReport key="scope_codes" data={reportData} withTaskCodes={true} includeAltLang={includeAltLang} company={companySettings} location={selectedLocation} />
                   ),
                   checked.has('wl_summary') && (
-                    <WorkLoadSummaryReport key="wl_sum" data={reportData} company={companySettings} />
+                    <WorkLoadSummaryReport key="wl_sum" data={reportData} company={companySettings} location={selectedLocation} />
                   ),
                   checked.has('wl_detail') && (
-                    <WorkLoadDetailReport key="wl_det" data={reportData} company={companySettings} />
+                    <WorkLoadDetailReport key="wl_det" data={reportData} company={companySettings} location={selectedLocation} />
                   ),
                   checked.has('wl_by_position') && (
-                    <WorkLoadByPositionReport key="wl_pos" data={reportData} company={companySettings} />
+                    <WorkLoadByPositionReport key="wl_pos" data={reportData} company={companySettings} location={selectedLocation} />
                   ),
                   checked.has('investment_recap') && (
-                    <InvestmentRecapReport key="inv" data={reportData} company={companySettings} />
+                    <InvestmentRecapReport key="inv" data={reportData} company={companySettings} location={selectedLocation} />
                   ),
                 ].filter(Boolean).map((el, i) => (
                   <div key={i} className="bg-white shadow-sm rounded-sm mx-auto print:shadow-none print:rounded-none" style={{ maxWidth: '816px' }}>
