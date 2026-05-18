@@ -390,6 +390,7 @@ function WorkLoadSummaryReport({ data, company }: { data: ReportData; company: C
     { label: 'Weekly Average Hours',  value: `${fmtHrs(annualHours / 52)} hrs` },
     { label: 'Monthly Average Hours', value: `${fmtHrs(annualHours / 12)} hrs` },
     { label: 'Total Annual Hours',    value: `${fmtHrs(annualHours)} hrs` },
+    { label: 'Total Staff Required',  value: staff.toFixed(2) },
   ]
 
   return (
