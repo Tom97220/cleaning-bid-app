@@ -276,9 +276,9 @@ function PieChart({ segments }: { segments: PieSegment[] }) {
 // ─── Report 1 & 2: Scope of Work ─────────────────────────────────────────────
 
 function ScopeOfWorkReport({
-  data, withTaskCodes, includeSpanish, company,
+  data, withTaskCodes, includeAltLang, company,
 }: {
-  data: ReportData; withTaskCodes: boolean; includeSpanish: boolean; company: CompanySettings | null
+  data: ReportData; withTaskCodes: boolean; includeAltLang: boolean; company: CompanySettings | null
 }) {
   const title = withTaskCodes
     ? 'Work Load Specifications / Scope of Work (with Task Codes)'
@@ -288,8 +288,8 @@ function ScopeOfWorkReport({
     .map(area => ({ ...area, task_line_items: area.task_line_items.filter(t => t.print) }))
     .filter(area => area.task_line_items.length > 0)
 
-  // colCount: Task Code? + Task Name (codes only) + Description + Spanish? + Service Days
-  const colCount = (withTaskCodes ? 2 : 1) + (includeSpanish ? 1 : 0) + 1
+  // colCount: Task Code? + Task Name (codes only) + Description + Alt Lang? + Service Days
+  const colCount = (withTaskCodes ? 2 : 1) + (includeAltLang ? 1 : 0) + 1
 
   return (
     <div className="report-section">
@@ -310,9 +310,9 @@ function ScopeOfWorkReport({
             <th className="text-left font-bold text-gray-900 pb-2.5 border-b-2 border-gray-800">
               Description
             </th>
-            {includeSpanish && (
+            {includeAltLang && (
               <th className="text-left font-bold text-gray-900 pb-2.5 pl-6 border-b-2 border-gray-800 w-48">
-                Descripción (es)
+                Alternate Language
               </th>
             )}
             <th className="text-right font-bold text-gray-900 pb-2.5 pl-8 border-b-2 border-gray-800 w-32 whitespace-nowrap">
@@ -361,7 +361,7 @@ function ScopeOfWorkReport({
                         : (task.task_codes?.description ?? task.task_name ?? '—')
                       }
                     </td>
-                    {includeSpanish && (
+                    {includeAltLang && (
                       <td className="py-1 pl-6 pr-8 align-top text-gray-500 italic">
                         {task.task_codes?.description_alt ?? ''}
                       </td>
@@ -766,7 +766,7 @@ export default function ReportsView({
   const [selectedBuildingId, setSelectedBuildingId] = useState('')
   const [buildings, setBuildings]   = useState<Building[]>([])
   const [checked, setChecked]       = useState<Set<string>>(new Set())
-  const [includeSpanish, setIncludeSpanish] = useState(false)
+  const [includeAltLang, setIncludeAltLang] = useState(false)
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError]           = useState<string | null>(null)
@@ -949,13 +949,13 @@ export default function ReportsView({
             ))}
           </div>
 
-          {/* Spanish option */}
+          {/* Alternate language option */}
           {anyScope && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Options</p>
               <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer">
-                <input type="checkbox" checked={includeSpanish} onChange={e => setIncludeSpanish(e.target.checked)} className="accent-brand-600" />
-                <span className="text-sm text-gray-700">Include Spanish column</span>
+                <input type="checkbox" checked={includeAltLang} onChange={e => setIncludeAltLang(e.target.checked)} className="accent-brand-600" />
+                <span className="text-sm text-gray-700">Include alternate language column</span>
               </label>
             </div>
           )}
@@ -1029,10 +1029,10 @@ export default function ReportsView({
 
                 {[
                   checked.has('scope_no_codes') && (
-                    <ScopeOfWorkReport key="scope_no" data={reportData} withTaskCodes={false} includeSpanish={includeSpanish} company={companySettings} />
+                    <ScopeOfWorkReport key="scope_no" data={reportData} withTaskCodes={false} includeAltLang={includeAltLang} company={companySettings} />
                   ),
                   checked.has('scope_with_codes') && (
-                    <ScopeOfWorkReport key="scope_codes" data={reportData} withTaskCodes={true} includeSpanish={includeSpanish} company={companySettings} />
+                    <ScopeOfWorkReport key="scope_codes" data={reportData} withTaskCodes={true} includeAltLang={includeAltLang} company={companySettings} />
                   ),
                   checked.has('wl_summary') && (
                     <WorkLoadSummaryReport key="wl_sum" data={reportData} company={companySettings} />
