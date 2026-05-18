@@ -45,7 +45,7 @@ function blankLaborRow(): LaborRowLocal {
 }
 
 function blankCostRow(): CostRowLocal {
-  return { key: newKey(), id: null, description: '', type: 'per_year', factor: '', deleted: false }
+  return { key: newKey(), id: null, description: '', type: 'percent_markup', factor: '', deleted: false }
 }
 
 function isBlankLabor(r: LaborRowLocal)  { return r.id === null && !r.position_id && !r.annual_hours && !r.rate }
