@@ -288,7 +288,7 @@ function ScopeOfWorkReport({
     .map(area => ({ ...area, task_line_items: area.task_line_items.filter(t => t.print) }))
     .filter(area => area.task_line_items.length > 0)
 
-  const colCount = withTaskCodes ? 3 : 2
+  const colCount = withTaskCodes ? 4 : 2
 
   return (
     <div className="report-section">
@@ -296,14 +296,23 @@ function ScopeOfWorkReport({
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
-            {withTaskCodes && (
-              <th className="text-left font-bold text-gray-900 pb-2.5 pr-8 border-b-2 border-gray-800 w-28">
-                Task Code
+            {withTaskCodes ? (
+              <>
+                <th className="text-left font-bold text-gray-900 pb-2.5 pr-6 border-b-2 border-gray-800 w-24 whitespace-nowrap">
+                  Task Code
+                </th>
+                <th className="text-left font-bold text-gray-900 pb-2.5 pr-6 border-b-2 border-gray-800 w-40 whitespace-nowrap">
+                  Task Name
+                </th>
+                <th className="text-left font-bold text-gray-900 pb-2.5 border-b-2 border-gray-800">
+                  Description
+                </th>
+              </>
+            ) : (
+              <th className="text-left font-bold text-gray-900 pb-2.5 border-b-2 border-gray-800">
+                Description
               </th>
             )}
-            <th className="text-left font-bold text-gray-900 pb-2.5 border-b-2 border-gray-800">
-              Description
-            </th>
             <th className="text-right font-bold text-gray-900 pb-2.5 pl-8 border-b-2 border-gray-800 w-32 whitespace-nowrap">
               Service Days
             </th>
@@ -332,21 +341,30 @@ function ScopeOfWorkReport({
                 {/* Task rows */}
                 {area.task_line_items.map(task => (
                   <tr key={task.id}>
-                    {withTaskCodes && (
+                    {withTaskCodes ? (
+                      <>
+                        <td className="py-1 pr-6 align-top whitespace-nowrap">
+                          <span className="font-mono text-xs text-gray-500">
+                            {task.task_codes?.task_code ?? ''}
+                          </span>
+                        </td>
+                        <td className="py-1 pr-6 align-top text-gray-800">
+                          {task.task_name ?? '—'}
+                        </td>
+                        <td className="py-1 pr-8 align-top text-gray-500">
+                          {task.task_codes?.task_name ?? ''}
+                        </td>
+                      </>
+                    ) : (
                       <td className="py-1 pr-8 align-top">
-                        <span className="font-mono text-xs text-gray-500 whitespace-nowrap">
-                          {task.task_codes?.task_code ?? ''}
-                        </span>
+                        <div className="text-gray-800 leading-snug">{task.task_name ?? '—'}</div>
+                        {task.task_codes?.task_name && (
+                          <div className="text-xs text-gray-400 mt-0.5 pl-2 leading-snug">
+                            {task.task_codes.task_name}
+                          </div>
+                        )}
                       </td>
                     )}
-                    <td className="py-1 pr-8 align-top">
-                      <div className="text-gray-800 leading-snug">{task.task_name ?? '—'}</div>
-                      {task.task_codes?.task_name && (
-                        <div className="text-xs text-gray-400 mt-0.5 pl-2 leading-snug">
-                          {task.task_codes.task_name}
-                        </div>
-                      )}
-                    </td>
                     <td className="py-1 pl-8 text-right align-top whitespace-nowrap text-sm text-gray-600">
                       {fmtFreq(task.frequency)}
                     </td>
