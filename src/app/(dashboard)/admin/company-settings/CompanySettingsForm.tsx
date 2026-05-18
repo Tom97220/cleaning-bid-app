@@ -20,6 +20,7 @@ export interface CompanyLocation {
   city: string | null
   state: string | null
   zip: string | null
+  phone: string | null
   is_default: boolean
 }
 
@@ -39,6 +40,7 @@ const emptyLocForm = {
   city: '',
   state: '',
   zip: '',
+  phone: '',
   is_default: false,
 }
 
@@ -124,6 +126,7 @@ export default function CompanySettingsForm({ settings, initialLocations }: Prop
       city:          loc.city      ?? '',
       state:         loc.state     ?? '',
       zip:           loc.zip       ?? '',
+      phone:         loc.phone     ?? '',
       is_default:    loc.is_default,
     })
     setEditTarget(loc)
@@ -152,6 +155,7 @@ export default function CompanySettingsForm({ settings, initialLocations }: Prop
       city:          locForm.city.trim()      || null,
       state:         locForm.state.trim()     || null,
       zip:           locForm.zip.trim()       || null,
+      phone:         locForm.phone.trim()     || null,
       is_default:    locForm.is_default,
     }
 
@@ -344,6 +348,17 @@ export default function CompanySettingsForm({ settings, initialLocations }: Prop
                   className={inputClass}
                 />
               </div>
+            </div>
+
+            <div>
+              <label className={labelClass}>Phone</label>
+              <input
+                type="tel"
+                value={locForm.phone}
+                onChange={e => setLocForm(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="(555) 555-5555"
+                className={inputClass}
+              />
             </div>
 
             <label className="flex items-center gap-2 cursor-pointer">

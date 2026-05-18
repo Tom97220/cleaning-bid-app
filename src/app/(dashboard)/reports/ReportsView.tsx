@@ -30,6 +30,7 @@ export interface CompanyLocation {
   city: string | null
   state: string | null
   zip: string | null
+  phone: string | null
   is_default: boolean
 }
 
@@ -116,6 +117,7 @@ function locationAddressLines(loc: CompanyLocation): string[] {
   if (loc.address_2) lines.push(loc.address_2)
   const cityLine = [loc.city, loc.state, loc.zip].filter(Boolean).join(', ')
   if (cityLine) lines.push(cityLine)
+  if (loc.phone) lines.push(loc.phone)
   return lines
 }
 
@@ -153,9 +155,6 @@ function ReportHeader({
           <div className="text-right">
             {company?.company_name && (
               <p className="text-sm font-medium text-gray-600">{company.company_name}</p>
-            )}
-            {location && (
-              <p className="text-xs text-gray-400">{location.location_name}</p>
             )}
             {addrLines.map((line, i) => (
               <p key={i} className="text-xs text-gray-400">{line}</p>
@@ -243,16 +242,9 @@ function CoverPage({
             {company?.company_name && (
               <p className="font-semibold text-gray-800">{company.company_name}</p>
             )}
-            {location && (
-              <>
-                <p className="text-sm font-medium text-gray-700">{location.location_name}</p>
-                {locationAddressLines(location).map((line, i) => (
-                  <p key={i} className="text-sm text-gray-600">{line}</p>
-                ))}
-              </>
-            )}
-            {company?.phone && <p className="text-sm text-gray-600">{company.phone}</p>}
-            {company?.email && <p className="text-sm text-gray-600">{company.email}</p>}
+            {location && locationAddressLines(location).map((line, i) => (
+              <p key={i} className="text-sm text-gray-600">{line}</p>
+            ))}
           </div>
         ) : (
           <p className="text-sm text-gray-400 italic">
