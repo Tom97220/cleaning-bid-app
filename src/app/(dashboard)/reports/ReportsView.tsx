@@ -711,52 +711,71 @@ function InvestmentRecapReport({ data, company, location }: { data: ReportData; 
       </table>
 
       {sectionHeader('Pricing Summary')}
-      <div className="flex flex-wrap gap-12 items-start">
+      <div className="grid grid-cols-2 gap-8 items-start">
+
+        {/* Left: Cost Breakdown */}
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-4">Cost Breakdown</p>
-          <PieChart segments={pieSegments} />
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Cost Breakdown</p>
+          <table className="w-full text-xs">
+            <tbody className="divide-y divide-gray-100">
+              {pieSegments.map(seg => (
+                <tr key={seg.label}>
+                  <td className="py-1.5 pr-4 text-gray-600 flex items-center gap-1.5">
+                    <span className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
+                    {seg.label}
+                  </td>
+                  <td className="py-1.5 text-right tabular-nums font-medium text-gray-800">{fmt$(pieSegments.find(s => s.label === seg.label)?.value ?? 0)}</td>
+                  <td className="py-1.5 pl-3 text-right tabular-nums text-gray-500">{seg.pct}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
-        <table className="text-sm">
-          <tbody className="divide-y divide-gray-100">
-            <tr>
-              <td className="py-2 pr-10 text-gray-600">Total Cost</td>
-              <td className="py-2 text-right tabular-nums font-medium">{fmt$(totals.totalCost)}</td>
-            </tr>
-            <tr>
-              <td className="py-2 pr-10 text-gray-600">
-                {bidSummary.margin_type === 'percent'
-                  ? `Gross Margin (${bidSummary.margin_value}%)`
-                  : 'Fixed Fee'}
-              </td>
-              <td className="py-2 text-right tabular-nums font-medium">{fmt$(profit)}</td>
-            </tr>
-            <tr className="border-t-2 border-gray-800 font-bold text-gray-900">
-              <td className="py-2.5 pr-10">Selling Price / Year</td>
-              <td className="py-2.5 text-right tabular-nums text-lg">{fmt$(totals.sellingPrice)}</td>
-            </tr>
-            <tr>
-              <td className="py-2 pr-10 text-gray-600">Price / Month</td>
-              <td className="py-2 text-right tabular-nums font-medium">{fmt$(totals.pricePerMonth)}</td>
-            </tr>
-            {building.square_feet != null && (
-              <>
-                <tr>
-                  <td className="py-2 pr-10 text-gray-600">$/Sq Ft (Annual)</td>
-                  <td className="py-2 text-right tabular-nums font-medium">
-                    {totals.sqftAnnual != null ? `$${totals.sqftAnnual.toFixed(4)}` : '—'}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2 pr-10 text-gray-600">$/Sq Ft (Monthly)</td>
-                  <td className="py-2 text-right tabular-nums font-medium">
-                    {totals.sqftMonthly != null ? `$${totals.sqftMonthly.toFixed(4)}` : '—'}
-                  </td>
-                </tr>
-              </>
-            )}
-          </tbody>
-        </table>
+        {/* Right: Pricing Summary */}
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Pricing Summary</p>
+          <table className="w-full text-xs">
+            <tbody className="divide-y divide-gray-100">
+              <tr>
+                <td className="py-1.5 pr-4 text-gray-600">Total Cost</td>
+                <td className="py-1.5 text-right tabular-nums font-medium">{fmt$(totals.totalCost)}</td>
+              </tr>
+              <tr>
+                <td className="py-1.5 pr-4 text-gray-600">
+                  {bidSummary.margin_type === 'percent'
+                    ? `Gross Margin (${bidSummary.margin_value}%)`
+                    : 'Fixed Fee'}
+                </td>
+                <td className="py-1.5 text-right tabular-nums font-medium">{fmt$(profit)}</td>
+              </tr>
+              <tr className="border-t-2 border-gray-800 font-bold text-gray-900">
+                <td className="py-2 pr-4">Selling Price / Year</td>
+                <td className="py-2 text-right tabular-nums text-sm">{fmt$(totals.sellingPrice)}</td>
+              </tr>
+              <tr>
+                <td className="py-1.5 pr-4 text-gray-600">Price / Month</td>
+                <td className="py-1.5 text-right tabular-nums font-medium">{fmt$(totals.pricePerMonth)}</td>
+              </tr>
+              {building.square_feet != null && (
+                <>
+                  <tr>
+                    <td className="py-1.5 pr-4 text-gray-600">$/Sq Ft (Annual)</td>
+                    <td className="py-1.5 text-right tabular-nums font-medium">
+                      {totals.sqftAnnual != null ? `$${totals.sqftAnnual.toFixed(4)}` : '—'}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5 pr-4 text-gray-600">$/Sq Ft (Monthly)</td>
+                    <td className="py-1.5 text-right tabular-nums font-medium">
+                      {totals.sqftMonthly != null ? `$${totals.sqftMonthly.toFixed(4)}` : '—'}
+                    </td>
+                  </tr>
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
