@@ -355,11 +355,19 @@ function ScopeOfWorkReport({
                         </td>
                       </>
                     )}
-                    <td className="py-1 pr-8 align-top text-gray-700">
-                      {withTaskCodes
-                        ? (task.task_codes?.description ?? '')
-                        : (task.task_codes?.description ?? task.task_name ?? '—')
-                      }
+                    <td className="py-1 pr-8 align-top">
+                      {withTaskCodes ? (
+                        <span className="text-gray-700">{task.task_codes?.description ?? ''}</span>
+                      ) : (
+                        <>
+                          <div className="text-gray-800 leading-snug">{task.task_name ?? '—'}</div>
+                          {task.task_codes?.description && (
+                            <div className="text-xs text-gray-500 mt-0.5 leading-snug">
+                              {task.task_codes.description}
+                            </div>
+                          )}
+                        </>
+                      )}
                     </td>
                     {includeAltLang && (
                       <td className="py-1 pl-6 pr-8 align-top text-gray-500 italic">
