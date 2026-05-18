@@ -40,7 +40,7 @@ interface TaskLineItem {
   monthly_hrs: number | null
   print: boolean
   created_at: string
-  task_codes: { task_code: string; task_name: string } | null
+  task_codes: { task_code: string; task_name: string; description: string | null; description_alt: string | null } | null
   positions: { position_name: string } | null
 }
 
@@ -276,7 +276,7 @@ function PieChart({ segments }: { segments: PieSegment[] }) {
 // ─── Report 1 & 2: Scope of Work ─────────────────────────────────────────────
 
 function ScopeOfWorkReport({
-  data, withTaskCodes, company,
+  data, withTaskCodes, includeSpanish, company,
 }: {
   data: ReportData; withTaskCodes: boolean; includeSpanish: boolean; company: CompanySettings | null
 }) {
@@ -288,7 +288,8 @@ function ScopeOfWorkReport({
     .map(area => ({ ...area, task_line_items: area.task_line_items.filter(t => t.print) }))
     .filter(area => area.task_line_items.length > 0)
 
-  const colCount = withTaskCodes ? 4 : 2
+  // colCount: Task Code? + Task Name (codes only) + Description + Spanish? + Service Days
+  const colCount = (withTaskCodes ? 2 : 1) + (includeSpanish ? 1 : 0) + 1
 
   return (
     <div className="report-section">
@@ -296,7 +297,7 @@ function ScopeOfWorkReport({
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
-            {withTaskCodes ? (
+            {withTaskCodes && (
               <>
                 <th className="text-left font-bold text-gray-900 pb-2.5 pr-6 border-b-2 border-gray-800 w-24 whitespace-nowrap">
                   Task Code
@@ -304,13 +305,14 @@ function ScopeOfWorkReport({
                 <th className="text-left font-bold text-gray-900 pb-2.5 pr-6 border-b-2 border-gray-800 w-40 whitespace-nowrap">
                   Task Name
                 </th>
-                <th className="text-left font-bold text-gray-900 pb-2.5 border-b-2 border-gray-800">
-                  Description
-                </th>
               </>
-            ) : (
-              <th className="text-left font-bold text-gray-900 pb-2.5 border-b-2 border-gray-800">
-                Description
+            )}
+            <th className="text-left font-bold text-gray-900 pb-2.5 border-b-2 border-gray-800">
+              Description
+            </th>
+            {includeSpanish && (
+              <th className="text-left font-bold text-gray-900 pb-2.5 pl-6 border-b-2 border-gray-800 w-48">
+                Descripción (es)
               </th>
             )}
             <th className="text-right font-bold text-gray-900 pb-2.5 pl-8 border-b-2 border-gray-800 w-32 whitespace-nowrap">
@@ -341,7 +343,7 @@ function ScopeOfWorkReport({
                 {/* Task rows */}
                 {area.task_line_items.map(task => (
                   <tr key={task.id}>
-                    {withTaskCodes ? (
+                    {withTaskCodes && (
                       <>
                         <td className="py-1 pr-6 align-top whitespace-nowrap">
                           <span className="font-mono text-xs text-gray-500">
@@ -351,18 +353,17 @@ function ScopeOfWorkReport({
                         <td className="py-1 pr-6 align-top text-gray-800">
                           {task.task_name ?? '—'}
                         </td>
-                        <td className="py-1 pr-8 align-top text-gray-500">
-                          {task.task_codes?.task_name ?? ''}
-                        </td>
                       </>
-                    ) : (
-                      <td className="py-1 pr-8 align-top">
-                        <div className="text-gray-800 leading-snug">{task.task_name ?? '—'}</div>
-                        {task.task_codes?.task_name && (
-                          <div className="text-xs text-gray-400 mt-0.5 pl-2 leading-snug">
-                            {task.task_codes.task_name}
-                          </div>
-                        )}
+                    )}
+                    <td className="py-1 pr-8 align-top text-gray-700">
+                      {withTaskCodes
+                        ? (task.task_codes?.description ?? '')
+                        : (task.task_codes?.description ?? task.task_name ?? '—')
+                      }
+                    </td>
+                    {includeSpanish && (
+                      <td className="py-1 pl-6 pr-8 align-top text-gray-500 italic">
+                        {task.task_codes?.description_alt ?? ''}
                       </td>
                     )}
                     <td className="py-1 pl-8 text-right align-top whitespace-nowrap text-sm text-gray-600">
@@ -820,7 +821,7 @@ export default function ReportsView({
       ] = await Promise.all([
         supabase
           .from('areas')
-          .select('*, task_line_items(*, task_codes(task_code, task_name), positions(position_name))')
+          .select('*, task_line_items(*, task_codes(task_code, task_name, description, description_alt), positions(position_name))')
           .eq('building_id', selectedBuildingId)
           .order('print_order', { nullsFirst: false })
           .order('created_at'),
