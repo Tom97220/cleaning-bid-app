@@ -386,11 +386,10 @@ function WorkLoadSummaryReport({ data, company }: { data: ReportData; company: C
   const staff = siteFreq > 0 ? annualHours / 8 / siteFreq : 0
 
   const rows = [
-    { label: 'Total Annual Hours',    value: `${fmtHrs(annualHours)} hrs` },
-    { label: 'Monthly Average Hours', value: `${fmtHrs(annualHours / 12)} hrs` },
-    { label: 'Weekly Average Hours',  value: `${fmtHrs(annualHours / 52)} hrs` },
     { label: 'Daily Average Hours',   value: `${fmtHrs(annualHours / 260)} hrs` },
-    { label: 'Total Staff Required',  value: staff.toFixed(2) },
+    { label: 'Weekly Average Hours',  value: `${fmtHrs(annualHours / 52)} hrs` },
+    { label: 'Monthly Average Hours', value: `${fmtHrs(annualHours / 12)} hrs` },
+    { label: 'Total Annual Hours',    value: `${fmtHrs(annualHours)} hrs` },
   ]
 
   return (
@@ -407,9 +406,6 @@ function WorkLoadSummaryReport({ data, company }: { data: ReportData; company: C
             ))}
           </tbody>
         </table>
-        <p className="mt-5 text-xs text-gray-400">
-          Staff Required = Annual Hours ÷ 8 hrs/shift ÷ {siteFreq} visits/year
-        </p>
       </div>
     </div>
   )
@@ -433,10 +429,10 @@ function WorkLoadDetailReport({ data, company }: { data: ReportData; company: Co
         <thead>
           <tr>
             <th className={th}>Area / Task</th>
-            <th className={thR}>Annual Hrs</th>
-            <th className={thR}>Monthly Hrs</th>
-            <th className={thR}>Weekly Hrs</th>
             <th className={thR}>Daily Hrs</th>
+            <th className={thR}>Weekly Hrs</th>
+            <th className={thR}>Monthly Hrs</th>
+            <th className={thR}>Annual Hrs</th>
           </tr>
         </thead>
         <tbody>
@@ -457,18 +453,18 @@ function WorkLoadDetailReport({ data, company }: { data: ReportData; company: Co
                 {area.task_line_items.map(task => (
                   <tr key={task.id}>
                     <td className={`${td} pl-7`}>{task.task_name ?? '—'}</td>
-                    <td className={tdR}>{fmtHrs(task.yearly_hrs)}</td>
-                    <td className={tdR}>{fmtHrs(task.monthly_hrs)}</td>
-                    <td className={tdR}>{fmtHrs(task.weekly_hrs)}</td>
                     <td className={tdR}>{fmtHrs(task.daily_hrs)}</td>
+                    <td className={tdR}>{fmtHrs(task.weekly_hrs)}</td>
+                    <td className={tdR}>{fmtHrs(task.monthly_hrs)}</td>
+                    <td className={tdR}>{fmtHrs(task.yearly_hrs)}</td>
                   </tr>
                 ))}
                 <tr key={`s-${area.id}`}>
                   <td className={`${td} pl-7 italic text-xs text-gray-400`}>Area Subtotal</td>
-                  <td className={`${tdR} font-semibold`}>{fmtHrs(sub.yearly)}</td>
-                  <td className={`${tdR} font-semibold`}>{fmtHrs(sub.monthly)}</td>
-                  <td className={`${tdR} font-semibold`}>{fmtHrs(sub.weekly)}</td>
                   <td className={`${tdR} font-semibold`}>{fmtHrs(sub.daily)}</td>
+                  <td className={`${tdR} font-semibold`}>{fmtHrs(sub.weekly)}</td>
+                  <td className={`${tdR} font-semibold`}>{fmtHrs(sub.monthly)}</td>
+                  <td className={`${tdR} font-semibold`}>{fmtHrs(sub.yearly)}</td>
                 </tr>
               </>
             )
@@ -477,10 +473,10 @@ function WorkLoadDetailReport({ data, company }: { data: ReportData; company: Co
         <tfoot>
           <tr>
             <td className={tfootTd}>Grand Total</td>
-            <td className={tfootTdR}>{fmtHrs(grand.yearly)}</td>
-            <td className={tfootTdR}>{fmtHrs(grand.monthly)}</td>
-            <td className={tfootTdR}>{fmtHrs(grand.weekly)}</td>
             <td className={tfootTdR}>{fmtHrs(grand.daily)}</td>
+            <td className={tfootTdR}>{fmtHrs(grand.weekly)}</td>
+            <td className={tfootTdR}>{fmtHrs(grand.monthly)}</td>
+            <td className={tfootTdR}>{fmtHrs(grand.yearly)}</td>
           </tr>
         </tfoot>
       </table>
@@ -494,14 +490,15 @@ function WorkLoadByPositionReport({ data, company }: { data: ReportData; company
   const allTasks    = data.areas.flatMap(a => a.task_line_items)
   const totalYearly = allTasks.reduce((s, t) => s + (t.yearly_hrs ?? 0), 0)
 
-  const byPosition = new Map<string, { yearly: number; monthly: number; weekly: number }>()
+  const byPosition = new Map<string, { yearly: number; monthly: number; weekly: number; daily: number }>()
   for (const task of allTasks) {
     const pos = task.positions?.position_name ?? 'Unassigned'
-    const cur = byPosition.get(pos) ?? { yearly: 0, monthly: 0, weekly: 0 }
+    const cur = byPosition.get(pos) ?? { yearly: 0, monthly: 0, weekly: 0, daily: 0 }
     byPosition.set(pos, {
       yearly:  cur.yearly  + (task.yearly_hrs  ?? 0),
       monthly: cur.monthly + (task.monthly_hrs ?? 0),
       weekly:  cur.weekly  + (task.weekly_hrs  ?? 0),
+      daily:   cur.daily   + (task.daily_hrs   ?? 0),
     })
   }
   const rows = [...byPosition.entries()].sort((a, b) => b[1].yearly - a[1].yearly)
@@ -513,32 +510,30 @@ function WorkLoadByPositionReport({ data, company }: { data: ReportData; company
         <thead>
           <tr>
             <th className={th}>Position</th>
-            <th className={thR}>Annual Hours</th>
-            <th className={thR}>Monthly Hours</th>
-            <th className={thR}>Weekly Hours</th>
-            <th className={thR}>% of Total</th>
+            <th className={thR}>Daily Hrs</th>
+            <th className={thR}>Weekly Hrs</th>
+            <th className={thR}>Monthly Hrs</th>
+            <th className={thR}>Annual Hrs</th>
           </tr>
         </thead>
         <tbody>
           {rows.map(([position, hrs]) => (
             <tr key={position}>
               <td className={`${td} font-medium`}>{position}</td>
-              <td className={tdR}>{fmtHrs(hrs.yearly)}</td>
-              <td className={tdR}>{fmtHrs(hrs.monthly)}</td>
+              <td className={tdR}>{fmtHrs(hrs.daily)}</td>
               <td className={tdR}>{fmtHrs(hrs.weekly)}</td>
-              <td className={tdR}>
-                {totalYearly > 0 ? `${((hrs.yearly / totalYearly) * 100).toFixed(1)}%` : '—'}
-              </td>
+              <td className={tdR}>{fmtHrs(hrs.monthly)}</td>
+              <td className={tdR}>{fmtHrs(hrs.yearly)}</td>
             </tr>
           ))}
         </tbody>
         <tfoot>
           <tr>
             <td className={tfootTd}>Total</td>
-            <td className={tfootTdR}>{fmtHrs(rows.reduce((s, [, h]) => s + h.yearly,  0))}</td>
-            <td className={tfootTdR}>{fmtHrs(rows.reduce((s, [, h]) => s + h.monthly, 0))}</td>
+            <td className={tfootTdR}>{fmtHrs(rows.reduce((s, [, h]) => s + h.daily,   0))}</td>
             <td className={tfootTdR}>{fmtHrs(rows.reduce((s, [, h]) => s + h.weekly,  0))}</td>
-            <td className={tfootTdR}>100%</td>
+            <td className={tfootTdR}>{fmtHrs(rows.reduce((s, [, h]) => s + h.monthly, 0))}</td>
+            <td className={tfootTdR}>{fmtHrs(rows.reduce((s, [, h]) => s + h.yearly,  0))}</td>
           </tr>
         </tfoot>
       </table>
@@ -618,21 +613,23 @@ function InvestmentRecapReport({ data, company }: { data: ReportData; company: C
             </tr>
           ))}
           <tr className="bg-gray-50">
-            <td colSpan={3} className={`${td} italic text-xs text-gray-500`}>
-              Vacation ({bidSummary.vacation_pct}% / {totals.vacationHours.toFixed(1)} hrs @ {fmt$(bidSummary.vacation_rate)}/hr)
-            </td>
-            <td className={`${tdR} font-medium`}>{fmt$(totals.vacationCost)}</td>
+            <td className={`${td} pl-8 text-gray-500`}>Vacation</td>
+            <td className={`${tdR} text-gray-500`}>{totals.vacationHours.toFixed(1)}</td>
+            <td className={`${tdR} text-gray-500`}>{fmt$(bidSummary.vacation_rate)}</td>
+            <td className={`${tdR} text-gray-500`}>{fmt$(totals.vacationCost)}</td>
           </tr>
           <tr className="bg-gray-50">
-            <td colSpan={3} className={`${td} italic text-xs text-gray-500`}>
-              Sick Time ({totals.sickHours.toFixed(1)} hrs @ {fmt$(bidSummary.sick_rate)}/hr)
-            </td>
-            <td className={`${tdR} font-medium`}>{fmt$(totals.sickCost)}</td>
+            <td className={`${td} pl-8 text-gray-500`}>Sick Time</td>
+            <td className={`${tdR} text-gray-500`}>{totals.sickHours.toFixed(1)}</td>
+            <td className={`${tdR} text-gray-500`}>{fmt$(bidSummary.sick_rate)}</td>
+            <td className={`${tdR} text-gray-500`}>{fmt$(totals.sickCost)}</td>
           </tr>
         </tbody>
         <tfoot>
           <tr>
-            <td colSpan={3} className={tfootTd}>Total Labor</td>
+            <td className={tfootTd}>Total Labor</td>
+            <td className={tfootTdR}>{fmtHrs(bidLaborLines.reduce((s, l) => s + (l.annual_hours ?? 0), 0) + totals.vacationHours + totals.sickHours)}</td>
+            <td className={tfootTdR}>—</td>
             <td className={tfootTdR}>{fmt$(totals.totalLabor)}</td>
           </tr>
         </tfoot>
@@ -696,6 +693,11 @@ function InvestmentRecapReport({ data, company }: { data: ReportData; company: C
 
       {sectionHeader('Pricing Summary')}
       <div className="flex flex-wrap gap-12 items-start">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-4">Cost Breakdown</p>
+          <PieChart segments={pieSegments} />
+        </div>
+
         <table className="text-sm">
           <tbody className="divide-y divide-gray-100">
             <tr>
@@ -736,11 +738,6 @@ function InvestmentRecapReport({ data, company }: { data: ReportData; company: C
             )}
           </tbody>
         </table>
-
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-4">Cost Breakdown</p>
-          <PieChart segments={pieSegments} />
-        </div>
       </div>
     </div>
   )
