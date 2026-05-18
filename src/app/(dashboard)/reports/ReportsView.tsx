@@ -90,14 +90,14 @@ const fmtHrs = (n: number | null | undefined) =>
 const fmtFreq = (freq: number | null): string => {
   if (!freq) return '—'
   const map: Record<number, string> = {
-    365: 'Daily (7 days)',  260: 'Daily (Mon–Fri)',
-    156: '3 days/week',    104: '2 days/week',
+    365: 'Daily',          260: 'Daily',
+    156: '3x/week',        104: '2x/week',
     52:  'Weekly',         26:  'Bi-weekly',
-    24:  'Twice/month',    12:  'Monthly',
+    24:  '2x/month',       12:  'Monthly',
     6:   'Every 2 months', 4:   'Quarterly',
     2:   'Semi-annually',  1:   'Annually',
   }
-  return map[freq] ?? `${freq}×/year`
+  return map[freq] ?? `${freq}x/year`
 }
 
 function todayStr() {
@@ -276,7 +276,7 @@ function PieChart({ segments }: { segments: PieSegment[] }) {
 // ─── Report 1 & 2: Scope of Work ─────────────────────────────────────────────
 
 function ScopeOfWorkReport({
-  data, withTaskCodes, includeSpanish, company,
+  data, withTaskCodes, company,
 }: {
   data: ReportData; withTaskCodes: boolean; includeSpanish: boolean; company: CompanySettings | null
 }) {
@@ -288,48 +288,72 @@ function ScopeOfWorkReport({
     .map(area => ({ ...area, task_line_items: area.task_line_items.filter(t => t.print) }))
     .filter(area => area.task_line_items.length > 0)
 
-  const colCount = (withTaskCodes ? 1 : 0) + 2 + (includeSpanish ? 1 : 0) + 1
+  const colCount = withTaskCodes ? 3 : 2
 
   return (
     <div className="report-section">
       <ReportHeader title={title} prospect={data.prospect} building={data.building} company={company} />
-      <table className="w-full text-sm border-collapse">
+      <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
-            {withTaskCodes && <th className={th}>Task Code</th>}
-            <th className={th}>Area</th>
-            <th className={th}>Task Description</th>
-            {includeSpanish && <th className={th}>Descripción (es)</th>}
-            <th className={th}>Frequency</th>
+            {withTaskCodes && (
+              <th className="text-left font-bold text-gray-900 pb-2.5 pr-8 border-b-2 border-gray-800 w-28">
+                Task Code
+              </th>
+            )}
+            <th className="text-left font-bold text-gray-900 pb-2.5 border-b-2 border-gray-800">
+              Description
+            </th>
+            <th className="text-right font-bold text-gray-900 pb-2.5 pl-8 border-b-2 border-gray-800 w-32 whitespace-nowrap">
+              Service Days
+            </th>
           </tr>
         </thead>
         <tbody>
           {printAreas.length === 0 ? (
             <tr>
-              <td colSpan={colCount} className={`${td} text-center italic text-gray-400 py-6`}>
+              <td colSpan={colCount} className="py-8 text-center text-gray-400 italic text-sm">
                 No printable tasks found for this building
               </td>
             </tr>
           ) : (
-            printAreas.map((area, ai) =>
-              area.task_line_items.map((task, ti) => (
-                <tr key={task.id} className={ai % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  {withTaskCodes && (
-                    <td className={`${td} font-mono text-xs text-gray-500 whitespace-nowrap`}>
-                      {task.task_codes?.task_code ?? '—'}
-                    </td>
-                  )}
-                  <td className={`${td} font-medium whitespace-nowrap`}>
-                    {ti === 0 ? area.area_name : ''}
+            printAreas.map(area => (
+              <>
+                {/* Area header row */}
+                <tr key={`area-${area.id}`}>
+                  <td
+                    colSpan={colCount}
+                    className="pt-5 pb-1 pl-0.5 text-sm font-bold italic text-gray-800"
+                  >
+                    Area: {area.area_name}
                   </td>
-                  <td className={td}>{task.task_name ?? '—'}</td>
-                  {includeSpanish && (
-                    <td className={`${td} italic text-gray-500`}>{task.task_codes?.task_name ?? '—'}</td>
-                  )}
-                  <td className={`${td} whitespace-nowrap`}>{fmtFreq(task.frequency)}</td>
                 </tr>
-              ))
-            )
+
+                {/* Task rows */}
+                {area.task_line_items.map(task => (
+                  <tr key={task.id}>
+                    {withTaskCodes && (
+                      <td className="py-1 pr-8 align-top">
+                        <span className="font-mono text-xs text-gray-500 whitespace-nowrap">
+                          {task.task_codes?.task_code ?? ''}
+                        </span>
+                      </td>
+                    )}
+                    <td className="py-1 pr-8 align-top">
+                      <div className="text-gray-800 leading-snug">{task.task_name ?? '—'}</div>
+                      {task.task_codes?.task_name && (
+                        <div className="text-xs text-gray-400 mt-0.5 pl-2 leading-snug">
+                          {task.task_codes.task_name}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-1 pl-8 text-right align-top whitespace-nowrap text-sm text-gray-600">
+                      {fmtFreq(task.frequency)}
+                    </td>
+                  </tr>
+                ))}
+              </>
+            ))
           )}
         </tbody>
       </table>
