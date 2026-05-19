@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -539,6 +540,9 @@ export default function JobCardEditor({
   const [translating,     setTranslating]     = useState(false)
   const [translateError,  setTranslateError]  = useState<string | null>(null)
   const [isTranslated,    setIsTranslated]    = useState(jobCard.is_translated ?? false)
+  const [isMounted,       setIsMounted]       = useState(false)
+
+  useEffect(() => { setIsMounted(true) }, [])
 
   // Cache: English text → Spanish translation (session-scoped)
   const translationCache = useRef<Map<string, string>>(new Map())
@@ -741,7 +745,7 @@ export default function JobCardEditor({
 
   function handlePrint() {
     const prev = document.title
-    document.title = ''
+    document.title = ' '
     window.addEventListener('afterprint', () => { document.title = prev }, { once: true })
     window.print()
   }
@@ -758,72 +762,37 @@ export default function JobCardEditor({
   return (
     <>
       <style>{`
-        @page {
-          margin: 0.5in;
-          size: letter portrait;
-        }
+        @page { margin: 0.5in; size: letter portrait; }
+        .jc-print-root { display: none; }
         @media print {
-          body * { visibility: hidden; }
-          .jc-print { visibility: visible; position: absolute; top: 0; left: 0; width: 100%; }
-          .jc-print * { visibility: visible; }
+          body > * { display: none; }
+          .jc-print-root { display: block !important; }
+          .jc-no-print { display: none !important; }
           .jc-page { break-before: page; page-break-before: always; }
-          .jc-print > div:last-child { break-after: avoid; page-break-after: avoid; }
+          .jc-print-root > div:last-child { break-after: avoid; page-break-after: avoid; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
       `}</style>
 
-      {/* ── Print output (hidden on screen) ─────────────────────────── */}
-      <div className="jc-print" style={{ display: 'none' }}>
+      {/* ── Print output — portal renders direct child of <body> so body > * trick works ── */}
+      {isMounted && createPortal(
+        <div className="jc-print-root">
 
-        {/* Page 1 — Route (English) */}
-        <PrintPage pageNum={1} totalPages={totalPages} first>
-          <PrintRoutePage
-            positionName={printPositionName}
-            route={hdr.route}
-            prospectName={printProspectName}
-            buildingName={printBuildingName}
-            specialInstructions={hdr.special_instructions}
-            revisedDate={hdr.revised_date}
-            routeRows={routeRows}
-          />
-        </PrintPage>
-
-        {/* Page 2 — Tasks & Schedule (English) */}
-        <PrintPage pageNum={2} totalPages={totalPages}>
-          <PrintTasksPage
-            positionName={printPositionName}
-            route={hdr.route}
-            prospectName={printProspectName}
-            buildingName={printBuildingName}
-            revisedDate={hdr.revised_date}
-            dailyTasks={dailyTasks}
-            detailTasks={detailTasks}
-            coreDetails={coreDetails}
-            serviceDays={hdr.service_days}
-            scheduleAssignments={hdr.schedule_assignments}
-            lang="en"
-          />
-        </PrintPage>
-
-        {/* Page 3 — Route (Spanish) — only if translated */}
-        {isTranslated && (
-          <PrintPage pageNum={3} totalPages={4}>
+          {/* Page 1 — Route (English) */}
+          <PrintPage pageNum={1} totalPages={totalPages} first>
             <PrintRoutePage
               positionName={printPositionName}
               route={hdr.route}
               prospectName={printProspectName}
               buildingName={printBuildingName}
-              specialInstructions={hdr.special_instructions_alt}
+              specialInstructions={hdr.special_instructions}
               revisedDate={hdr.revised_date}
               routeRows={routeRows}
-              lang="alt"
             />
           </PrintPage>
-        )}
 
-        {/* Page 4 — Tasks & Schedule (Spanish) — only if translated */}
-        {isTranslated && (
-          <PrintPage pageNum={4} totalPages={4}>
+          {/* Page 2 — Tasks & Schedule (English) */}
+          <PrintPage pageNum={2} totalPages={totalPages}>
             <PrintTasksPage
               positionName={printPositionName}
               route={hdr.route}
@@ -835,11 +804,47 @@ export default function JobCardEditor({
               coreDetails={coreDetails}
               serviceDays={hdr.service_days}
               scheduleAssignments={hdr.schedule_assignments}
-              lang="alt"
+              lang="en"
             />
           </PrintPage>
-        )}
-      </div>
+
+          {/* Page 3 — Route (Spanish) — only if translated */}
+          {isTranslated && (
+            <PrintPage pageNum={3} totalPages={4}>
+              <PrintRoutePage
+                positionName={printPositionName}
+                route={hdr.route}
+                prospectName={printProspectName}
+                buildingName={printBuildingName}
+                specialInstructions={hdr.special_instructions_alt}
+                revisedDate={hdr.revised_date}
+                routeRows={routeRows}
+                lang="alt"
+              />
+            </PrintPage>
+          )}
+
+          {/* Page 4 — Tasks & Schedule (Spanish) — only if translated */}
+          {isTranslated && (
+            <PrintPage pageNum={4} totalPages={4}>
+              <PrintTasksPage
+                positionName={printPositionName}
+                route={hdr.route}
+                prospectName={printProspectName}
+                buildingName={printBuildingName}
+                revisedDate={hdr.revised_date}
+                dailyTasks={dailyTasks}
+                detailTasks={detailTasks}
+                coreDetails={coreDetails}
+                serviceDays={hdr.service_days}
+                scheduleAssignments={hdr.schedule_assignments}
+                lang="alt"
+              />
+            </PrintPage>
+          )}
+        </div>,
+        document.body
+      )}
 
       {/* ── Editor ──────────────────────────────────────────────────── */}
       <div className="jc-editor p-6 space-y-6 max-w-4xl">

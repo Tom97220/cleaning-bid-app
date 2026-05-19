@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import Header from '@/components/layout/Header'
 import JobCardEditor from './JobCardEditor'
 
-export const metadata = { title: 'Job Card | CleanBid Pro' }
+export const metadata = { title: 'Job Card | CleanBid Pro', robots: 'noindex' }
 
 export default async function JobCardPage({
   params,
