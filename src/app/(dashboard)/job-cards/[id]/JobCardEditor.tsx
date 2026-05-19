@@ -15,6 +15,7 @@ interface LocalRouteRow {
   time: string
   area_location: string
   notes: string
+  notes_alt: string
 }
 
 interface LocalDailyTask  { localId: string; description_en: string; description_alt: string }
@@ -40,7 +41,7 @@ export interface JobCard {
   positions: { position_name: string } | null
 }
 
-interface DBRouteRow   { id: string; row_type: string; time: string | null; area_location: string | null; notes: string | null; duration: string | null }
+interface DBRouteRow   { id: string; row_type: string; time: string | null; area_location: string | null; notes: string | null; notes_alt: string | null; duration: string | null }
 interface DBDailyTask  { id: string; description_en: string; description_alt: string | null }
 interface DBDetailRow  { id: string; day_period: string; zone_area: string | null }
 interface DBWhenDetail { id: string; description_en: string; description_alt: string | null }
@@ -199,10 +200,10 @@ function PrintCompactHeader({
 // ─── Print: Route page (Pages 1 & 3) ─────────────────────────────────────────
 
 function PrintRoutePage({
-  positionName, route, prospectName, buildingName, specialInstructions, revisedDate, routeRows,
+  positionName, route, prospectName, buildingName, specialInstructions, revisedDate, routeRows, lang = 'en',
 }: {
   positionName: string; route: string; prospectName: string; buildingName: string
-  specialInstructions: string; revisedDate: string; routeRows: LocalRouteRow[]
+  specialInstructions: string; revisedDate: string; routeRows: LocalRouteRow[]; lang?: 'en' | 'alt'
 }) {
   const blanks = Math.max(0, 12 - routeRows.length)
   return (
@@ -243,7 +244,7 @@ function PrintRoutePage({
               <tr key={row.localId}>
                 <td style={pTdStyle}>{row.area_location}</td>
                 <td style={pTdStyle}>{row.time}</td>
-                <td style={pTdStyle}>{row.notes}</td>
+                <td style={pTdStyle}>{lang === 'alt' ? (row.notes_alt || row.notes) : row.notes}</td>
               </tr>
             )
           })}
@@ -510,6 +511,7 @@ export default function JobCardEditor({
         : (r.time ?? ''),
     area_location: r.area_location ?? '',
     notes:         r.notes ?? '',
+    notes_alt:     r.notes_alt ?? '',
   })))
 
   const [dailyTasks,  setDailyTasks]  = useState<LocalDailyTask[]>(initialDailyTasks.map(t => ({
@@ -612,6 +614,7 @@ export default function JobCardEditor({
     dailyTasks.forEach(t  => queue(t.description_en))
     detailTasks.forEach(t => queue(t.description_en))
     coreDetails.forEach(c => queue(c.zone_area))
+    routeRows.forEach(r => { if (r.row_type === 'task') queue(r.notes) })
     queue(hdr.special_instructions)
     queue(hdr.directions)
 
@@ -635,6 +638,9 @@ export default function JobCardEditor({
       setDailyTasks(prev  => prev.map(x => ({ ...x, description_alt: t.get(x.description_en) ?? x.description_alt })))
       setDetailTasks(prev => prev.map(x => ({ ...x, description_alt: t.get(x.description_en) ?? x.description_alt })))
       setCoreDetails(prev => prev.map(x => ({ ...x, zone_area_alt:   t.get(x.zone_area)       ?? x.zone_area_alt  })))
+      setRouteRows(prev => prev.map(r =>
+        r.row_type === 'task' ? { ...r, notes_alt: t.get(r.notes) ?? r.notes_alt } : r
+      ))
       setHdr(prev => ({
         ...prev,
         special_instructions_alt: t.get(prev.special_instructions) ?? prev.special_instructions_alt,
@@ -685,7 +691,8 @@ export default function JobCardEditor({
       const { error: e } = await supabase.from('job_card_route_rows').insert(
         routeRows.map((r, i) => ({
           job_card_id: jobCard.id, sort_order: i, row_type: r.row_type,
-          time: r.time || null, area_location: r.area_location || null, notes: r.notes || null,
+          time: r.time || null, area_location: r.area_location || null,
+          notes: r.notes || null, notes_alt: r.notes_alt || null,
         }))
       )
       if (e) { setError(e.message); setSaving(false); return }
@@ -788,6 +795,7 @@ export default function JobCardEditor({
               specialInstructions={hdr.special_instructions_alt || hdr.special_instructions}
               revisedDate={hdr.revised_date}
               routeRows={routeRows}
+              lang="alt"
             />
           </PrintPage>
         )}
@@ -946,7 +954,7 @@ export default function JobCardEditor({
         {/* ── Route ───────────────────────────────────────────────── */}
         <div className="bg-white border border-gray-200 rounded-xl">
           <SectionHeader title="Route" onAdd={() => setRouteRows(prev => [
-            ...prev, { localId: uid(), row_type: 'task', time: '', area_location: '', notes: '' }
+            ...prev, { localId: uid(), row_type: 'task', time: '', area_location: '', notes: '', notes_alt: '' }
           ])} addLabel="Add Row" />
 
           <div className="px-5 py-4 space-y-2">
@@ -992,6 +1000,11 @@ export default function JobCardEditor({
                       <input type="text" value={row.notes}
                         onChange={e => setRouteRows(p => p.map((r, x) => x === i ? { ...r, notes: e.target.value } : r))}
                         placeholder="Free text notes" maxLength={100} className={`${inp} w-full`} />
+                      {row.notes_alt && (
+                        <p className="mt-0.5 text-xs text-indigo-600 italic">
+                          <span className="font-semibold">ES:</span> {row.notes_alt}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1004,7 +1017,7 @@ export default function JobCardEditor({
                   onClick={() => setRouteRows(prev => [...prev, {
                     localId: uid(), row_type: type,
                     time: type === 'clock_in' ? hdr.shift_start : hdr.shift_end,
-                    area_location: '', notes: '',
+                    area_location: '', notes: '', notes_alt: '',
                   }])}
                   className="text-xs font-medium text-gray-500 border border-gray-200 hover:border-gray-400 hover:text-gray-700 px-3 py-1 rounded-full transition-colors">
                   + {type === 'clock_in' ? 'CLOCK IN' : 'CLOCK OUT'}

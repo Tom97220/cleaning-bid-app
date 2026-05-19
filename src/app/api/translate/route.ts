@@ -28,7 +28,7 @@ Return ONLY valid JSON, example format:
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-5',
-      max_tokens: 2048,
+      max_tokens: 4096,
       system:
         'You are a professional translator specializing in cleaning industry and custodial services. ' +
         'Always respond with valid JSON only — no markdown, no prose.',
