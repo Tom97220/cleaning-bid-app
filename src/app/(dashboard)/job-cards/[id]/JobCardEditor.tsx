@@ -130,7 +130,7 @@ function PrintPage({ children, pageNum, totalPages, first = false }: {
       }}
     >
       <div style={{ flex: 1 }}>{children}</div>
-      <div style={{ textAlign: 'right', fontSize: '10px', color: '#9ca3af', paddingTop: '12px' }}>
+      <div style={{ textAlign: 'right', fontSize: '10px', color: '#374151', paddingTop: '12px' }}>
         Page {pageNum} of {totalPages}
       </div>
     </div>
@@ -207,7 +207,7 @@ function PrintRoutePage({
   positionName: string; route: string; prospectName: string; buildingName: string
   specialInstructions: string; revisedDate: string; routeRows: LocalRouteRow[]; lang?: 'en' | 'alt'
 }) {
-  const blanks = Math.max(0, 12 - routeRows.length)
+  const blanks = Math.max(8, 12 - routeRows.length)
   return (
     <>
       <PrintRouteHeader
@@ -284,12 +284,12 @@ function PrintTasksPage({
         revisedDate={revisedDate}
       />
 
-      {/* Daily | Detail side by side */}
+      {/* Daily | Detail — two equal columns */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '28px' }}>
         <div>
           <div style={pSecStyle}>Daily</div>
           {dailyTasks.length === 0 ? (
-            <span style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic' }}>None</span>
+            <span style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>None</span>
           ) : (
             <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#374151', lineHeight: '1.75' }}>
               {dailyTasks.map(t => (
@@ -301,7 +301,7 @@ function PrintTasksPage({
         <div>
           <div style={pSecStyle}>Detail</div>
           {detailTasks.length === 0 ? (
-            <span style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic' }}>None</span>
+            <span style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>None</span>
           ) : (
             <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#374151', lineHeight: '1.75' }}>
               {detailTasks.map(t => {
@@ -318,60 +318,64 @@ function PrintTasksPage({
         </div>
       </div>
 
-      {/* Core Details | Detail Schedule side by side */}
-      {(coreDetails.length > 0 || serviceDays.length > 0) && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
-          {coreDetails.length > 0 && (
-            <div>
-              <div style={pSecStyle}>Core Details</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={{ ...pThStyle, width: '35%' }}>Core</th>
-                    <th style={pThStyle}>Area / Location</th>
+      {/* Core Details | Detail Schedule — always render, two equal columns */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+        <div>
+          <div style={pSecStyle}>Core Details</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={{ ...pThStyle, width: '35%' }}>Core</th>
+                <th style={pThStyle}>Area / Location</th>
+              </tr>
+            </thead>
+            <tbody>
+              {coreDetails.length === 0 ? (
+                <tr>
+                  <td colSpan={2} style={{ ...pTdStyle, color: '#6b7280', fontStyle: 'italic' }}>No cores defined</td>
+                </tr>
+              ) : (
+                coreDetails.map((c, idx) => (
+                  <tr key={c.localId}>
+                    <td style={pTdStyle}>{c.day_period || `Core ${idx + 1}`}</td>
+                    <td style={pTdStyle}>{coreArea(c)}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {coreDetails.map((c, idx) => (
-                    <tr key={c.localId}>
-                      <td style={pTdStyle}>{c.day_period || `Core ${idx + 1}`}</td>
-                      <td style={pTdStyle}>{coreArea(c)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-          {serviceDays.length > 0 && coreDetails.length > 0 && (
-            <div>
-              <div style={pSecStyle}>Detail Schedule</div>
-              <table style={{ borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={{ ...pThStyle, minWidth: '70px' }}>Core</th>
+        <div>
+          <div style={pSecStyle}>Detail Schedule</div>
+          {coreDetails.length === 0 || serviceDays.length === 0 ? (
+            <span style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>No schedule defined</span>
+          ) : (
+            <table style={{ borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ ...pThStyle, minWidth: '70px' }}>Core</th>
+                  {serviceDays.map(day => (
+                    <th key={day} style={{ ...pThStyle, minWidth: '36px', textAlign: 'center' }}>{day}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {coreDetails.map((c, coreIdx) => (
+                  <tr key={c.localId}>
+                    <td style={pTdStyle}>{c.day_period || `C${coreIdx + 1}`}</td>
                     {serviceDays.map(day => (
-                      <th key={day} style={{ ...pThStyle, minWidth: '36px', textAlign: 'center' }}>{day}</th>
+                      <td key={day} style={{ ...pTdStyle, textAlign: 'center', fontWeight: '700', fontSize: '14px' }}>
+                        {scheduleAssignments[day] === coreIdx ? '✓' : ''}
+                      </td>
                     ))}
                   </tr>
-                </thead>
-                <tbody>
-                  {coreDetails.map((c, coreIdx) => (
-                    <tr key={c.localId}>
-                      <td style={pTdStyle}>{c.day_period || `C${coreIdx + 1}`}</td>
-                      {serviceDays.map(day => (
-                        <td key={day} style={{ ...pTdStyle, textAlign: 'center', fontWeight: '700', fontSize: '14px' }}>
-                          {scheduleAssignments[day] === coreIdx ? '✓' : ''}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
-      )}
+      </div>
     </>
   )
 }
@@ -735,6 +739,13 @@ export default function JobCardEditor({
     router.refresh()
   }
 
+  function handlePrint() {
+    const prev = document.title
+    document.title = ''
+    window.addEventListener('afterprint', () => { document.title = prev }, { once: true })
+    window.print()
+  }
+
   // Print helpers
   const selectedProspect  = prospects.find(p => p.id === hdr.prospect_id)
   const selectedBuilding  = buildings.find(b => b.id === hdr.building_id)
@@ -747,10 +758,17 @@ export default function JobCardEditor({
   return (
     <>
       <style>{`
+        @page {
+          margin: 0.5in;
+          size: letter portrait;
+        }
         @media print {
-          .jc-editor { display: none !important; }
-          .jc-print  { display: block !important; }
-          .jc-page   { break-before: page; }
+          body * { visibility: hidden; }
+          .jc-print { visibility: visible; position: absolute; top: 0; left: 0; width: 100%; }
+          .jc-print * { visibility: visible; }
+          .jc-page { break-before: page; page-break-before: always; }
+          .jc-print > div:last-child { break-after: avoid; page-break-after: avoid; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
       `}</style>
 
@@ -795,7 +813,7 @@ export default function JobCardEditor({
               route={hdr.route}
               prospectName={printProspectName}
               buildingName={printBuildingName}
-              specialInstructions={hdr.special_instructions_alt || hdr.special_instructions}
+              specialInstructions={hdr.special_instructions_alt}
               revisedDate={hdr.revised_date}
               routeRows={routeRows}
               lang="alt"
@@ -839,7 +857,7 @@ export default function JobCardEditor({
             className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">
             {saving ? 'Saving…' : 'Save'}
           </button>
-          <button onClick={() => window.print()}
+          <button onClick={handlePrint}
             className="flex items-center gap-1.5 border border-gray-300 hover:border-gray-400 text-gray-700 bg-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
