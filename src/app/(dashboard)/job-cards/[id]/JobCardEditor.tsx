@@ -12,10 +12,9 @@ type RouteRowType = 'task' | 'clock_in' | 'clock_out'
 interface LocalRouteRow {
   localId: string
   row_type: RouteRowType
-  time: string
-  area_location: string  // Room/Area
-  duration: string       // Detail column (repurposed)
-  notes: string          // Notes column (wide)
+  time: string        // formatted '6:00 PM' or ''
+  area_location: string
+  notes: string
 }
 
 interface LocalDailyTask  { localId: string; description_en: string; description_alt: string }
@@ -28,6 +27,8 @@ export interface JobCard {
   building_id: string | null
   position_id: string | null
   route: string | null
+  shift_start: string | null
+  shift_end: string | null
   special_instructions: string | null
   directions: string | null
   revised_date: string
@@ -66,11 +67,62 @@ function fmtDate(s: string) {
 }
 
 const ALL_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const HOURS    = ['1','2','3','4','5','6','7','8','9','10','11','12']
+const MINUTES  = ['00','15','30','45']
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const inp = 'border border-gray-200 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400'
 const lbl = 'block text-xs font-medium text-gray-500 mb-0.5'
+const selCls = 'border border-gray-200 rounded px-1 py-1 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400'
+
+// ─── TimePicker ───────────────────────────────────────────────────────────────
+// Controlled: value = '6:00 PM' | '', onChange emits formatted string or ''
+
+function TimePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const m     = value ? value.match(/^(\d+):(\d+)\s*(AM|PM)$/i) : null
+  const hour   = m ? m[1] : ''
+  const minute = m ? m[2] : '00'
+  const ampm   = (m ? m[3].toUpperCase() : 'AM') as 'AM' | 'PM'
+
+  function emit(h: string, min: string, ap: 'AM' | 'PM') {
+    onChange(h ? `${h}:${min} ${ap}` : '')
+  }
+
+  return (
+    <div className="flex items-center gap-1 flex-shrink-0">
+      <select
+        value={hour}
+        onChange={e => emit(e.target.value, minute, ampm)}
+        className={`${selCls} w-11 text-center`}
+      >
+        <option value="">—</option>
+        {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
+      </select>
+      <span className="text-gray-400 text-xs font-bold select-none">:</span>
+      <select
+        value={minute}
+        onChange={e => { if (hour) emit(hour, e.target.value, ampm) }}
+        disabled={!hour}
+        className={`${selCls} w-13 text-center disabled:opacity-40`}
+      >
+        {MINUTES.map(min => <option key={min} value={min}>{min}</option>)}
+      </select>
+      <button
+        type="button"
+        onClick={() => { if (hour) emit(hour, minute, ampm === 'AM' ? 'PM' : 'AM') }}
+        disabled={!hour}
+        className={`text-xs font-bold px-1.5 py-1 rounded border transition-colors leading-none disabled:opacity-40 disabled:cursor-not-allowed ${
+          ampm === 'PM'
+            ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100'
+            : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+        }`}
+      >
+        {ampm}
+      </button>
+    </div>
+  )
+}
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -117,14 +169,16 @@ function SectionHeader({ title, onAdd, addLabel }: { title: string; onAdd?: () =
 
 function PrintFrontPage({
   positionName, route, prospectName, buildingName,
-  specialInstructions, directions, revisedDate, routeRows,
+  shiftStart, shiftEnd, specialInstructions, directions, revisedDate, routeRows,
 }: {
   positionName: string; route: string; prospectName: string; buildingName: string
+  shiftStart: string; shiftEnd: string
   specialInstructions: string; directions: string; revisedDate: string
   routeRows: LocalRouteRow[]
 }) {
-  const siteLine = [prospectName, buildingName].filter(Boolean).join(' — ')
+  const siteLine  = [prospectName, buildingName].filter(Boolean).join(' — ')
   const titleLine = [positionName, route].filter(Boolean).join('  |  ')
+  const shiftLine = [shiftStart, shiftEnd].filter(Boolean).join(' – ')
 
   return (
     <div>
@@ -135,23 +189,23 @@ function PrintFrontPage({
           {siteLine && <p className="text-sm text-gray-600 mt-1">{siteLine}</p>}
           {directions && <p className="text-xs text-gray-500 mt-1">{directions}</p>}
         </div>
-        <div className="text-right flex-shrink-0 text-xs text-gray-600 space-y-1 max-w-56">
+        <div className="text-right flex-shrink-0 text-xs text-gray-600 space-y-1 max-w-64">
           {specialInstructions && (
             <p className="whitespace-pre-wrap">
               <span className="font-semibold">Special Instructions:</span>{' '}{specialInstructions}
             </p>
           )}
+          {shiftLine && <p><span className="font-semibold">Shift:</span> {shiftLine}</p>}
           <p className="text-gray-500 pt-1">Revised: {fmtDate(revisedDate)}</p>
         </div>
       </div>
 
-      {/* Route table */}
+      {/* Route table — 3 columns only */}
       <table className="w-full border-collapse text-xs">
         <thead>
           <tr>
-            <th className="border border-gray-300 px-2 py-1.5 text-left bg-gray-50 font-semibold text-gray-600 uppercase tracking-wide w-44">Room / Area</th>
-            <th className="border border-gray-300 px-2 py-1.5 text-left bg-gray-50 font-semibold text-gray-600 uppercase tracking-wide w-16">Time</th>
-            <th className="border border-gray-300 px-2 py-1.5 text-left bg-gray-50 font-semibold text-gray-600 uppercase tracking-wide w-32">Detail</th>
+            <th className="border border-gray-300 px-2 py-1.5 text-left bg-gray-50 font-semibold text-gray-600 uppercase tracking-wide w-48">Room / Area</th>
+            <th className="border border-gray-300 px-2 py-1.5 text-left bg-gray-50 font-semibold text-gray-600 uppercase tracking-wide w-20">Time</th>
             <th className="border border-gray-300 px-2 py-1.5 text-left bg-gray-50 font-semibold text-gray-600 uppercase tracking-wide">Notes</th>
           </tr>
         </thead>
@@ -166,7 +220,6 @@ function PrintFrontPage({
                   </td>
                   <td className="border border-gray-300 px-2 py-1.5 text-gray-600">{row.time}</td>
                   <td className="border border-gray-300 px-2 py-1.5" />
-                  <td className="border border-gray-300 px-2 py-1.5" />
                 </tr>
               )
             }
@@ -174,18 +227,16 @@ function PrintFrontPage({
               <tr key={row.localId}>
                 <td className="border border-gray-300 px-2 py-1.5">{row.area_location}</td>
                 <td className="border border-gray-300 px-2 py-1.5">{row.time}</td>
-                <td className="border border-gray-300 px-2 py-1.5">{row.duration}</td>
                 <td className="border border-gray-300 px-2 py-1.5">{row.notes}</td>
               </tr>
             )
           })}
-          {/* Always show at least a few blank rows */}
+          {/* Pad to at least 6 rows for blank routing stops */}
           {Array.from({ length: Math.max(0, 6 - routeRows.length) }).map((_, i) => (
             <tr key={`blank-${i}`}>
-              <td className="border border-gray-300 px-2 py-3" />
-              <td className="border border-gray-300 px-2 py-3" />
-              <td className="border border-gray-300 px-2 py-3" />
-              <td className="border border-gray-300 px-2 py-3" />
+              <td className="border border-gray-300 px-2 py-3.5" />
+              <td className="border border-gray-300 px-2 py-3.5" />
+              <td className="border border-gray-300 px-2 py-3.5" />
             </tr>
           ))}
         </tbody>
@@ -221,9 +272,8 @@ function PrintBackPage({
       )}
 
       <div className="grid grid-cols-2 gap-8">
-        {/* Left column: Daily + Detail */}
+        {/* Left: Daily + Detail */}
         <div className="space-y-5">
-          {/* Daily */}
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-gray-800 border-b-2 border-gray-800 pb-1 mb-2">Daily</p>
             {dailyTasks.length === 0 ? (
@@ -240,7 +290,6 @@ function PrintBackPage({
             )}
           </div>
 
-          {/* Detail */}
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-gray-800 border-b-2 border-gray-800 pb-1 mb-2">Detail</p>
             {detailTasks.length === 0 ? (
@@ -258,9 +307,8 @@ function PrintBackPage({
           </div>
         </div>
 
-        {/* Right column: Core Details + Detail Schedule */}
+        {/* Right: Core Details + Detail Schedule */}
         <div className="space-y-5">
-          {/* Core Details */}
           {coreDetails.length > 0 && (
             <div>
               <p className="text-xs font-black uppercase tracking-widest text-gray-800 border-b-2 border-gray-800 pb-1 mb-2">Core Details</p>
@@ -285,7 +333,6 @@ function PrintBackPage({
             </div>
           )}
 
-          {/* Detail Schedule grid */}
           {serviceDays.length > 0 && coreDetails.length > 0 && (
             <div>
               <p className="text-xs font-black uppercase tracking-widest text-gray-800 border-b-2 border-gray-800 pb-1 mb-2">Detail Schedule</p>
@@ -340,7 +387,7 @@ export default function JobCardEditor({
   prospects: Prospect[]
   positions: Position[]
 }) {
-  const router  = useRouter()
+  const router   = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
   const [hdr, setHdr] = useState({
@@ -348,6 +395,8 @@ export default function JobCardEditor({
     building_id:          jobCard.building_id          ?? '',
     position_id:          jobCard.position_id           ?? '',
     route:                jobCard.route                 ?? '',
+    shift_start:          jobCard.shift_start           ?? '',
+    shift_end:            jobCard.shift_end             ?? '',
     special_instructions: jobCard.special_instructions  ?? '',
     directions:           jobCard.directions            ?? '',
     revised_date:         jobCard.revised_date,
@@ -355,21 +404,20 @@ export default function JobCardEditor({
     schedule_assignments: ((jobCard.schedule_assignments ?? {}) as unknown) as Record<string, number>,
   })
 
-  const [routeRows,    setRouteRows]    = useState<LocalRouteRow[]>(initialRouteRows.map(r => ({
+  const [routeRows,   setRouteRows]   = useState<LocalRouteRow[]>(initialRouteRows.map(r => ({
     localId: uid(), row_type: r.row_type as RouteRowType,
-    time: r.time ?? '', area_location: r.area_location ?? '',
-    duration: r.duration ?? '', notes: r.notes ?? '',
+    time: r.time ?? '', area_location: r.area_location ?? '', notes: r.notes ?? '',
   })))
 
-  const [dailyTasks,   setDailyTasks]   = useState<LocalDailyTask[]>(initialDailyTasks.map(t => ({
+  const [dailyTasks,  setDailyTasks]  = useState<LocalDailyTask[]>(initialDailyTasks.map(t => ({
     localId: uid(), description_en: t.description_en, description_alt: t.description_alt ?? '',
   })))
 
-  const [coreDetails,  setCoreDetails]  = useState<LocalCoreRow[]>(initialCoreDetails.map(r => ({
+  const [coreDetails, setCoreDetails] = useState<LocalCoreRow[]>(initialCoreDetails.map(r => ({
     localId: uid(), day_period: r.day_period, zone_area: r.zone_area ?? '',
   })))
 
-  const [detailTasks,  setDetailTasks]  = useState<LocalDetailTask[]>(initialDetailTasks.map(t => ({
+  const [detailTasks, setDetailTasks] = useState<LocalDetailTask[]>(initialDetailTasks.map(t => ({
     localId: uid(), description_en: t.description_en, description_alt: t.description_alt ?? '',
   })))
 
@@ -397,6 +445,11 @@ export default function JobCardEditor({
       setHdr(prev => ({ ...prev, [field]: e.target.value }))
       setSaved(false)
     }
+  }
+
+  function setHdrField<K extends keyof typeof hdr>(field: K, value: (typeof hdr)[K]) {
+    setHdr(prev => ({ ...prev, [field]: value }))
+    setSaved(false)
   }
 
   function toggleDay(day: string) {
@@ -430,6 +483,8 @@ export default function JobCardEditor({
       building_id:          hdr.building_id          || null,
       position_id:          hdr.position_id          || null,
       route:                hdr.route                || null,
+      shift_start:          hdr.shift_start          || null,
+      shift_end:            hdr.shift_end            || null,
       special_instructions: hdr.special_instructions || null,
       directions:           hdr.directions           || null,
       revised_date:         hdr.revised_date,
@@ -449,8 +504,7 @@ export default function JobCardEditor({
       const { error: e } = await supabase.from('job_card_route_rows').insert(
         routeRows.map((r, i) => ({
           job_card_id: jobCard.id, sort_order: i, row_type: r.row_type,
-          time: r.time || null, area_location: r.area_location || null,
-          duration: r.duration || null, notes: r.notes || null,
+          time: r.time || null, area_location: r.area_location || null, notes: r.notes || null,
         }))
       )
       if (e) { setError(e.message); setSaving(false); return }
@@ -491,10 +545,10 @@ export default function JobCardEditor({
   }
 
   // Print helpers
-  const selectedProspect = prospects.find(p => p.id === hdr.prospect_id)
-  const selectedBuilding = buildings.find(b => b.id === hdr.building_id)
-  const selectedPosition = positions.find(p => p.id === hdr.position_id)
-  const printProspectName = selectedProspect?.company_name ?? jobCard.prospects?.company_name ?? ''
+  const selectedProspect  = prospects.find(p => p.id === hdr.prospect_id)
+  const selectedBuilding  = buildings.find(b => b.id === hdr.building_id)
+  const selectedPosition  = positions.find(p => p.id === hdr.position_id)
+  const printProspectName = selectedProspect?.company_name  ?? jobCard.prospects?.company_name  ?? ''
   const printBuildingName = selectedBuilding?.building_name ?? jobCard.buildings?.building_name ?? ''
   const printPositionName = selectedPosition?.position_name ?? jobCard.positions?.position_name ?? ''
 
@@ -510,40 +564,31 @@ export default function JobCardEditor({
 
       {/* ── Print output (hidden on screen) ───────────────────────────── */}
       <div className="jc-print" style={{ display: 'none' }}>
-        {/* Page 1: Front — header + route table */}
         <div className="px-8 py-8">
           <PrintFrontPage
             positionName={printPositionName}
             route={hdr.route}
             prospectName={printProspectName}
             buildingName={printBuildingName}
+            shiftStart={hdr.shift_start}
+            shiftEnd={hdr.shift_end}
             specialInstructions={hdr.special_instructions}
             directions={hdr.directions}
             revisedDate={hdr.revised_date}
             routeRows={routeRows}
           />
         </div>
-
-        {/* Page 2: Back — English */}
         <div className="jc-page px-8 py-8">
           <PrintBackPage
-            dailyTasks={dailyTasks}
-            detailTasks={detailTasks}
-            coreDetails={coreDetails}
-            serviceDays={hdr.service_days}
-            scheduleAssignments={hdr.schedule_assignments}
+            dailyTasks={dailyTasks} detailTasks={detailTasks} coreDetails={coreDetails}
+            serviceDays={hdr.service_days} scheduleAssignments={hdr.schedule_assignments}
             lang="en"
           />
         </div>
-
-        {/* Page 3: Back — Alternate language */}
         <div className="jc-page px-8 py-8">
           <PrintBackPage
-            dailyTasks={dailyTasks}
-            detailTasks={detailTasks}
-            coreDetails={coreDetails}
-            serviceDays={hdr.service_days}
-            scheduleAssignments={hdr.schedule_assignments}
+            dailyTasks={dailyTasks} detailTasks={detailTasks} coreDetails={coreDetails}
+            serviceDays={hdr.service_days} scheduleAssignments={hdr.schedule_assignments}
             lang="alt"
           />
         </div>
@@ -554,26 +599,19 @@ export default function JobCardEditor({
 
         {/* Action bar */}
         <div className="flex items-center gap-3">
-          <Link
-            href="/job-cards"
-            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mr-1"
-          >
+          <Link href="/job-cards"
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mr-1">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Job Cards
           </Link>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
-          >
+          <button onClick={handleSave} disabled={saving}
+            className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">
             {saving ? 'Saving…' : 'Save'}
           </button>
-          <button
-            onClick={() => window.print()}
-            className="flex items-center gap-1.5 border border-gray-300 hover:border-gray-400 text-gray-700 bg-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          >
+          <button onClick={() => window.print()}
+            className="flex items-center gap-1.5 border border-gray-300 hover:border-gray-400 text-gray-700 bg-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -620,6 +658,24 @@ export default function JobCardEditor({
               </div>
             </div>
 
+            {/* Shift times */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={lbl}>Shift Start</label>
+                <TimePicker
+                  value={hdr.shift_start}
+                  onChange={v => setHdrField('shift_start', v)}
+                />
+              </div>
+              <div>
+                <label className={lbl}>Shift End</label>
+                <TimePicker
+                  value={hdr.shift_end}
+                  onChange={v => setHdrField('shift_end', v)}
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={lbl}>Special Instructions</label>
@@ -645,7 +701,7 @@ export default function JobCardEditor({
         {/* ── Route ──────────────────────────────────────────────────── */}
         <div className="bg-white border border-gray-200 rounded-xl">
           <SectionHeader title="Route" onAdd={() => setRouteRows(prev => [
-            ...prev, { localId: uid(), row_type: 'task', time: '', area_location: '', duration: '', notes: '' }
+            ...prev, { localId: uid(), row_type: 'task', time: '', area_location: '', notes: '' }
           ])} addLabel="Add Row" />
 
           <div className="px-5 py-4 space-y-2">
@@ -654,7 +710,7 @@ export default function JobCardEditor({
             )}
             {routeRows.map((row, i) => (
               <div key={row.localId}
-                className={`flex items-start gap-3 p-3 rounded-lg ${row.row_type !== 'task' ? 'bg-gray-50' : ''}`}>
+                className={`flex items-center gap-3 p-3 rounded-lg ${row.row_type !== 'task' ? 'bg-gray-50' : ''}`}>
                 <UpDownDel
                   onUp={() => setRouteRows(p => moveUp(p, i))}
                   onDown={() => setRouteRows(p => moveDown(p, i))}
@@ -662,35 +718,29 @@ export default function JobCardEditor({
                   first={i === 0} last={i === routeRows.length - 1}
                 />
                 {row.row_type !== 'task' ? (
-                  <div className="flex gap-3 flex-1 items-center">
+                  <div className="flex items-center gap-3 flex-1">
                     <span className="text-xs font-bold uppercase tracking-widest text-gray-600 w-24 flex-shrink-0">
                       {row.row_type === 'clock_in' ? 'CLOCK IN' : 'CLOCK OUT'}
                     </span>
-                    <div className="w-24 flex-shrink-0">
-                      <input type="text" value={row.time}
-                        onChange={e => setRouteRows(p => p.map((r, x) => x === i ? { ...r, time: e.target.value } : r))}
-                        placeholder="Time" maxLength={10} className={`${inp} w-full`} />
-                    </div>
+                    <TimePicker
+                      value={row.time}
+                      onChange={v => setRouteRows(p => p.map((r, x) => x === i ? { ...r, time: v } : r))}
+                    />
                   </div>
                 ) : (
-                  <div className="flex gap-2 flex-1 min-w-0">
-                    <div className="w-36 flex-shrink-0">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className="flex-1 min-w-0">
                       <label className={lbl}>Room / Area</label>
                       <input type="text" value={row.area_location}
                         onChange={e => setRouteRows(p => p.map((r, x) => x === i ? { ...r, area_location: e.target.value } : r))}
                         placeholder="Room or area" maxLength={50} className={`${inp} w-full`} />
                     </div>
-                    <div className="w-20 flex-shrink-0">
+                    <div className="flex-shrink-0">
                       <label className={lbl}>Time</label>
-                      <input type="text" value={row.time}
-                        onChange={e => setRouteRows(p => p.map((r, x) => x === i ? { ...r, time: e.target.value } : r))}
-                        placeholder="7:00" maxLength={10} className={`${inp} w-full`} />
-                    </div>
-                    <div className="w-28 flex-shrink-0">
-                      <label className={lbl}>Detail</label>
-                      <input type="text" value={row.duration}
-                        onChange={e => setRouteRows(p => p.map((r, x) => x === i ? { ...r, duration: e.target.value } : r))}
-                        placeholder="Sweep, vacuum…" maxLength={20} className={`${inp} w-full`} />
+                      <TimePicker
+                        value={row.time}
+                        onChange={v => setRouteRows(p => p.map((r, x) => x === i ? { ...r, time: v } : r))}
+                      />
                     </div>
                     <div className="flex-1 min-w-0">
                       <label className={lbl}>Notes</label>
@@ -707,10 +757,9 @@ export default function JobCardEditor({
               {(['clock_in', 'clock_out'] as RouteRowType[]).map(type => (
                 <button key={type}
                   onClick={() => setRouteRows(prev => [...prev, {
-                    localId: uid(), row_type: type, time: '', area_location: '', duration: '', notes: '',
+                    localId: uid(), row_type: type, time: '', area_location: '', notes: '',
                   }])}
-                  className="text-xs font-medium text-gray-500 border border-gray-200 hover:border-gray-400 hover:text-gray-700 px-3 py-1 rounded-full transition-colors"
-                >
+                  className="text-xs font-medium text-gray-500 border border-gray-200 hover:border-gray-400 hover:text-gray-700 px-3 py-1 rounded-full transition-colors">
                   + {type === 'clock_in' ? 'CLOCK IN' : 'CLOCK OUT'}
                 </button>
               ))}
@@ -781,7 +830,7 @@ export default function JobCardEditor({
                     <label className={lbl}>English</label>
                     <input type="text" value={t.description_en}
                       onChange={e => setDetailTasks(p => p.map((x, j) => j === i ? { ...x, description_en: e.target.value } : x))}
-                      maxLength={150} placeholder="Strip & wax floors (monthly)" className={`${inp} w-full`} />
+                      maxLength={150} placeholder="Strip &amp; wax floors (monthly)" className={`${inp} w-full`} />
                   </div>
                   <div className="flex-1">
                     <label className={lbl}>Alternate Language</label>
@@ -795,26 +844,22 @@ export default function JobCardEditor({
           </div>
         </div>
 
-        {/* ── Service Schedule (Core Details + Grid) ──────────────────── */}
+        {/* ── Service Schedule ────────────────────────────────────────── */}
         <div className="bg-white border border-gray-200 rounded-xl">
           <SectionHeader title="Service Schedule" />
-
           <div className="px-5 py-5 space-y-6">
-            {/* Service Days toggles */}
+
+            {/* Service Days */}
             <div>
               <p className={`${lbl} mb-2`}>Service Days</p>
               <div className="flex flex-wrap gap-1.5">
                 {ALL_DAYS.map(day => {
                   const active = hdr.service_days.includes(day)
                   return (
-                    <button key={day} type="button"
-                      onClick={() => toggleDay(day)}
+                    <button key={day} type="button" onClick={() => toggleDay(day)}
                       className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
-                        active
-                          ? 'bg-brand-600 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
+                        active ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}>
                       {day}
                     </button>
                   )
@@ -822,14 +867,13 @@ export default function JobCardEditor({
               </div>
             </div>
 
-            {/* Core Details table */}
+            {/* Core Details */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className={lbl}>Core Details</p>
                 <button onClick={() => setCoreDetails(p => [
                   ...p, { localId: uid(), day_period: `Core ${p.length + 1}`, zone_area: '' }
-                ])}
-                  className="text-xs font-medium text-brand-600 hover:text-brand-800 flex items-center gap-1">
+                ])} className="text-xs font-medium text-brand-600 hover:text-brand-800 flex items-center gap-1">
                   <span className="text-base leading-none">+</span> Add Core
                 </button>
               </div>
@@ -845,13 +889,11 @@ export default function JobCardEditor({
                         onDown={() => setCoreDetails(p => moveDown(p, i))}
                         onDel={() => {
                           setCoreDetails(p => removeAt(p, i))
-                          // Shift assignments for cores after this index
                           setHdr(prev => {
                             const assignments: Record<string, number> = {}
                             for (const [day, idx] of Object.entries(prev.schedule_assignments)) {
                               if (idx < i) assignments[day] = idx
                               else if (idx > i) assignments[day] = idx - 1
-                              // idx === i: removed, skip
                             }
                             return { ...prev, schedule_assignments: assignments }
                           })
@@ -874,7 +916,7 @@ export default function JobCardEditor({
               )}
             </div>
 
-            {/* Detail Schedule grid */}
+            {/* Schedule Grid */}
             {hdr.service_days.length > 0 && coreDetails.length > 0 && (
               <div>
                 <p className={`${lbl} mb-2`}>Detail Schedule — assign one core per service day</p>
@@ -898,15 +940,13 @@ export default function JobCardEditor({
                             const assigned = hdr.schedule_assignments[day] === coreIdx
                             return (
                               <td key={day} className="border border-gray-200 px-3 py-1.5 text-center">
-                                <button
-                                  type="button"
+                                <button type="button"
                                   onClick={() => setAssignment(day, assigned ? null : coreIdx)}
                                   className={`w-5 h-5 rounded-full border-2 transition-colors mx-auto block ${
                                     assigned
                                       ? 'bg-brand-600 border-brand-600'
                                       : 'bg-white border-gray-300 hover:border-brand-400'
                                   }`}
-                                  title={assigned ? 'Click to unassign' : `Assign ${core.day_period || `Core ${coreIdx + 1}`} to ${day}`}
                                 />
                               </td>
                             )
@@ -923,15 +963,12 @@ export default function JobCardEditor({
 
         {/* Bottom save */}
         <div className="flex items-center gap-3 pb-6">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
-          >
+          <button onClick={handleSave} disabled={saving}
+            className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors">
             {saving ? 'Saving…' : 'Save'}
           </button>
-          {saved  && <span className="text-sm text-green-700 font-medium">Saved.</span>}
-          {error  && <span className="text-sm text-red-600">{error}</span>}
+          {saved && <span className="text-sm text-green-700 font-medium">Saved.</span>}
+          {error && <span className="text-sm text-red-600">{error}</span>}
         </div>
       </div>
     </>
