@@ -134,7 +134,7 @@ export default function Sidebar({ userEmail, role }: SidebarProps) {
     <div className="flex flex-col w-64 bg-brand-900 min-h-screen print:hidden">
       {/* Logo */}
       <div className="flex items-center h-16 px-6 border-b border-brand-800">
-        <div className="flex items-center gap-3">
+        <Link href="/prospects" className="flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-400 rounded-lg flex items-center justify-center">
             <svg className="w-5 h-5 text-brand-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -145,7 +145,7 @@ export default function Sidebar({ userEmail, role }: SidebarProps) {
             <p className="text-white font-bold text-sm leading-none">CleanBid Pro</p>
             <p className="text-blue-300 text-xs">Bidding Software</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Navigation */}
