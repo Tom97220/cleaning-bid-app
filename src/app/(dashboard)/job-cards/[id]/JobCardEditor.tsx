@@ -34,6 +34,7 @@ export interface JobCard {
   revised_date: string
   service_days: string[]
   schedule_assignments: Record<string, number>
+  is_translated: boolean
   prospects: { company_name: string } | null
   buildings: { building_name: string } | null
   positions: { position_name: string } | null
@@ -66,11 +67,313 @@ function fmtDate(s: string) {
   return s ? new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''
 }
 
+function parseFrequency(text: string): [string, string] {
+  const m = text.match(/^(.*?)(\s*\([^)]+\))\s*$/)
+  return m ? [m[1].trim(), m[2].trim()] : [text, '']
+}
+
 const ALL_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const HOURS    = ['1','2','3','4','5','6','7','8','9','10','11','12']
 const MINUTES  = ['00','05','10','15','20','25','30','35','40','45','50','55']
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Print: style constants ───────────────────────────────────────────────────
+
+const pThStyle: React.CSSProperties = {
+  background: '#1f2937',
+  color: 'white',
+  padding: '6px 8px',
+  textAlign: 'left',
+  fontWeight: '600',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  fontSize: '11px',
+  border: '1px solid #374151',
+}
+
+const pTdStyle: React.CSSProperties = {
+  border: '1px solid #d1d5db',
+  padding: '6px 8px',
+  verticalAlign: 'top',
+  fontSize: '12px',
+  color: '#374151',
+}
+
+const pSecStyle: React.CSSProperties = {
+  fontSize: '12px',
+  fontWeight: '700',
+  textTransform: 'uppercase',
+  letterSpacing: '0.08em',
+  borderBottom: '2px solid #111827',
+  paddingBottom: '4px',
+  marginBottom: '10px',
+  color: '#111827',
+}
+
+// ─── Print: Page wrapper ──────────────────────────────────────────────────────
+
+function PrintPage({ children, pageNum, totalPages, first = false }: {
+  children: React.ReactNode; pageNum: number; totalPages: number; first?: boolean
+}) {
+  return (
+    <div
+      className={first ? '' : 'jc-page'}
+      style={{
+        fontFamily: 'Arial, Helvetica, sans-serif',
+        padding: '0.75in',
+        minHeight: '9.5in',
+        display: 'flex',
+        flexDirection: 'column',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div style={{ flex: 1 }}>{children}</div>
+      <div style={{ textAlign: 'right', fontSize: '10px', color: '#9ca3af', paddingTop: '12px' }}>
+        Page {pageNum} of {totalPages}
+      </div>
+    </div>
+  )
+}
+
+// ─── Print: Full route header (Pages 1 & 3) ───────────────────────────────────
+
+function PrintRouteHeader({
+  positionName, route, prospectName, buildingName, specialInstructions, revisedDate,
+}: {
+  positionName: string; route: string; prospectName: string; buildingName: string
+  specialInstructions: string; revisedDate: string
+}) {
+  const titleLine = [positionName, route].filter(Boolean).join('  |  ')
+  const siteLine  = [prospectName, buildingName].filter(Boolean).join(' — ')
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+        <div>
+          <div style={{ fontSize: '24px', fontWeight: '900', lineHeight: '1.1', color: '#111827' }}>
+            {titleLine || 'Job Card'}
+          </div>
+          {siteLine && (
+            <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '5px' }}>{siteLine}</div>
+          )}
+        </div>
+        <div style={{ textAlign: 'right', fontSize: '11px', color: '#374151', maxWidth: '260px', paddingLeft: '20px', flexShrink: 0 }}>
+          {specialInstructions && (
+            <div style={{ marginBottom: '4px', lineHeight: '1.5' }}>
+              <span style={{ fontWeight: '700' }}>Special Instructions:</span>{' '}{specialInstructions}
+            </div>
+          )}
+          <div style={{ color: '#9ca3af', marginTop: '2px' }}>Revised: {fmtDate(revisedDate)}</div>
+        </div>
+      </div>
+      <div style={{ borderTop: '3px solid #111827', marginBottom: '14px' }} />
+    </>
+  )
+}
+
+// ─── Print: Compact header (Pages 2 & 4) ─────────────────────────────────────
+
+function PrintCompactHeader({
+  positionName, route, prospectName, buildingName, revisedDate,
+}: {
+  positionName: string; route: string; prospectName: string; buildingName: string; revisedDate: string
+}) {
+  const titleLine = [positionName, route].filter(Boolean).join('  |  ')
+  const siteLine  = [prospectName, buildingName].filter(Boolean).join(' — ')
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '6px' }}>
+        <div>
+          <span style={{ fontSize: '14px', fontWeight: '700', color: '#111827' }}>{titleLine || 'Job Card'}</span>
+          {siteLine && (
+            <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: '10px' }}>{siteLine}</span>
+          )}
+        </div>
+        <div style={{ fontSize: '11px', color: '#9ca3af', flexShrink: 0, paddingLeft: '16px' }}>
+          Revised: {fmtDate(revisedDate)}
+        </div>
+      </div>
+      <div style={{ borderTop: '3px solid #111827', marginBottom: '16px' }} />
+    </>
+  )
+}
+
+// ─── Print: Route page (Pages 1 & 3) ─────────────────────────────────────────
+
+function PrintRoutePage({
+  positionName, route, prospectName, buildingName, specialInstructions, revisedDate, routeRows,
+}: {
+  positionName: string; route: string; prospectName: string; buildingName: string
+  specialInstructions: string; revisedDate: string; routeRows: LocalRouteRow[]
+}) {
+  const blanks = Math.max(0, 12 - routeRows.length)
+  return (
+    <>
+      <PrintRouteHeader
+        positionName={positionName} route={route}
+        prospectName={prospectName} buildingName={buildingName}
+        specialInstructions={specialInstructions} revisedDate={revisedDate}
+      />
+      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <colgroup>
+          <col style={{ width: '22%' }} />
+          <col style={{ width: '18%' }} />
+          <col style={{ width: '60%' }} />
+        </colgroup>
+        <thead>
+          <tr>
+            <th style={pThStyle}>Room / Area</th>
+            <th style={pThStyle}>Time</th>
+            <th style={pThStyle}>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {routeRows.map(row => {
+            if (row.row_type !== 'task') {
+              const label = row.row_type === 'clock_in' ? 'CLOCK IN' : 'CLOCK OUT'
+              return (
+                <tr key={row.localId} style={{ backgroundColor: '#e5e7eb' }}>
+                  <td style={{ ...pTdStyle, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '11px' }}>
+                    — {label} —
+                  </td>
+                  <td style={{ ...pTdStyle, fontWeight: '700' }}>{row.time}</td>
+                  <td style={pTdStyle} />
+                </tr>
+              )
+            }
+            return (
+              <tr key={row.localId}>
+                <td style={pTdStyle}>{row.area_location}</td>
+                <td style={pTdStyle}>{row.time}</td>
+                <td style={pTdStyle}>{row.notes}</td>
+              </tr>
+            )
+          })}
+          {Array.from({ length: blanks }).map((_, i) => (
+            <tr key={`blank-${i}`}>
+              <td style={{ ...pTdStyle, padding: '18px 8px' }} />
+              <td style={{ ...pTdStyle, padding: '18px 8px' }} />
+              <td style={{ ...pTdStyle, padding: '18px 8px' }} />
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  )
+}
+
+// ─── Print: Tasks & Schedule page (Pages 2 & 4) ───────────────────────────────
+
+function PrintTasksPage({
+  positionName, route, prospectName, buildingName, revisedDate,
+  dailyTasks, detailTasks, coreDetails, serviceDays, scheduleAssignments, lang,
+}: {
+  positionName: string; route: string; prospectName: string; buildingName: string; revisedDate: string
+  dailyTasks: LocalDailyTask[]; detailTasks: LocalDetailTask[]; coreDetails: LocalCoreRow[]
+  serviceDays: string[]; scheduleAssignments: Record<string, number>; lang: 'en' | 'alt'
+}) {
+  function text(en: string, alt: string) { return lang === 'en' ? en : (alt || en) }
+  function coreArea(c: LocalCoreRow)     { return lang === 'en' ? c.zone_area : (c.zone_area_alt || c.zone_area) }
+
+  return (
+    <>
+      <PrintCompactHeader
+        positionName={positionName} route={route}
+        prospectName={prospectName} buildingName={buildingName}
+        revisedDate={revisedDate}
+      />
+
+      {/* Daily | Detail side by side */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '28px' }}>
+        <div>
+          <div style={pSecStyle}>Daily</div>
+          {dailyTasks.length === 0 ? (
+            <span style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic' }}>None</span>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#374151', lineHeight: '1.75' }}>
+              {dailyTasks.map(t => (
+                <li key={t.localId}>{text(t.description_en, t.description_alt)}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div>
+          <div style={pSecStyle}>Detail</div>
+          {detailTasks.length === 0 ? (
+            <span style={{ fontSize: '12px', color: '#9ca3af', fontStyle: 'italic' }}>None</span>
+          ) : (
+            <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#374151', lineHeight: '1.75' }}>
+              {detailTasks.map(t => {
+                const [main, freq] = parseFrequency(text(t.description_en, t.description_alt))
+                return (
+                  <li key={t.localId}>
+                    {main}
+                    {freq && <span style={{ fontStyle: 'italic', color: '#6b7280' }}>{' '}{freq}</span>}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Core Details | Detail Schedule side by side */}
+      {(coreDetails.length > 0 || serviceDays.length > 0) && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+          {coreDetails.length > 0 && (
+            <div>
+              <div style={pSecStyle}>Core Details</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...pThStyle, width: '35%' }}>Core</th>
+                    <th style={pThStyle}>Area / Location</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {coreDetails.map((c, idx) => (
+                    <tr key={c.localId}>
+                      <td style={pTdStyle}>{c.day_period || `Core ${idx + 1}`}</td>
+                      <td style={pTdStyle}>{coreArea(c)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {serviceDays.length > 0 && coreDetails.length > 0 && (
+            <div>
+              <div style={pSecStyle}>Detail Schedule</div>
+              <table style={{ borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...pThStyle, minWidth: '70px' }}>Core</th>
+                    {serviceDays.map(day => (
+                      <th key={day} style={{ ...pThStyle, minWidth: '36px', textAlign: 'center' }}>{day}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {coreDetails.map((c, coreIdx) => (
+                    <tr key={c.localId}>
+                      <td style={pTdStyle}>{c.day_period || `C${coreIdx + 1}`}</td>
+                      {serviceDays.map(day => (
+                        <td key={day} style={{ ...pTdStyle, textAlign: 'center', fontWeight: '700', fontSize: '14px' }}>
+                          {scheduleAssignments[day] === coreIdx ? '✓' : ''}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
+// ─── Editor styles ────────────────────────────────────────────────────────────
 
 const inp    = 'border border-gray-200 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400'
 const lbl    = 'block text-xs font-medium text-gray-500 mb-0.5'
@@ -159,199 +462,6 @@ function SectionHeader({ title, onAdd, addLabel }: { title: string; onAdd?: () =
   )
 }
 
-// ─── Print: Page 1 (Front) ────────────────────────────────────────────────────
-
-function PrintFrontPage({
-  positionName, route, prospectName, buildingName,
-  shiftStart, shiftEnd, specialInstructions, directions, revisedDate, routeRows,
-}: {
-  positionName: string; route: string; prospectName: string; buildingName: string
-  shiftStart: string; shiftEnd: string
-  specialInstructions: string; directions: string; revisedDate: string
-  routeRows: LocalRouteRow[]
-}) {
-  const siteLine  = [prospectName, buildingName].filter(Boolean).join(' — ')
-  const titleLine = [positionName, route].filter(Boolean).join('  |  ')
-  const shiftLine = [shiftStart, shiftEnd].filter(Boolean).join(' – ')
-
-  return (
-    <div>
-      <div className="border-b-2 border-gray-800 pb-4 mb-5 flex justify-between items-start gap-8">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-black text-gray-900 leading-tight">{titleLine || 'Job Card'}</h1>
-          {siteLine   && <p className="text-sm text-gray-600 mt-1">{siteLine}</p>}
-          {directions && <p className="text-xs text-gray-500 mt-1">{directions}</p>}
-        </div>
-        <div className="text-right flex-shrink-0 text-xs text-gray-600 space-y-1 max-w-64">
-          {specialInstructions && (
-            <p className="whitespace-pre-wrap">
-              <span className="font-semibold">Special Instructions:</span>{' '}{specialInstructions}
-            </p>
-          )}
-          {shiftLine && <p><span className="font-semibold">Shift:</span> {shiftLine}</p>}
-          <p className="text-gray-500 pt-1">Revised: {fmtDate(revisedDate)}</p>
-        </div>
-      </div>
-
-      <table className="w-full border-collapse text-xs">
-        <thead>
-          <tr>
-            <th className="border border-gray-300 px-2 py-1.5 text-left bg-gray-50 font-semibold text-gray-600 uppercase tracking-wide w-48">Room / Area</th>
-            <th className="border border-gray-300 px-2 py-1.5 text-left bg-gray-50 font-semibold text-gray-600 uppercase tracking-wide w-20">Time</th>
-            <th className="border border-gray-300 px-2 py-1.5 text-left bg-gray-50 font-semibold text-gray-600 uppercase tracking-wide">Notes</th>
-          </tr>
-        </thead>
-        <tbody>
-          {routeRows.map(row => {
-            if (row.row_type !== 'task') {
-              const slbl = row.row_type === 'clock_in' ? 'CLOCK IN' : 'CLOCK OUT'
-              return (
-                <tr key={row.localId} className="bg-gray-100">
-                  <td className="border border-gray-300 px-2 py-1.5 font-bold text-gray-700 uppercase tracking-widest">— {slbl} —</td>
-                  <td className="border border-gray-300 px-2 py-1.5 text-gray-600">{row.time}</td>
-                  <td className="border border-gray-300 px-2 py-1.5" />
-                </tr>
-              )
-            }
-            return (
-              <tr key={row.localId}>
-                <td className="border border-gray-300 px-2 py-1.5">{row.area_location}</td>
-                <td className="border border-gray-300 px-2 py-1.5">{row.time}</td>
-                <td className="border border-gray-300 px-2 py-1.5">{row.notes}</td>
-              </tr>
-            )
-          })}
-          {Array.from({ length: Math.max(0, 6 - routeRows.length) }).map((_, i) => (
-            <tr key={`blank-${i}`}>
-              <td className="border border-gray-300 px-2 py-3.5" />
-              <td className="border border-gray-300 px-2 py-3.5" />
-              <td className="border border-gray-300 px-2 py-3.5" />
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-// ─── Print: Page 2/3 (Back) ───────────────────────────────────────────────────
-
-function PrintBackPage({
-  dailyTasks, detailTasks, coreDetails, serviceDays, scheduleAssignments, lang,
-}: {
-  dailyTasks: LocalDailyTask[]
-  detailTasks: LocalDetailTask[]
-  coreDetails: LocalCoreRow[]
-  serviceDays: string[]
-  scheduleAssignments: Record<string, number>
-  lang: 'en' | 'alt'
-}) {
-  function text(en: string, alt: string) { return lang === 'en' ? en : (alt || en) }
-  function coreArea(c: LocalCoreRow)     { return lang === 'en' ? c.zone_area : (c.zone_area_alt || c.zone_area) }
-
-  return (
-    <div>
-      {lang === 'alt' && (
-        <div className="mb-4">
-          <span className="inline-block text-xs bg-yellow-400 text-gray-900 font-semibold px-2 py-0.5 rounded">
-            Alternate Language
-          </span>
-        </div>
-      )}
-
-      {/* Daily and Detail side by side — text-sm matching Scope of Work */}
-      <div className="grid grid-cols-2 gap-8">
-        <div>
-          <p className="text-sm font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3 uppercase tracking-wide">Daily</p>
-          {dailyTasks.length === 0 ? (
-            <p className="text-sm text-gray-400 italic">None</p>
-          ) : (
-            <ul className="text-sm text-gray-700 space-y-1.5">
-              {dailyTasks.map(t => (
-                <li key={t.localId} className="flex items-start gap-2">
-                  <span className="text-gray-400 mt-0.5 leading-none flex-shrink-0">•</span>
-                  <span>{text(t.description_en, t.description_alt)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div>
-          <p className="text-sm font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3 uppercase tracking-wide">Detail</p>
-          {detailTasks.length === 0 ? (
-            <p className="text-sm text-gray-400 italic">None</p>
-          ) : (
-            <ul className="text-sm text-gray-700 space-y-1.5">
-              {detailTasks.map(t => (
-                <li key={t.localId} className="flex items-start gap-2">
-                  <span className="text-gray-400 mt-0.5 leading-none flex-shrink-0">•</span>
-                  <span>{text(t.description_en, t.description_alt)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-
-      {/* Core Details + Detail Schedule below */}
-      {(coreDetails.length > 0 || serviceDays.length > 0) && (
-        <div className="mt-6 grid grid-cols-2 gap-8">
-          {coreDetails.length > 0 && (
-            <div>
-              <p className="text-sm font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3 uppercase tracking-wide">Core Details</p>
-              <table className="w-full text-xs border-collapse">
-                <thead>
-                  <tr>
-                    <th className="border border-gray-300 px-2 py-1 text-left bg-gray-50 font-semibold text-gray-600 w-20">Core</th>
-                    <th className="border border-gray-300 px-2 py-1 text-left bg-gray-50 font-semibold text-gray-600">Area / Location</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {coreDetails.map((c, idx) => (
-                    <tr key={c.localId}>
-                      <td className="border border-gray-300 px-2 py-1 font-medium text-gray-700">{c.day_period || `Core ${idx + 1}`}</td>
-                      <td className="border border-gray-300 px-2 py-1 text-gray-700">{coreArea(c)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {serviceDays.length > 0 && coreDetails.length > 0 && (
-            <div>
-              <p className="text-sm font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3 uppercase tracking-wide">Detail Schedule</p>
-              <table className="text-xs border-collapse">
-                <thead>
-                  <tr>
-                    <th className="border border-gray-300 px-2 py-1 text-left bg-gray-50 font-semibold text-gray-600 w-20">Core</th>
-                    {serviceDays.map(day => (
-                      <th key={day} className="border border-gray-300 px-2 py-1 text-center bg-gray-50 font-semibold text-gray-600 w-12">{day}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {coreDetails.map((c, coreIdx) => (
-                    <tr key={c.localId}>
-                      <td className="border border-gray-300 px-2 py-1 font-medium text-gray-700">{c.day_period || `C${coreIdx + 1}`}</td>
-                      {serviceDays.map(day => (
-                        <td key={day} className="border border-gray-300 px-2 py-1 text-center font-bold text-gray-800">
-                          {scheduleAssignments[day] === coreIdx ? '✓' : ''}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function JobCardEditor({
@@ -421,6 +531,7 @@ export default function JobCardEditor({
   const [error,           setError]           = useState<string | null>(null)
   const [translating,     setTranslating]     = useState(false)
   const [translateError,  setTranslateError]  = useState<string | null>(null)
+  const [isTranslated,    setIsTranslated]    = useState(jobCard.is_translated ?? false)
 
   // Cache: English text → Spanish translation (session-scoped)
   const translationCache = useRef<Map<string, string>>(new Map())
@@ -493,7 +604,6 @@ export default function JobCardEditor({
     setTranslating(true)
     setTranslateError(null)
 
-    // Collect all unique English strings not yet in cache
     const needsTranslation = new Set<string>()
     function queue(text: string) {
       if (text.trim() && !translationCache.current.has(text)) needsTranslation.add(text)
@@ -521,16 +631,23 @@ export default function JobCardEditor({
         translations?.forEach(({ en, es }) => { if (en && es) translationCache.current.set(en, es) })
       }
 
-      // Apply cached translations to state
       const t = translationCache.current
-      setDailyTasks(prev  => prev.map(x  => ({ ...x,  description_alt: t.get(x.description_en) ?? x.description_alt })))
-      setDetailTasks(prev => prev.map(x  => ({ ...x,  description_alt: t.get(x.description_en) ?? x.description_alt })))
-      setCoreDetails(prev => prev.map(x  => ({ ...x,  zone_area_alt:   t.get(x.zone_area)       ?? x.zone_area_alt  })))
+      setDailyTasks(prev  => prev.map(x => ({ ...x, description_alt: t.get(x.description_en) ?? x.description_alt })))
+      setDetailTasks(prev => prev.map(x => ({ ...x, description_alt: t.get(x.description_en) ?? x.description_alt })))
+      setCoreDetails(prev => prev.map(x => ({ ...x, zone_area_alt:   t.get(x.zone_area)       ?? x.zone_area_alt  })))
       setHdr(prev => ({
         ...prev,
         special_instructions_alt: t.get(prev.special_instructions) ?? prev.special_instructions_alt,
         directions_alt:           t.get(prev.directions)           ?? prev.directions_alt,
       }))
+
+      // Persist is_translated flag immediately on success
+      const { error: flagErr } = await supabase
+        .from('job_cards')
+        .update({ is_translated: true })
+        .eq('id', jobCard.id)
+      if (!flagErr) setIsTranslated(true)
+
     } catch (err) {
       setTranslateError(err instanceof Error ? err.message : 'Translation failed')
     } finally {
@@ -553,6 +670,7 @@ export default function JobCardEditor({
       revised_date:         hdr.revised_date,
       service_days:         hdr.service_days,
       schedule_assignments: hdr.schedule_assignments,
+      is_translated:        isTranslated,
     }
 
     const { error: e0 } = await supabase.from('job_cards').update(payload).eq('id', jobCard.id)
@@ -614,6 +732,7 @@ export default function JobCardEditor({
   const printProspectName = selectedProspect?.company_name  ?? jobCard.prospects?.company_name  ?? ''
   const printBuildingName = selectedBuilding?.building_name ?? jobCard.buildings?.building_name ?? ''
   const printPositionName = selectedPosition?.position_name ?? jobCard.positions?.position_name ?? ''
+  const totalPages        = isTranslated ? 4 : 2
 
   return (
     <>
@@ -625,32 +744,75 @@ export default function JobCardEditor({
         }
       `}</style>
 
-      {/* ── Print output (hidden on screen) ───────────────────────────── */}
+      {/* ── Print output (hidden on screen) ─────────────────────────── */}
       <div className="jc-print" style={{ display: 'none' }}>
-        <div className="px-8 py-8">
-          <PrintFrontPage
-            positionName={printPositionName} route={hdr.route}
-            prospectName={printProspectName} buildingName={printBuildingName}
-            shiftStart={hdr.shift_start} shiftEnd={hdr.shift_end}
-            specialInstructions={hdr.special_instructions} directions={hdr.directions}
-            revisedDate={hdr.revised_date} routeRows={routeRows}
+
+        {/* Page 1 — Route (English) */}
+        <PrintPage pageNum={1} totalPages={totalPages} first>
+          <PrintRoutePage
+            positionName={printPositionName}
+            route={hdr.route}
+            prospectName={printProspectName}
+            buildingName={printBuildingName}
+            specialInstructions={hdr.special_instructions}
+            revisedDate={hdr.revised_date}
+            routeRows={routeRows}
           />
-        </div>
-        <div className="jc-page px-8 py-8">
-          <PrintBackPage
-            dailyTasks={dailyTasks} detailTasks={detailTasks} coreDetails={coreDetails}
-            serviceDays={hdr.service_days} scheduleAssignments={hdr.schedule_assignments} lang="en"
+        </PrintPage>
+
+        {/* Page 2 — Tasks & Schedule (English) */}
+        <PrintPage pageNum={2} totalPages={totalPages}>
+          <PrintTasksPage
+            positionName={printPositionName}
+            route={hdr.route}
+            prospectName={printProspectName}
+            buildingName={printBuildingName}
+            revisedDate={hdr.revised_date}
+            dailyTasks={dailyTasks}
+            detailTasks={detailTasks}
+            coreDetails={coreDetails}
+            serviceDays={hdr.service_days}
+            scheduleAssignments={hdr.schedule_assignments}
+            lang="en"
           />
-        </div>
-        <div className="jc-page px-8 py-8">
-          <PrintBackPage
-            dailyTasks={dailyTasks} detailTasks={detailTasks} coreDetails={coreDetails}
-            serviceDays={hdr.service_days} scheduleAssignments={hdr.schedule_assignments} lang="alt"
-          />
-        </div>
+        </PrintPage>
+
+        {/* Page 3 — Route (Spanish) — only if translated */}
+        {isTranslated && (
+          <PrintPage pageNum={3} totalPages={4}>
+            <PrintRoutePage
+              positionName={printPositionName}
+              route={hdr.route}
+              prospectName={printProspectName}
+              buildingName={printBuildingName}
+              specialInstructions={hdr.special_instructions_alt || hdr.special_instructions}
+              revisedDate={hdr.revised_date}
+              routeRows={routeRows}
+            />
+          </PrintPage>
+        )}
+
+        {/* Page 4 — Tasks & Schedule (Spanish) — only if translated */}
+        {isTranslated && (
+          <PrintPage pageNum={4} totalPages={4}>
+            <PrintTasksPage
+              positionName={printPositionName}
+              route={hdr.route}
+              prospectName={printProspectName}
+              buildingName={printBuildingName}
+              revisedDate={hdr.revised_date}
+              dailyTasks={dailyTasks}
+              detailTasks={detailTasks}
+              coreDetails={coreDetails}
+              serviceDays={hdr.service_days}
+              scheduleAssignments={hdr.schedule_assignments}
+              lang="alt"
+            />
+          </PrintPage>
+        )}
       </div>
 
-      {/* ── Editor ────────────────────────────────────────────────────── */}
+      {/* ── Editor ──────────────────────────────────────────────────── */}
       <div className="jc-editor p-6 space-y-6 max-w-4xl">
 
         {/* Action bar */}
@@ -672,7 +834,7 @@ export default function JobCardEditor({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
-            Print
+            Print {isTranslated ? '(4 pages)' : '(2 pages)'}
           </button>
           <button onClick={handleTranslate} disabled={translating}
             className="flex items-center gap-1.5 border border-gray-300 hover:border-gray-400 text-gray-700 bg-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50">
@@ -690,16 +852,21 @@ export default function JobCardEditor({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
                 </svg>
-                Translate to Spanish
+                {isTranslated ? 'Re-translate' : 'Translate to Spanish'}
               </>
             )}
           </button>
+          {isTranslated && (
+            <span className="text-xs text-indigo-600 font-medium bg-indigo-50 border border-indigo-200 px-2 py-1 rounded">
+              Spanish pages active
+            </span>
+          )}
           {saved          && <span className="text-sm text-green-700 font-medium">Saved.</span>}
           {error          && <span className="text-sm text-red-600">{error}</span>}
           {translateError && <span className="text-sm text-red-600">Translation error: {translateError}</span>}
         </div>
 
-        {/* ── Header ─────────────────────────────────────────────────── */}
+        {/* ── Header ──────────────────────────────────────────────── */}
         <div className="bg-white border border-gray-200 rounded-xl">
           <SectionHeader title="Header" />
           <div className="px-5 py-5 space-y-4">
@@ -776,7 +943,7 @@ export default function JobCardEditor({
           </div>
         </div>
 
-        {/* ── Route ──────────────────────────────────────────────────── */}
+        {/* ── Route ───────────────────────────────────────────────── */}
         <div className="bg-white border border-gray-200 rounded-xl">
           <SectionHeader title="Route" onAdd={() => setRouteRows(prev => [
             ...prev, { localId: uid(), row_type: 'task', time: '', area_location: '', notes: '' }
@@ -800,7 +967,6 @@ export default function JobCardEditor({
                     <span className="text-xs font-bold uppercase tracking-widest text-gray-600 w-24 flex-shrink-0">
                       {row.row_type === 'clock_in' ? 'CLOCK IN' : 'CLOCK OUT'}
                     </span>
-                    {/* Read-only: time is driven by shift start/end */}
                     <span className="text-sm text-gray-600 font-medium">
                       {row.time || <span className="text-gray-400 italic text-xs">Set shift time in Header</span>}
                     </span>
@@ -848,7 +1014,7 @@ export default function JobCardEditor({
           </div>
         </div>
 
-        {/* ── Daily Tasks ─────────────────────────────────────────────── */}
+        {/* ── Daily Tasks ──────────────────────────────────────────── */}
         <div className="bg-white border border-gray-200 rounded-xl">
           <SectionHeader title="Daily Tasks" onAdd={() => setDailyTasks(p => [
             ...p, { localId: uid(), description_en: '', description_alt: '' }
@@ -882,7 +1048,7 @@ export default function JobCardEditor({
           </div>
         </div>
 
-        {/* ── Detail Tasks ────────────────────────────────────────────── */}
+        {/* ── Detail Tasks ─────────────────────────────────────────── */}
         <div className="bg-white border border-gray-200 rounded-xl">
           <SectionHeader title="Detail Tasks" onAdd={() => setDetailTasks(p => [
             ...p, { localId: uid(), description_en: '', description_alt: '' }
@@ -919,7 +1085,7 @@ export default function JobCardEditor({
           </div>
         </div>
 
-        {/* ── Service Schedule ────────────────────────────────────────── */}
+        {/* ── Service Schedule ─────────────────────────────────────── */}
         <div className="bg-white border border-gray-200 rounded-xl">
           <SectionHeader title="Service Schedule" />
           <div className="px-5 py-5 space-y-6">
