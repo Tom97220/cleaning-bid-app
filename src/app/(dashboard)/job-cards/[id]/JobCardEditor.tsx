@@ -31,7 +31,9 @@ export interface JobCard {
   shift_start: string | null
   shift_end: string | null
   special_instructions: string | null
+  special_instructions_alt: string | null
   directions: string | null
+  directions_alt: string | null
   revised_date: string
   service_days: string[]
   schedule_assignments: Record<string, number>
@@ -43,7 +45,7 @@ export interface JobCard {
 
 interface DBRouteRow   { id: string; row_type: string; time: string | null; area_location: string | null; notes: string | null; notes_alt: string | null; duration: string | null }
 interface DBDailyTask  { id: string; description_en: string; description_alt: string | null }
-interface DBDetailRow  { id: string; day_period: string; zone_area: string | null }
+interface DBDetailRow  { id: string; day_period: string; zone_area: string | null; zone_area_alt: string | null }
 interface DBWhenDetail { id: string; description_en: string; description_alt: string | null }
 interface Prospect     { id: string; company_name: string }
 interface Position     { id: string; position_name: string }
@@ -497,9 +499,8 @@ export default function JobCardEditor({
     revised_date:             jobCard.revised_date,
     service_days:             jobCard.service_days             ?? [] as string[],
     schedule_assignments:     ((jobCard.schedule_assignments   ?? {}) as unknown) as Record<string, number>,
-    // Session-only translated fields (not saved to DB)
-    special_instructions_alt: '',
-    directions_alt:           '',
+    special_instructions_alt: jobCard.special_instructions_alt ?? '',
+    directions_alt:           jobCard.directions_alt           ?? '',
   })
 
   // Clock In/Out rows are seeded from shift times; auto-sync via useEffect below
@@ -519,7 +520,7 @@ export default function JobCardEditor({
   })))
 
   const [coreDetails, setCoreDetails] = useState<LocalCoreRow[]>(initialCoreDetails.map(r => ({
-    localId: uid(), day_period: r.day_period, zone_area: r.zone_area ?? '', zone_area_alt: '',
+    localId: uid(), day_period: r.day_period, zone_area: r.zone_area ?? '', zone_area_alt: r.zone_area_alt ?? '',
   })))
 
   const [detailTasks, setDetailTasks] = useState<LocalDetailTask[]>(initialDetailTasks.map(t => ({
@@ -671,9 +672,11 @@ export default function JobCardEditor({
       route:                hdr.route                || null,
       shift_start:          hdr.shift_start          || null,
       shift_end:            hdr.shift_end            || null,
-      special_instructions: hdr.special_instructions || null,
-      directions:           hdr.directions           || null,
-      revised_date:         hdr.revised_date,
+      special_instructions:     hdr.special_instructions     || null,
+      special_instructions_alt: hdr.special_instructions_alt || null,
+      directions:               hdr.directions               || null,
+      directions_alt:           hdr.directions_alt           || null,
+      revised_date:             hdr.revised_date,
       service_days:         hdr.service_days,
       schedule_assignments: hdr.schedule_assignments,
       is_translated:        isTranslated,
@@ -712,7 +715,7 @@ export default function JobCardEditor({
       const { error: e } = await supabase.from('job_card_detail_schedule').insert(
         coreDetails.map((r, i) => ({
           job_card_id: jobCard.id, sort_order: i,
-          day_period: r.day_period, zone_area: r.zone_area || null,
+          day_period: r.day_period, zone_area: r.zone_area || null, zone_area_alt: r.zone_area_alt || null,
         }))
       )
       if (e) { setError(e.message); setSaving(false); return }
