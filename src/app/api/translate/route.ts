@@ -27,7 +27,7 @@ Return ONLY valid JSON, example format:
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5',
       max_tokens: 2048,
       system:
         'You are a professional translator specializing in cleaning industry and custodial services. ' +
