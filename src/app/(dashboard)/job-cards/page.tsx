@@ -1,26 +1,31 @@
-import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
 import { getUserRole } from '@/lib/supabase/auth'
 import Header from '@/components/layout/Header'
-import JobCardsListView, { type JobCardRow } from './JobCardsListView'
+import JobCardsListView from './JobCardsListView'
 
 export const metadata = { title: 'Job Cards | CleanBid Pro' }
 
 export default async function JobCardsPage() {
-  const [supabase, role] = await Promise.all([createClient(), getUserRole()])
-
-  const { data: jobCards } = await supabase
-    .from('job_cards')
-    .select('id, route, revised_date, prospects(company_name), buildings(building_name), positions(position_name)')
-    .order('updated_at', { ascending: false })
+  const role = await getUserRole()
 
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       <Header
         title="Job Cards"
-        description="Create and manage job cards for your cleaning staff"
+        description="Search prospects and buildings to find or create job cards"
+        actions={
+          role === 'admin' ? (
+            <Link
+              href="/job-cards/new"
+              className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              + New Job Card
+            </Link>
+          ) : undefined
+        }
       />
       <div className="flex-1 p-6">
-        <JobCardsListView jobCards={(jobCards ?? []) as unknown as JobCardRow[]} role={role ?? 'user'} />
+        <JobCardsListView />
       </div>
     </div>
   )

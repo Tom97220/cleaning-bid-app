@@ -1,36 +1,65 @@
-import Header from '@/components/layout/Header'
 import { createClient } from '@/lib/supabase/server'
+import Header from '@/components/layout/Header'
 import ReportsView from './ReportsView'
+import ReportsSearchView from './ReportsSearchView'
 
 export const metadata = { title: 'Reports | CleanBid Pro' }
 
-export default async function ReportsPage() {
-  const supabase = await createClient()
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ prospectId?: string; buildingId?: string }>
+}) {
+  const { prospectId, buildingId } = await searchParams
 
-  const [{ data: prospects }, { data: companySettings }, { data: locations }] = await Promise.all([
-    supabase.from('prospects').select('id, company_name').order('company_name'),
-    supabase.from('company_settings').select('*').maybeSingle(),
-    supabase
-      .from('company_locations')
-      .select('*')
-      .order('is_default', { ascending: false })
-      .order('location_name'),
-  ])
+  if (prospectId && buildingId) {
+    const supabase = await createClient()
+    const [
+      { data: companySettings },
+      { data: locations },
+      { data: prospect },
+      { data: building },
+    ] = await Promise.all([
+      supabase.from('company_settings').select('*').maybeSingle(),
+      supabase
+        .from('company_locations')
+        .select('*')
+        .order('is_default', { ascending: false })
+        .order('location_name'),
+      supabase.from('prospects').select('id, company_name').eq('id', prospectId).single(),
+      supabase.from('buildings').select('id, building_name, square_feet').eq('id', buildingId).single(),
+    ])
+
+    if (prospect && building) {
+      return (
+        <div className="flex flex-col h-full overflow-hidden">
+          <div className="print:hidden">
+            <Header
+              title="Reports"
+              description={`${prospect.company_name} — ${building.building_name}`}
+            />
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <ReportsView
+              prospect={prospect}
+              building={building}
+              companySettings={companySettings ?? null}
+              locations={locations ?? []}
+            />
+          </div>
+        </div>
+      )
+    }
+  }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className="print:hidden">
-        <Header
-          title="Reports"
-          description="Select a prospect and building, choose reports, then generate print-ready output"
-        />
-      </div>
-      <div className="flex-1 overflow-hidden">
-        <ReportsView
-          prospects={prospects ?? []}
-          companySettings={companySettings ?? null}
-          locations={locations ?? []}
-        />
+    <div className="flex flex-col h-full overflow-y-auto">
+      <Header
+        title="Reports"
+        description="Search prospects and buildings to generate reports"
+      />
+      <div className="p-6">
+        <ReportsSearchView />
       </div>
     </div>
   )

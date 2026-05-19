@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   calcBidTotals,
@@ -148,7 +149,6 @@ function ReportHeader({
   const addrLines = location ? locationAddressLines(location) : []
   return (
     <div className="mb-8">
-      {/* Date + company name / location row */}
       <div className="flex justify-between items-start mb-3">
         <span className="text-sm text-gray-500 pt-0.5">{todayStr()}</span>
         {(company?.company_name || location) && (
@@ -163,11 +163,9 @@ function ReportHeader({
         )}
       </div>
 
-      {/* Double-line separator */}
       <div className="border-t-2 border-gray-800 mb-0.5" />
       <div className="border-t border-gray-800 mb-7" />
 
-      {/* Centered title block */}
       <div className="text-center">
         <h2 className="text-base font-bold uppercase tracking-widest text-gray-900 leading-snug">
           {title}
@@ -180,7 +178,6 @@ function ReportHeader({
         </p>
       </div>
 
-      {/* Thin rule below header block */}
       <div className="mt-6 border-t border-gray-300" />
     </div>
   )
@@ -202,7 +199,6 @@ function CoverPage({
       className="cover-page relative flex flex-col bg-white"
       style={{ minHeight: '1050px' }}
     >
-      {/* Top: logo + company name */}
       <div className="text-center pt-16 px-16">
         {company?.logo_url && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -217,7 +213,6 @@ function CoverPage({
         )}
       </div>
 
-      {/* Middle: centered document title + building */}
       <div className="flex-1 flex flex-col items-center justify-center px-16 text-center">
         <div className="w-full border-t-2 border-gray-800 mb-0.5" />
         <div className="w-full border-t border-gray-800 mb-10" />
@@ -234,7 +229,6 @@ function CoverPage({
         <div className="w-full border-t-2 border-gray-800" />
       </div>
 
-      {/* Bottom: presented by */}
       <div className="text-center pb-16 px-16">
         <p className="text-xs uppercase tracking-widest text-gray-400 mb-3">Presented by</p>
         {(company || location) ? (
@@ -306,7 +300,6 @@ function ScopeOfWorkReport({
     .map(area => ({ ...area, task_line_items: area.task_line_items.filter(t => t.print) }))
     .filter(area => area.task_line_items.length > 0)
 
-  // colCount: Task Code? + Task Name + Description + Alt Lang? + Frequency
   const colCount = (withTaskCodes ? 4 : 3) + (includeAltLang ? 1 : 0)
 
   return (
@@ -346,7 +339,6 @@ function ScopeOfWorkReport({
           ) : (
             printAreas.map(area => (
               <>
-                {/* Area header row */}
                 <tr key={`area-${area.id}`}>
                   <td
                     colSpan={colCount}
@@ -356,7 +348,6 @@ function ScopeOfWorkReport({
                   </td>
                 </tr>
 
-                {/* Task rows */}
                 {area.task_line_items.map(task => (
                   <tr key={task.id}>
                     {withTaskCodes && (
@@ -521,6 +512,8 @@ function WorkLoadByPositionReport({ data, company, location }: { data: ReportDat
     })
   }
   const rows = [...byPosition.entries()].sort((a, b) => b[1].yearly - a[1].yearly)
+
+  void totalYearly
 
   return (
     <div className="report-section">
@@ -713,7 +706,6 @@ function InvestmentRecapReport({ data, company, location }: { data: ReportData; 
       {sectionHeader('Pricing Summary')}
       <div className="grid grid-cols-2 gap-8 items-start">
 
-        {/* Left: Cost Breakdown */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Cost Breakdown</p>
           <table className="w-full text-xs">
@@ -732,7 +724,6 @@ function InvestmentRecapReport({ data, company, location }: { data: ReportData; 
           </table>
         </div>
 
-        {/* Right: Pricing Summary */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Pricing Summary</p>
           <table className="w-full text-xs">
@@ -784,51 +775,28 @@ function InvestmentRecapReport({ data, company, location }: { data: ReportData; 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function ReportsView({
-  prospects,
+  prospect,
+  building,
   companySettings,
   locations,
 }: {
-  prospects: Prospect[]
+  prospect: Prospect
+  building: Building
   companySettings: CompanySettings | null
   locations: CompanyLocation[]
 }) {
   const defaultLocation = locations.find(l => l.is_default) ?? locations[0] ?? null
 
-  const [selectedProspectId, setSelectedProspectId] = useState('')
-  const [selectedBuildingId, setSelectedBuildingId] = useState('')
   const [selectedLocationId, setSelectedLocationId] = useState(defaultLocation?.id ?? '')
-  const [buildings, setBuildings]   = useState<Building[]>([])
-  const [checked, setChecked]       = useState<Set<string>>(new Set())
-  const [includeAltLang, setIncludeAltLang] = useState(false)
-  const [reportData, setReportData] = useState<ReportData | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [error, setError]           = useState<string | null>(null)
+  const [checked, setChecked]                       = useState<Set<string>>(new Set())
+  const [includeAltLang, setIncludeAltLang]         = useState(false)
+  const [reportData, setReportData]                 = useState<ReportData | null>(null)
+  const [isGenerating, setIsGenerating]             = useState(false)
+  const [error, setError]                           = useState<string | null>(null)
 
   const selectedLocation = locations.find(l => l.id === selectedLocationId) ?? null
 
   const supabase = useMemo(() => createClient(), [])
-
-  useEffect(() => {
-    if (!selectedProspectId) {
-      setBuildings([])
-      setSelectedBuildingId('')
-      setReportData(null)
-      return
-    }
-    async function fetchBuildings() {
-      const { data } = await supabase
-        .from('buildings')
-        .select('id, building_name, square_feet')
-        .eq('prospect_id', selectedProspectId)
-        .order('building_name')
-      setBuildings(data ?? [])
-      setSelectedBuildingId('')
-      setReportData(null)
-    }
-    void fetchBuildings()
-  }, [selectedProspectId, supabase])
-
-  useEffect(() => { setReportData(null) }, [selectedBuildingId])
 
   function toggleReport(key: string) {
     setChecked(prev => {
@@ -839,14 +807,11 @@ export default function ReportsView({
   }
 
   async function handleGenerate() {
-    if (!selectedProspectId || !selectedBuildingId || checked.size === 0) return
+    if (checked.size === 0) return
     setIsGenerating(true)
     setError(null)
 
     try {
-      const prospect = prospects.find(p => p.id === selectedProspectId)!
-      const building = buildings.find(b => b.id === selectedBuildingId)!
-
       const [
         { data: areas, error: areasErr },
         { data: bidSummary },
@@ -857,13 +822,13 @@ export default function ReportsView({
         supabase
           .from('areas')
           .select('*, task_line_items(*, task_codes(task_code, task_name, description, description_alt), positions(position_name))')
-          .eq('building_id', selectedBuildingId)
+          .eq('building_id', building.id)
           .order('print_order', { nullsFirst: false })
           .order('created_at'),
-        supabase.from('bid_summary').select('*').eq('building_id', selectedBuildingId).maybeSingle(),
-        supabase.from('bid_labor_lines').select('*, positions(position_name)').eq('building_id', selectedBuildingId).order('sort_order', { nullsFirst: false }).order('created_at'),
-        supabase.from('bid_labor_costs').select('*').eq('building_id', selectedBuildingId).order('sort_order', { nullsFirst: false }).order('created_at'),
-        supabase.from('bid_other_costs').select('*').eq('building_id', selectedBuildingId).order('sort_order', { nullsFirst: false }).order('created_at'),
+        supabase.from('bid_summary').select('*').eq('building_id', building.id).maybeSingle(),
+        supabase.from('bid_labor_lines').select('*, positions(position_name)').eq('building_id', building.id).order('sort_order', { nullsFirst: false }).order('created_at'),
+        supabase.from('bid_labor_costs').select('*').eq('building_id', building.id).order('sort_order', { nullsFirst: false }).order('created_at'),
+        supabase.from('bid_other_costs').select('*').eq('building_id', building.id).order('sort_order', { nullsFirst: false }).order('created_at'),
       ])
 
       if (areasErr) throw areasErr
@@ -891,15 +856,12 @@ export default function ReportsView({
     }
   }
 
-  const canGenerate = !!selectedProspectId && !!selectedBuildingId && checked.size > 0
+  const canGenerate = checked.size > 0
   const anyScope    = checked.has('scope_no_codes') || checked.has('scope_with_codes')
-
-  // Content-only reports (exclude cover_page from "no reports" check when it's the only one)
   const hasContentReports = [...checked].some(k => k !== 'cover_page')
 
   return (
     <>
-      {/* Print styles */}
       <style>{`
         @media print {
           .cover-page  { break-after: page; height: 100vh !important; min-height: unset !important; }
@@ -913,37 +875,21 @@ export default function ReportsView({
         {/* ── Controls sidebar ──────────────────────────────── */}
         <div className="w-72 flex-shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto flex flex-col gap-5 p-5 print:hidden">
 
-          {/* Prospect */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
-              Prospect
-            </label>
-            <select
-              value={selectedProspectId}
-              onChange={e => setSelectedProspectId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-            >
-              <option value="">Select prospect…</option>
-              {prospects.map(p => <option key={p.id} value={p.id}>{p.company_name}</option>)}
-            </select>
-          </div>
+          {/* Back to search */}
+          <Link
+            href="/reports"
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium -mb-1"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Search
+          </Link>
 
-          {/* Building */}
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
-              Building
-            </label>
-            <select
-              value={selectedBuildingId}
-              onChange={e => setSelectedBuildingId(e.target.value)}
-              disabled={buildings.length === 0}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">
-                {selectedProspectId && buildings.length === 0 ? 'No buildings found' : 'Select building…'}
-              </option>
-              {buildings.map(b => <option key={b.id} value={b.id}>{b.building_name}</option>)}
-            </select>
+          {/* Selected prospect / building */}
+          <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 space-y-1">
+            <p className="text-sm font-semibold text-gray-900">{prospect.company_name}</p>
+            <p className="text-sm text-gray-500">{building.building_name}</p>
           </div>
 
           {/* Presented by Location */}
@@ -1046,7 +992,7 @@ export default function ReportsView({
               </svg>
               <p className="font-medium text-gray-500">No report generated yet</p>
               <p className="text-sm text-gray-400">
-                Select a prospect, building, and at least one report, then click Generate
+                Select at least one report then click Generate
               </p>
             </div>
           ) : (
@@ -1072,7 +1018,7 @@ export default function ReportsView({
                 </button>
               </div>
 
-              {/* Pages — each wrapped in a white A4-ish card on screen */}
+              {/* Pages */}
               <div className="py-8 px-6 space-y-6 print:p-0 print:space-y-0">
 
                 {checked.has('cover_page') && (

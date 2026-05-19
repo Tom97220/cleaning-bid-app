@@ -3,11 +3,15 @@
 import { useRouter } from 'next/navigation'
 import BuildingSearch, { type SearchRow } from '@/components/BuildingSearch'
 
-export default function JobCardsListView() {
+export default function ReportsSearchView() {
   const router = useRouter()
 
   function handleSelect(row: SearchRow) {
-    router.push(`/prospects/${row.prospect_id}/buildings/${row.building_id}`)
+    const params = new URLSearchParams({
+      prospectId: row.prospect_id,
+      buildingId: row.building_id,
+    })
+    router.push(`/reports?${params.toString()}`)
   }
 
   return <BuildingSearch onSelect={handleSelect} />
