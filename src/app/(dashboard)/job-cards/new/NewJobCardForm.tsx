@@ -9,18 +9,21 @@ const labelCls = 'block text-sm font-medium text-gray-700 mb-1'
 
 export default function NewJobCardForm({
   prospects,
+  positions,
 }: {
   prospects: { id: string; company_name: string }[]
+  positions: { id: string; position_name: string }[]
 }) {
   const router = useRouter()
   const supabase = useMemo(() => createClient(), [])
 
-  const [prospectId,    setProspectId]    = useState('')
-  const [buildingId,    setBuildingId]    = useState('')
-  const [positionTitle, setPositionTitle] = useState('')
-  const [buildings,     setBuildings]     = useState<{ id: string; building_name: string }[]>([])
-  const [creating,      setCreating]      = useState(false)
-  const [error,         setError]         = useState<string | null>(null)
+  const [prospectId, setProspectId] = useState('')
+  const [buildingId, setBuildingId] = useState('')
+  const [positionId, setPositionId] = useState('')
+  const [route,      setRoute]      = useState('')
+  const [buildings,  setBuildings]  = useState<{ id: string; building_name: string }[]>([])
+  const [creating,   setCreating]   = useState(false)
+  const [error,      setError]      = useState<string | null>(null)
 
   useEffect(() => {
     if (!prospectId) { setBuildings([]); setBuildingId(''); return }
@@ -45,10 +48,11 @@ export default function NewJobCardForm({
     const { data, error: err } = await supabase
       .from('job_cards')
       .insert({
-        prospect_id:   prospectId,
-        building_id:   buildingId  || null,
-        position_title: positionTitle.trim() || 'New Position',
-        revised_date:  today,
+        prospect_id: prospectId,
+        building_id: buildingId || null,
+        position_id: positionId || null,
+        route:       route.trim() || null,
+        revised_date: today,
       })
       .select('id')
       .single()
@@ -85,13 +89,21 @@ export default function NewJobCardForm({
       </div>
 
       <div>
-        <label className={labelCls}>Position Title</label>
+        <label className={labelCls}>Position</label>
+        <select value={positionId} onChange={e => setPositionId(e.target.value)} className={inputCls}>
+          <option value="">Select position…</option>
+          {positions.map(p => <option key={p.id} value={p.id}>{p.position_name}</option>)}
+        </select>
+      </div>
+
+      <div>
+        <label className={labelCls}>Route <span className="text-gray-400 font-normal">(optional)</span></label>
         <input
           type="text"
-          value={positionTitle}
-          onChange={e => setPositionTitle(e.target.value)}
-          placeholder="e.g. Day Porter, Custodian"
-          maxLength={50}
+          value={route}
+          onChange={e => setRoute(e.target.value)}
+          placeholder="e.g. Floors 1-4, North Wing, 2nd Shift"
+          maxLength={100}
           className={inputCls}
         />
       </div>

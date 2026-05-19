@@ -6,11 +6,11 @@ import { createClient } from '@/lib/supabase/client'
 
 export interface JobCardRow {
   id: string
-  position_title: string
-  team: string | null
+  route: string | null
   revised_date: string
   prospects: { company_name: string } | null
   buildings: { building_name: string } | null
+  positions: { position_name: string } | null
 }
 
 function fmtDate(s: string) {
@@ -66,9 +66,9 @@ export default function JobCardsListView({
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Position</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Prospect</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Route</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Building</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Team</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Prospect</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Revised</th>
                 <th className="px-4 py-3 w-24" />
               </tr>
@@ -77,12 +77,12 @@ export default function JobCardsListView({
               {rows.map(row => (
                 <tr key={row.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 font-medium text-gray-900">
-                    {row.position_title || <span className="italic text-gray-400">Untitled</span>}
+                    {row.positions?.position_name ?? <span className="italic text-gray-400">No position</span>}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{row.prospects?.company_name ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-600">{row.route ?? '—'}</td>
                   <td className="px-4 py-3 text-gray-600">{row.buildings?.building_name ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{row.team ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-500 tabular-nums text-sm">{fmtDate(row.revised_date)}</td>
+                  <td className="px-4 py-3 text-gray-600">{row.prospects?.company_name ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-500 tabular-nums">{fmtDate(row.revised_date)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-4">
                       <Link

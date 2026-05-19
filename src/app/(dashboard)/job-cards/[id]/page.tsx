@@ -17,13 +17,14 @@ export default async function JobCardPage({
     { data: jobCard },
     { data: routeRows },
     { data: dailyTasks },
-    { data: detailSchedule },
-    { data: whenDetailing },
+    { data: coreDetails },
+    { data: detailTasks },
     { data: prospects },
+    { data: positions },
   ] = await Promise.all([
     supabase
       .from('job_cards')
-      .select('*, prospects(company_name), buildings(building_name)')
+      .select('*, prospects(company_name), buildings(building_name), positions(position_name)')
       .eq('id', id)
       .single(),
     supabase.from('job_card_route_rows').select('*').eq('job_card_id', id).order('sort_order'),
@@ -31,18 +32,28 @@ export default async function JobCardPage({
     supabase.from('job_card_detail_schedule').select('*').eq('job_card_id', id).order('sort_order'),
     supabase.from('job_card_when_detailing').select('*').eq('job_card_id', id).order('sort_order'),
     supabase.from('prospects').select('id, company_name').order('company_name'),
+    supabase.from('positions').select('id, position_name').order('position_name'),
   ])
 
   if (!jobCard) notFound()
 
-  const prospectName  = (jobCard as { prospects: { company_name: string } | null }).prospects?.company_name ?? ''
-  const buildingName  = (jobCard as { buildings: { building_name: string } | null }).buildings?.building_name ?? ''
+  const jc = jobCard as {
+    route?: string | null
+    positions?: { position_name: string } | null
+    prospects?: { company_name: string } | null
+    buildings?: { building_name: string } | null
+  }
+
+  const positionName = jc.positions?.position_name ?? ''
+  const prospectName = jc.prospects?.company_name ?? ''
+  const buildingName = jc.buildings?.building_name ?? ''
+  const titleParts   = [positionName, jc.route].filter(Boolean).join(' | ')
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="print:hidden">
         <Header
-          title={jobCard.position_title || 'Job Card'}
+          title={titleParts || 'Job Card'}
           description={[prospectName, buildingName].filter(Boolean).join(' — ')}
         />
       </div>
@@ -51,9 +62,10 @@ export default async function JobCardPage({
           jobCard={jobCard as Parameters<typeof JobCardEditor>[0]['jobCard']}
           initialRouteRows={routeRows ?? []}
           initialDailyTasks={dailyTasks ?? []}
-          initialDetailSchedule={detailSchedule ?? []}
-          initialWhenDetailing={whenDetailing ?? []}
+          initialCoreDetails={coreDetails ?? []}
+          initialDetailTasks={detailTasks ?? []}
           prospects={prospects ?? []}
+          positions={positions ?? []}
         />
       </div>
     </div>

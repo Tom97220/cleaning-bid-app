@@ -10,7 +10,7 @@ export default async function JobCardsPage() {
 
   const { data: jobCards } = await supabase
     .from('job_cards')
-    .select('id, position_title, team, revised_date, prospects(company_name), buildings(building_name)')
+    .select('id, route, revised_date, prospects(company_name), buildings(building_name), positions(position_name)')
     .order('updated_at', { ascending: false })
 
   return (
