@@ -6,17 +6,22 @@ import { usePathname } from 'next/navigation'
 export default function BuildingTabNav({
   prospectId,
   buildingId,
+  activeTab,
 }: {
   prospectId: string
   buildingId: string
+  activeTab?: string
 }) {
-  const pathname  = usePathname()
-  const base      = `/prospects/${prospectId}/buildings/${buildingId}`
-  const isBid     = pathname.startsWith(`${base}/bid`)
+  const pathname = usePathname()
+  const base     = `/prospects/${prospectId}/buildings/${buildingId}`
+  const isBid      = pathname.startsWith(`${base}/bid`)
+  const isJobCards = !isBid && activeTab === 'jobcards'
+  const isAreas    = !isBid && !isJobCards
 
   const tabs = [
-    { label: 'Areas', href: base,         active: !isBid },
-    { label: 'Bid',   href: `${base}/bid`, active: isBid },
+    { label: 'Areas',     href: base,                     active: isAreas    },
+    { label: 'Job Cards', href: `${base}?tab=jobcards`,   active: isJobCards },
+    { label: 'Bid',       href: `${base}/bid`,            active: isBid      },
   ]
 
   return (

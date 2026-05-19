@@ -18,35 +18,57 @@ function InfoRow({ label, value }: { label: string; value: string | number | nul
   )
 }
 
+function fmtDate(s: string) {
+  return s
+    ? new Date(s + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : '—'
+}
+
+interface JobCardItem {
+  id: string
+  route: string | null
+  revised_date: string
+  positions: { position_name: string } | null
+}
+
 export default async function BuildingDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; buildingId: string }>
+  searchParams: Promise<{ tab?: string }>
 }) {
-  const { id, buildingId } = await params
+  const [{ id, buildingId }, { tab }] = await Promise.all([params, searchParams])
   const [supabase, role] = await Promise.all([createClient(), getUserRole()])
 
-  const [{ data: building }, { data: areas }] = await Promise.all([
+  const showJobCards = tab === 'jobcards'
+
+  const [{ data: building }, { data: areas }, { data: jobCardsRaw }] = await Promise.all([
     supabase
       .from('buildings')
       .select('*, building_types(type_name)')
       .eq('id', buildingId)
       .eq('prospect_id', id)
       .single(),
-    supabase
-      .from('areas')
-      .select('*')
-      .eq('building_id', buildingId)
-      .order('print_order')
-      .order('area_name'),
+    showJobCards
+      ? Promise.resolve({ data: null })
+      : supabase.from('areas').select('*').eq('building_id', buildingId).order('print_order').order('area_name'),
+    showJobCards
+      ? supabase
+          .from('job_cards')
+          .select('id, route, revised_date, positions(position_name)')
+          .eq('building_id', buildingId)
+          .order('revised_date', { ascending: false })
+      : Promise.resolve({ data: null }),
   ])
 
   if (!building) notFound()
 
-  const isAdmin = role === 'admin'
-  const address = [building.address, building.address_2, building.city, building.state, building.zip]
+  const isAdmin  = role === 'admin'
+  const address  = [building.address, building.address_2, building.city, building.state, building.zip]
     .filter(Boolean)
     .join(', ')
+  const jobCards = (jobCardsRaw ?? []) as unknown as JobCardItem[]
 
   return (
     <div className="flex flex-col h-full">
@@ -71,12 +93,11 @@ export default async function BuildingDetailPage({
         }
       />
 
-      <BuildingTabNav prospectId={id} buildingId={buildingId} />
+      <BuildingTabNav prospectId={id} buildingId={buildingId} activeTab={tab} />
 
       <div className="p-6 space-y-6 max-w-5xl">
-        {/* Info Cards */}
+        {/* Info Cards — always visible */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Details */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Details</h3>
             <dl className="space-y-2">
@@ -86,7 +107,6 @@ export default async function BuildingDetailPage({
             </dl>
           </div>
 
-          {/* Address */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Address</h3>
             <dl className="space-y-2">
@@ -97,7 +117,6 @@ export default async function BuildingDetailPage({
             </dl>
           </div>
 
-          {/* Directions & Notes */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Directions & Notes</h3>
             <dl className="space-y-3">
@@ -113,21 +132,83 @@ export default async function BuildingDetailPage({
           </div>
         </div>
 
-        {/* Areas */}
-        <div className="space-y-3">
-          <h2 className="text-base font-semibold text-gray-800">
-            Areas
-            <span className="ml-2 text-sm font-normal text-gray-400">
-              ({areas?.length ?? 0})
-            </span>
-          </h2>
-          <AreaList
-            areas={areas ?? []}
-            buildingId={buildingId}
-            prospectId={id}
-            isAdmin={isAdmin}
-          />
-        </div>
+        {/* Tab content */}
+        {showJobCards ? (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-gray-800">
+                Job Cards
+                <span className="ml-2 text-sm font-normal text-gray-400">({jobCards.length})</span>
+              </h2>
+              {isAdmin && (
+                <Link
+                  href="/job-cards/new"
+                  className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                >
+                  + New Job Card
+                </Link>
+              )}
+            </div>
+
+            {jobCards.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-200 px-6 py-12 text-center">
+                <p className="text-sm text-gray-400">No job cards for this building yet.</p>
+                {isAdmin && (
+                  <Link href="/job-cards/new" className="mt-3 inline-block text-sm text-brand-600 hover:text-brand-800 font-medium">
+                    Create the first one →
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Position</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Route</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Revised</th>
+                      <th className="px-4 py-3 w-16" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {jobCards.map(jc => (
+                      <tr key={jc.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-gray-900">
+                          {jc.positions?.position_name ?? <span className="italic text-gray-400">No position</span>}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">{jc.route ?? '—'}</td>
+                        <td className="px-4 py-3 text-gray-500 tabular-nums">{fmtDate(jc.revised_date)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <Link
+                            href={`/job-cards/${jc.id}`}
+                            className="text-xs font-medium text-brand-600 hover:text-brand-800"
+                          >
+                            Edit
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <h2 className="text-base font-semibold text-gray-800">
+              Areas
+              <span className="ml-2 text-sm font-normal text-gray-400">
+                ({areas?.length ?? 0})
+              </span>
+            </h2>
+            <AreaList
+              areas={areas ?? []}
+              buildingId={buildingId}
+              prospectId={id}
+              isAdmin={isAdmin}
+            />
+          </div>
+        )}
       </div>
     </div>
   )
