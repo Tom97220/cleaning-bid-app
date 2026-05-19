@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -12,14 +12,14 @@ type RouteRowType = 'task' | 'clock_in' | 'clock_out'
 interface LocalRouteRow {
   localId: string
   row_type: RouteRowType
-  time: string        // formatted '6:00 PM' or ''
+  time: string
   area_location: string
   notes: string
 }
 
 interface LocalDailyTask  { localId: string; description_en: string; description_alt: string }
 interface LocalDetailTask { localId: string; description_en: string; description_alt: string }
-interface LocalCoreRow    { localId: string; day_period: string; zone_area: string }
+interface LocalCoreRow    { localId: string; day_period: string; zone_area: string; zone_area_alt: string }
 
 export interface JobCard {
   id: string
@@ -68,19 +68,22 @@ function fmtDate(s: string) {
 
 const ALL_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const HOURS    = ['1','2','3','4','5','6','7','8','9','10','11','12']
-const MINUTES  = ['00','15','30','45']
+const MINUTES  = ['00','05','10','15','20','25','30','35','40','45','50','55']
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const inp = 'border border-gray-200 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400'
-const lbl = 'block text-xs font-medium text-gray-500 mb-0.5'
+const inp    = 'border border-gray-200 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400'
+const lbl    = 'block text-xs font-medium text-gray-500 mb-0.5'
 const selCls = 'border border-gray-200 rounded px-1 py-1 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-brand-500 focus:border-brand-400'
 
 // ─── TimePicker ───────────────────────────────────────────────────────────────
-// Controlled: value = '6:00 PM' | '', onChange emits formatted string or ''
 
-function TimePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const m     = value ? value.match(/^(\d+):(\d+)\s*(AM|PM)$/i) : null
+function TimePicker({ value, onChange, disabled }: {
+  value: string
+  onChange: (v: string) => void
+  disabled?: boolean
+}) {
+  const m      = value ? value.match(/^(\d+):(\d+)\s*(AM|PM)$/i) : null
   const hour   = m ? m[1] : ''
   const minute = m ? m[2] : '00'
   const ampm   = (m ? m[3].toUpperCase() : 'AM') as 'AM' | 'PM'
@@ -90,34 +93,25 @@ function TimePicker({ value, onChange }: { value: string; onChange: (v: string) 
   }
 
   return (
-    <div className="flex items-center gap-1 flex-shrink-0">
-      <select
-        value={hour}
-        onChange={e => emit(e.target.value, minute, ampm)}
-        className={`${selCls} w-11 text-center`}
-      >
+    <div className={`flex items-center gap-1 flex-shrink-0 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
+      <select value={hour} onChange={e => emit(e.target.value, minute, ampm)}
+        className={`${selCls} w-11 text-center`}>
         <option value="">—</option>
         {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
       </select>
       <span className="text-gray-400 text-xs font-bold select-none">:</span>
-      <select
-        value={minute}
-        onChange={e => { if (hour) emit(hour, e.target.value, ampm) }}
-        disabled={!hour}
-        className={`${selCls} w-13 text-center disabled:opacity-40`}
-      >
+      <select value={minute} onChange={e => { if (hour) emit(hour, e.target.value, ampm) }}
+        disabled={!hour} className={`${selCls} w-13 text-center disabled:opacity-40`}>
         {MINUTES.map(min => <option key={min} value={min}>{min}</option>)}
       </select>
-      <button
-        type="button"
+      <button type="button"
         onClick={() => { if (hour) emit(hour, minute, ampm === 'AM' ? 'PM' : 'AM') }}
         disabled={!hour}
         className={`text-xs font-bold px-1.5 py-1 rounded border transition-colors leading-none disabled:opacity-40 disabled:cursor-not-allowed ${
           ampm === 'PM'
             ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100'
             : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-        }`}
-      >
+        }`}>
         {ampm}
       </button>
     </div>
@@ -165,7 +159,7 @@ function SectionHeader({ title, onAdd, addLabel }: { title: string; onAdd?: () =
   )
 }
 
-// ─── Print: Page 1 (Front — Route) ───────────────────────────────────────────
+// ─── Print: Page 1 (Front) ────────────────────────────────────────────────────
 
 function PrintFrontPage({
   positionName, route, prospectName, buildingName,
@@ -182,11 +176,10 @@ function PrintFrontPage({
 
   return (
     <div>
-      {/* Card header */}
       <div className="border-b-2 border-gray-800 pb-4 mb-5 flex justify-between items-start gap-8">
         <div className="min-w-0">
           <h1 className="text-2xl font-black text-gray-900 leading-tight">{titleLine || 'Job Card'}</h1>
-          {siteLine && <p className="text-sm text-gray-600 mt-1">{siteLine}</p>}
+          {siteLine   && <p className="text-sm text-gray-600 mt-1">{siteLine}</p>}
           {directions && <p className="text-xs text-gray-500 mt-1">{directions}</p>}
         </div>
         <div className="text-right flex-shrink-0 text-xs text-gray-600 space-y-1 max-w-64">
@@ -200,7 +193,6 @@ function PrintFrontPage({
         </div>
       </div>
 
-      {/* Route table — 3 columns only */}
       <table className="w-full border-collapse text-xs">
         <thead>
           <tr>
@@ -215,9 +207,7 @@ function PrintFrontPage({
               const slbl = row.row_type === 'clock_in' ? 'CLOCK IN' : 'CLOCK OUT'
               return (
                 <tr key={row.localId} className="bg-gray-100">
-                  <td className="border border-gray-300 px-2 py-1.5 font-bold text-gray-700 uppercase tracking-widest">
-                    — {slbl} —
-                  </td>
+                  <td className="border border-gray-300 px-2 py-1.5 font-bold text-gray-700 uppercase tracking-widest">— {slbl} —</td>
                   <td className="border border-gray-300 px-2 py-1.5 text-gray-600">{row.time}</td>
                   <td className="border border-gray-300 px-2 py-1.5" />
                 </tr>
@@ -231,7 +221,6 @@ function PrintFrontPage({
               </tr>
             )
           })}
-          {/* Pad to at least 6 rows for blank routing stops */}
           {Array.from({ length: Math.max(0, 6 - routeRows.length) }).map((_, i) => (
             <tr key={`blank-${i}`}>
               <td className="border border-gray-300 px-2 py-3.5" />
@@ -245,7 +234,7 @@ function PrintFrontPage({
   )
 }
 
-// ─── Print: Page 2/3 (Back — Tasks + Core Details + Schedule) ────────────────
+// ─── Print: Page 2/3 (Back) ───────────────────────────────────────────────────
 
 function PrintBackPage({
   dailyTasks, detailTasks, coreDetails, serviceDays, scheduleAssignments, lang,
@@ -257,9 +246,8 @@ function PrintBackPage({
   scheduleAssignments: Record<string, number>
   lang: 'en' | 'alt'
 }) {
-  function text(en: string, alt: string) {
-    return lang === 'en' ? en : (alt || en)
-  }
+  function text(en: string, alt: string) { return lang === 'en' ? en : (alt || en) }
+  function coreArea(c: LocalCoreRow)     { return lang === 'en' ? c.zone_area : (c.zone_area_alt || c.zone_area) }
 
   return (
     <div>
@@ -271,47 +259,47 @@ function PrintBackPage({
         </div>
       )}
 
+      {/* Daily and Detail side by side — text-sm matching Scope of Work */}
       <div className="grid grid-cols-2 gap-8">
-        {/* Left: Daily + Detail */}
-        <div className="space-y-5">
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest text-gray-800 border-b-2 border-gray-800 pb-1 mb-2">Daily</p>
-            {dailyTasks.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">None</p>
-            ) : (
-              <ul className="text-xs space-y-1">
-                {dailyTasks.map(t => (
-                  <li key={t.localId} className="flex items-start gap-1.5">
-                    <span className="text-gray-500 mt-px leading-none flex-shrink-0">•</span>
-                    <span>{text(t.description_en, t.description_alt)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest text-gray-800 border-b-2 border-gray-800 pb-1 mb-2">Detail</p>
-            {detailTasks.length === 0 ? (
-              <p className="text-xs text-gray-400 italic">None</p>
-            ) : (
-              <ul className="text-xs space-y-1">
-                {detailTasks.map(t => (
-                  <li key={t.localId} className="flex items-start gap-1.5">
-                    <span className="text-gray-500 mt-px leading-none flex-shrink-0">•</span>
-                    <span>{text(t.description_en, t.description_alt)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+        <div>
+          <p className="text-sm font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3 uppercase tracking-wide">Daily</p>
+          {dailyTasks.length === 0 ? (
+            <p className="text-sm text-gray-400 italic">None</p>
+          ) : (
+            <ul className="text-sm text-gray-700 space-y-1.5">
+              {dailyTasks.map(t => (
+                <li key={t.localId} className="flex items-start gap-2">
+                  <span className="text-gray-400 mt-0.5 leading-none flex-shrink-0">•</span>
+                  <span>{text(t.description_en, t.description_alt)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
-        {/* Right: Core Details + Detail Schedule */}
-        <div className="space-y-5">
+        <div>
+          <p className="text-sm font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3 uppercase tracking-wide">Detail</p>
+          {detailTasks.length === 0 ? (
+            <p className="text-sm text-gray-400 italic">None</p>
+          ) : (
+            <ul className="text-sm text-gray-700 space-y-1.5">
+              {detailTasks.map(t => (
+                <li key={t.localId} className="flex items-start gap-2">
+                  <span className="text-gray-400 mt-0.5 leading-none flex-shrink-0">•</span>
+                  <span>{text(t.description_en, t.description_alt)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Core Details + Detail Schedule below */}
+      {(coreDetails.length > 0 || serviceDays.length > 0) && (
+        <div className="mt-6 grid grid-cols-2 gap-8">
           {coreDetails.length > 0 && (
             <div>
-              <p className="text-xs font-black uppercase tracking-widest text-gray-800 border-b-2 border-gray-800 pb-1 mb-2">Core Details</p>
+              <p className="text-sm font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3 uppercase tracking-wide">Core Details</p>
               <table className="w-full text-xs border-collapse">
                 <thead>
                   <tr>
@@ -322,10 +310,8 @@ function PrintBackPage({
                 <tbody>
                   {coreDetails.map((c, idx) => (
                     <tr key={c.localId}>
-                      <td className="border border-gray-300 px-2 py-1 font-medium text-gray-700">
-                        {c.day_period || `Core ${idx + 1}`}
-                      </td>
-                      <td className="border border-gray-300 px-2 py-1 text-gray-700">{c.zone_area}</td>
+                      <td className="border border-gray-300 px-2 py-1 font-medium text-gray-700">{c.day_period || `Core ${idx + 1}`}</td>
+                      <td className="border border-gray-300 px-2 py-1 text-gray-700">{coreArea(c)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -335,7 +321,7 @@ function PrintBackPage({
 
           {serviceDays.length > 0 && coreDetails.length > 0 && (
             <div>
-              <p className="text-xs font-black uppercase tracking-widest text-gray-800 border-b-2 border-gray-800 pb-1 mb-2">Detail Schedule</p>
+              <p className="text-sm font-bold text-gray-900 border-b-2 border-gray-800 pb-1 mb-3 uppercase tracking-wide">Detail Schedule</p>
               <table className="text-xs border-collapse">
                 <thead>
                   <tr>
@@ -348,9 +334,7 @@ function PrintBackPage({
                 <tbody>
                   {coreDetails.map((c, coreIdx) => (
                     <tr key={c.localId}>
-                      <td className="border border-gray-300 px-2 py-1 font-medium text-gray-700">
-                        {c.day_period || `C${coreIdx + 1}`}
-                      </td>
+                      <td className="border border-gray-300 px-2 py-1 font-medium text-gray-700">{c.day_period || `C${coreIdx + 1}`}</td>
                       {serviceDays.map(day => (
                         <td key={day} className="border border-gray-300 px-2 py-1 text-center font-bold text-gray-800">
                           {scheduleAssignments[day] === coreIdx ? '✓' : ''}
@@ -363,7 +347,7 @@ function PrintBackPage({
             </div>
           )}
         </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -391,22 +375,31 @@ export default function JobCardEditor({
   const supabase = useMemo(() => createClient(), [])
 
   const [hdr, setHdr] = useState({
-    prospect_id:          jobCard.prospect_id,
-    building_id:          jobCard.building_id          ?? '',
-    position_id:          jobCard.position_id           ?? '',
-    route:                jobCard.route                 ?? '',
-    shift_start:          jobCard.shift_start           ?? '',
-    shift_end:            jobCard.shift_end             ?? '',
-    special_instructions: jobCard.special_instructions  ?? '',
-    directions:           jobCard.directions            ?? '',
-    revised_date:         jobCard.revised_date,
-    service_days:         jobCard.service_days          ?? [] as string[],
-    schedule_assignments: ((jobCard.schedule_assignments ?? {}) as unknown) as Record<string, number>,
+    prospect_id:              jobCard.prospect_id,
+    building_id:              jobCard.building_id              ?? '',
+    position_id:              jobCard.position_id              ?? '',
+    route:                    jobCard.route                    ?? '',
+    shift_start:              jobCard.shift_start              ?? '',
+    shift_end:                jobCard.shift_end                ?? '',
+    special_instructions:     jobCard.special_instructions     ?? '',
+    directions:               jobCard.directions               ?? '',
+    revised_date:             jobCard.revised_date,
+    service_days:             jobCard.service_days             ?? [] as string[],
+    schedule_assignments:     ((jobCard.schedule_assignments   ?? {}) as unknown) as Record<string, number>,
+    // Session-only translated fields (not saved to DB)
+    special_instructions_alt: '',
+    directions_alt:           '',
   })
 
+  // Clock In/Out rows are seeded from shift times; auto-sync via useEffect below
   const [routeRows,   setRouteRows]   = useState<LocalRouteRow[]>(initialRouteRows.map(r => ({
-    localId: uid(), row_type: r.row_type as RouteRowType,
-    time: r.time ?? '', area_location: r.area_location ?? '', notes: r.notes ?? '',
+    localId: uid(),
+    row_type: r.row_type as RouteRowType,
+    time: r.row_type === 'clock_in'  ? (jobCard.shift_start ?? '')
+        : r.row_type === 'clock_out' ? (jobCard.shift_end   ?? '')
+        : (r.time ?? ''),
+    area_location: r.area_location ?? '',
+    notes:         r.notes ?? '',
   })))
 
   const [dailyTasks,  setDailyTasks]  = useState<LocalDailyTask[]>(initialDailyTasks.map(t => ({
@@ -414,7 +407,7 @@ export default function JobCardEditor({
   })))
 
   const [coreDetails, setCoreDetails] = useState<LocalCoreRow[]>(initialCoreDetails.map(r => ({
-    localId: uid(), day_period: r.day_period, zone_area: r.zone_area ?? '',
+    localId: uid(), day_period: r.day_period, zone_area: r.zone_area ?? '', zone_area_alt: '',
   })))
 
   const [detailTasks, setDetailTasks] = useState<LocalDetailTask[]>(initialDetailTasks.map(t => ({
@@ -426,6 +419,25 @@ export default function JobCardEditor({
   const [saving,          setSaving]          = useState(false)
   const [saved,           setSaved]           = useState(false)
   const [error,           setError]           = useState<string | null>(null)
+  const [translating,     setTranslating]     = useState(false)
+  const [translateError,  setTranslateError]  = useState<string | null>(null)
+
+  // Cache: English text → Spanish translation (session-scoped)
+  const translationCache = useRef<Map<string, string>>(new Map())
+
+  // Auto-sync Clock In time with shift_start
+  useEffect(() => {
+    setRouteRows(prev => prev.map(r =>
+      r.row_type === 'clock_in' ? { ...r, time: hdr.shift_start } : r
+    ))
+  }, [hdr.shift_start])
+
+  // Auto-sync Clock Out time with shift_end
+  useEffect(() => {
+    setRouteRows(prev => prev.map(r =>
+      r.row_type === 'clock_out' ? { ...r, time: hdr.shift_end } : r
+    ))
+  }, [hdr.shift_end])
 
   useEffect(() => {
     if (!hdr.prospect_id) { setBuildings([]); setBuildingsLoaded(true); return }
@@ -473,6 +485,57 @@ export default function JobCardEditor({
       return { ...prev, schedule_assignments: assignments }
     })
     setSaved(false)
+  }
+
+  // ── Translation ──────────────────────────────────────────────────────────────
+
+  async function handleTranslate() {
+    setTranslating(true)
+    setTranslateError(null)
+
+    // Collect all unique English strings not yet in cache
+    const needsTranslation = new Set<string>()
+    function queue(text: string) {
+      if (text.trim() && !translationCache.current.has(text)) needsTranslation.add(text)
+    }
+
+    dailyTasks.forEach(t  => queue(t.description_en))
+    detailTasks.forEach(t => queue(t.description_en))
+    coreDetails.forEach(c => queue(c.zone_area))
+    queue(hdr.special_instructions)
+    queue(hdr.directions)
+
+    try {
+      if (needsTranslation.size > 0) {
+        const res = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texts: Array.from(needsTranslation) }),
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const { translations, error: apiErr } = await res.json() as {
+          translations?: { en: string; es: string }[]
+          error?: string
+        }
+        if (apiErr) throw new Error(apiErr)
+        translations?.forEach(({ en, es }) => { if (en && es) translationCache.current.set(en, es) })
+      }
+
+      // Apply cached translations to state
+      const t = translationCache.current
+      setDailyTasks(prev  => prev.map(x  => ({ ...x,  description_alt: t.get(x.description_en) ?? x.description_alt })))
+      setDetailTasks(prev => prev.map(x  => ({ ...x,  description_alt: t.get(x.description_en) ?? x.description_alt })))
+      setCoreDetails(prev => prev.map(x  => ({ ...x,  zone_area_alt:   t.get(x.zone_area)       ?? x.zone_area_alt  })))
+      setHdr(prev => ({
+        ...prev,
+        special_instructions_alt: t.get(prev.special_instructions) ?? prev.special_instructions_alt,
+        directions_alt:           t.get(prev.directions)           ?? prev.directions_alt,
+      }))
+    } catch (err) {
+      setTranslateError(err instanceof Error ? err.message : 'Translation failed')
+    } finally {
+      setTranslating(false)
+    }
   }
 
   async function handleSave() {
@@ -566,30 +629,23 @@ export default function JobCardEditor({
       <div className="jc-print" style={{ display: 'none' }}>
         <div className="px-8 py-8">
           <PrintFrontPage
-            positionName={printPositionName}
-            route={hdr.route}
-            prospectName={printProspectName}
-            buildingName={printBuildingName}
-            shiftStart={hdr.shift_start}
-            shiftEnd={hdr.shift_end}
-            specialInstructions={hdr.special_instructions}
-            directions={hdr.directions}
-            revisedDate={hdr.revised_date}
-            routeRows={routeRows}
+            positionName={printPositionName} route={hdr.route}
+            prospectName={printProspectName} buildingName={printBuildingName}
+            shiftStart={hdr.shift_start} shiftEnd={hdr.shift_end}
+            specialInstructions={hdr.special_instructions} directions={hdr.directions}
+            revisedDate={hdr.revised_date} routeRows={routeRows}
           />
         </div>
         <div className="jc-page px-8 py-8">
           <PrintBackPage
             dailyTasks={dailyTasks} detailTasks={detailTasks} coreDetails={coreDetails}
-            serviceDays={hdr.service_days} scheduleAssignments={hdr.schedule_assignments}
-            lang="en"
+            serviceDays={hdr.service_days} scheduleAssignments={hdr.schedule_assignments} lang="en"
           />
         </div>
         <div className="jc-page px-8 py-8">
           <PrintBackPage
             dailyTasks={dailyTasks} detailTasks={detailTasks} coreDetails={coreDetails}
-            serviceDays={hdr.service_days} scheduleAssignments={hdr.schedule_assignments}
-            lang="alt"
+            serviceDays={hdr.service_days} scheduleAssignments={hdr.schedule_assignments} lang="alt"
           />
         </div>
       </div>
@@ -598,7 +654,7 @@ export default function JobCardEditor({
       <div className="jc-editor p-6 space-y-6 max-w-4xl">
 
         {/* Action bar */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Link href="/job-cards"
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors mr-1">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -618,8 +674,29 @@ export default function JobCardEditor({
             </svg>
             Print
           </button>
-          {saved && <span className="text-sm text-green-700 font-medium">Saved.</span>}
-          {error && <span className="text-sm text-red-600">{error}</span>}
+          <button onClick={handleTranslate} disabled={translating}
+            className="flex items-center gap-1.5 border border-gray-300 hover:border-gray-400 text-gray-700 bg-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50">
+            {translating ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                Translating…
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                </svg>
+                Translate to Spanish
+              </>
+            )}
+          </button>
+          {saved          && <span className="text-sm text-green-700 font-medium">Saved.</span>}
+          {error          && <span className="text-sm text-red-600">{error}</span>}
+          {translateError && <span className="text-sm text-red-600">Translation error: {translateError}</span>}
         </div>
 
         {/* ── Header ─────────────────────────────────────────────────── */}
@@ -658,21 +735,14 @@ export default function JobCardEditor({
               </div>
             </div>
 
-            {/* Shift times */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={lbl}>Shift Start</label>
-                <TimePicker
-                  value={hdr.shift_start}
-                  onChange={v => setHdrField('shift_start', v)}
-                />
+                <TimePicker value={hdr.shift_start} onChange={v => setHdrField('shift_start', v)} />
               </div>
               <div>
                 <label className={lbl}>Shift End</label>
-                <TimePicker
-                  value={hdr.shift_end}
-                  onChange={v => setHdrField('shift_end', v)}
-                />
+                <TimePicker value={hdr.shift_end} onChange={v => setHdrField('shift_end', v)} />
               </div>
             </div>
 
@@ -680,14 +750,22 @@ export default function JobCardEditor({
               <div>
                 <label className={lbl}>Special Instructions</label>
                 <textarea value={hdr.special_instructions} onChange={sh('special_instructions')}
-                  rows={3} placeholder="Any special notes for the crew…"
-                  className={`${inp} w-full resize-none`} />
+                  rows={3} placeholder="Any special notes for the crew…" className={`${inp} w-full resize-none`} />
+                {hdr.special_instructions_alt && (
+                  <p className="mt-1 text-xs text-indigo-600 italic">
+                    <span className="font-semibold">ES:</span> {hdr.special_instructions_alt}
+                  </p>
+                )}
               </div>
               <div>
                 <label className={lbl}>Directions</label>
                 <textarea value={hdr.directions} onChange={sh('directions')}
-                  rows={3} placeholder="How to get to the site, parking, access codes…"
-                  className={`${inp} w-full resize-none`} />
+                  rows={3} placeholder="How to get to the site, parking, access codes…" className={`${inp} w-full resize-none`} />
+                {hdr.directions_alt && (
+                  <p className="mt-1 text-xs text-indigo-600 italic">
+                    <span className="font-semibold">ES:</span> {hdr.directions_alt}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -722,10 +800,11 @@ export default function JobCardEditor({
                     <span className="text-xs font-bold uppercase tracking-widest text-gray-600 w-24 flex-shrink-0">
                       {row.row_type === 'clock_in' ? 'CLOCK IN' : 'CLOCK OUT'}
                     </span>
-                    <TimePicker
-                      value={row.time}
-                      onChange={v => setRouteRows(p => p.map((r, x) => x === i ? { ...r, time: v } : r))}
-                    />
+                    {/* Read-only: time is driven by shift start/end */}
+                    <span className="text-sm text-gray-600 font-medium">
+                      {row.time || <span className="text-gray-400 italic text-xs">Set shift time in Header</span>}
+                    </span>
+                    <span className="text-xs text-gray-400 italic">(auto from shift)</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -757,7 +836,9 @@ export default function JobCardEditor({
               {(['clock_in', 'clock_out'] as RouteRowType[]).map(type => (
                 <button key={type}
                   onClick={() => setRouteRows(prev => [...prev, {
-                    localId: uid(), row_type: type, time: '', area_location: '', notes: '',
+                    localId: uid(), row_type: type,
+                    time: type === 'clock_in' ? hdr.shift_start : hdr.shift_end,
+                    area_location: '', notes: '',
                   }])}
                   className="text-xs font-medium text-gray-500 border border-gray-200 hover:border-gray-400 hover:text-gray-700 px-3 py-1 rounded-full transition-colors">
                   + {type === 'clock_in' ? 'CLOCK IN' : 'CLOCK OUT'}
@@ -772,11 +853,8 @@ export default function JobCardEditor({
           <SectionHeader title="Daily Tasks" onAdd={() => setDailyTasks(p => [
             ...p, { localId: uid(), description_en: '', description_alt: '' }
           ])} addLabel="Add Task" />
-
           <div className="px-5 py-4 space-y-2">
-            {dailyTasks.length === 0 && (
-              <p className="text-sm text-gray-400 italic py-2">No daily tasks yet.</p>
-            )}
+            {dailyTasks.length === 0 && <p className="text-sm text-gray-400 italic py-2">No daily tasks yet.</p>}
             {dailyTasks.map((t, i) => (
               <div key={t.localId} className="flex items-start gap-3">
                 <UpDownDel
@@ -793,7 +871,7 @@ export default function JobCardEditor({
                       maxLength={150} placeholder="Task description" className={`${inp} w-full`} />
                   </div>
                   <div className="flex-1">
-                    <label className={lbl}>Alternate Language</label>
+                    <label className={lbl}>Spanish</label>
                     <input type="text" value={t.description_alt}
                       onChange={e => setDailyTasks(p => p.map((x, j) => j === i ? { ...x, description_alt: e.target.value } : x))}
                       maxLength={150} placeholder="Translation" className={`${inp} w-full`} />
@@ -812,11 +890,8 @@ export default function JobCardEditor({
           <div className="px-5 pb-3 pt-1">
             <p className="text-xs text-gray-400 italic">Include frequency in parentheses, e.g. &ldquo;Shampoo carpets (2x/month)&rdquo;</p>
           </div>
-
           <div className="px-5 py-2 space-y-2">
-            {detailTasks.length === 0 && (
-              <p className="text-sm text-gray-400 italic py-2">No detail tasks yet.</p>
-            )}
+            {detailTasks.length === 0 && <p className="text-sm text-gray-400 italic py-2">No detail tasks yet.</p>}
             {detailTasks.map((t, i) => (
               <div key={t.localId} className="flex items-start gap-3">
                 <UpDownDel
@@ -833,7 +908,7 @@ export default function JobCardEditor({
                       maxLength={150} placeholder="Strip &amp; wax floors (monthly)" className={`${inp} w-full`} />
                   </div>
                   <div className="flex-1">
-                    <label className={lbl}>Alternate Language</label>
+                    <label className={lbl}>Spanish</label>
                     <input type="text" value={t.description_alt}
                       onChange={e => setDetailTasks(p => p.map((x, j) => j === i ? { ...x, description_alt: e.target.value } : x))}
                       maxLength={150} placeholder="Translation" className={`${inp} w-full`} />
@@ -849,7 +924,6 @@ export default function JobCardEditor({
           <SectionHeader title="Service Schedule" />
           <div className="px-5 py-5 space-y-6">
 
-            {/* Service Days */}
             <div>
               <p className={`${lbl} mb-2`}>Service Days</p>
               <div className="flex flex-wrap gap-1.5">
@@ -867,12 +941,11 @@ export default function JobCardEditor({
               </div>
             </div>
 
-            {/* Core Details */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className={lbl}>Core Details</p>
                 <button onClick={() => setCoreDetails(p => [
-                  ...p, { localId: uid(), day_period: `Core ${p.length + 1}`, zone_area: '' }
+                  ...p, { localId: uid(), day_period: `Core ${p.length + 1}`, zone_area: '', zone_area_alt: '' }
                 ])} className="text-xs font-medium text-brand-600 hover:text-brand-800 flex items-center gap-1">
                   <span className="text-base leading-none">+</span> Add Core
                 </button>
@@ -883,23 +956,25 @@ export default function JobCardEditor({
               ) : (
                 <div className="space-y-2">
                   {coreDetails.map((r, i) => (
-                    <div key={r.localId} className="flex items-center gap-3">
-                      <UpDownDel
-                        onUp={() => setCoreDetails(p => moveUp(p, i))}
-                        onDown={() => setCoreDetails(p => moveDown(p, i))}
-                        onDel={() => {
-                          setCoreDetails(p => removeAt(p, i))
-                          setHdr(prev => {
-                            const assignments: Record<string, number> = {}
-                            for (const [day, idx] of Object.entries(prev.schedule_assignments)) {
-                              if (idx < i) assignments[day] = idx
-                              else if (idx > i) assignments[day] = idx - 1
-                            }
-                            return { ...prev, schedule_assignments: assignments }
-                          })
-                        }}
-                        first={i === 0} last={i === coreDetails.length - 1}
-                      />
+                    <div key={r.localId} className="flex items-start gap-3">
+                      <div className="mt-1">
+                        <UpDownDel
+                          onUp={() => setCoreDetails(p => moveUp(p, i))}
+                          onDown={() => setCoreDetails(p => moveDown(p, i))}
+                          onDel={() => {
+                            setCoreDetails(p => removeAt(p, i))
+                            setHdr(prev => {
+                              const assignments: Record<string, number> = {}
+                              for (const [day, idx] of Object.entries(prev.schedule_assignments)) {
+                                if (idx < i) assignments[day] = idx
+                                else if (idx > i) assignments[day] = idx - 1
+                              }
+                              return { ...prev, schedule_assignments: assignments }
+                            })
+                          }}
+                          first={i === 0} last={i === coreDetails.length - 1}
+                        />
+                      </div>
                       <div className="w-28 flex-shrink-0">
                         <input type="text" value={r.day_period}
                           onChange={e => setCoreDetails(p => p.map((x, j) => j === i ? { ...x, day_period: e.target.value } : x))}
@@ -909,6 +984,11 @@ export default function JobCardEditor({
                         <input type="text" value={r.zone_area}
                           onChange={e => setCoreDetails(p => p.map((x, j) => j === i ? { ...x, zone_area: e.target.value } : x))}
                           placeholder="Area / Location" maxLength={50} className={`${inp} w-full`} />
+                        {r.zone_area_alt && (
+                          <p className="mt-0.5 text-xs text-indigo-600 italic">
+                            <span className="font-semibold">ES:</span> {r.zone_area_alt}
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -916,7 +996,6 @@ export default function JobCardEditor({
               )}
             </div>
 
-            {/* Schedule Grid */}
             {hdr.service_days.length > 0 && coreDetails.length > 0 && (
               <div>
                 <p className={`${lbl} mb-2`}>Detail Schedule — assign one core per service day</p>
@@ -943,9 +1022,7 @@ export default function JobCardEditor({
                                 <button type="button"
                                   onClick={() => setAssignment(day, assigned ? null : coreIdx)}
                                   className={`w-5 h-5 rounded-full border-2 transition-colors mx-auto block ${
-                                    assigned
-                                      ? 'bg-brand-600 border-brand-600'
-                                      : 'bg-white border-gray-300 hover:border-brand-400'
+                                    assigned ? 'bg-brand-600 border-brand-600' : 'bg-white border-gray-300 hover:border-brand-400'
                                   }`}
                                 />
                               </td>
