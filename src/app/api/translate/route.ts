@@ -17,6 +17,8 @@ ${texts.map((t, i) => `${i + 1}. ${t}`).join('\n')}
 Return ONLY valid JSON, example format:
 [{"en":"Sweep and mop floors","es":"Barrer y trapear pisos"}]`
 
+  console.log('[translate] ANTHROPIC_API_KEY present:', !!process.env.ANTHROPIC_API_KEY)
+
   const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
