@@ -106,10 +106,10 @@ function PrintPage({ children, first = false }: {
 // ─── Print: Full route header (Pages 1 & 3) ───────────────────────────────────
 
 function PrintRouteHeader({
-  positionName, route, prospectName, buildingName, specialInstructions, revisedDate,
+  positionName, route, prospectName, buildingName, specialInstructions, revisedDate, lang = 'en',
 }: {
   positionName: string; route: string; prospectName: string; buildingName: string
-  specialInstructions: string; revisedDate: string
+  specialInstructions: string; revisedDate: string; lang?: 'en' | 'alt'
 }) {
   const siteLine = [prospectName, buildingName].filter(Boolean).join(' — ')
   return (
@@ -134,7 +134,9 @@ function PrintRouteHeader({
           <div>
             {specialInstructions && (
               <div style={{ lineHeight: '1.5' }}>
-                <span style={{ fontWeight: '700' }}>Special Instructions:</span>{' '}{specialInstructions}
+                <span style={{ fontWeight: '700' }}>
+                  {lang === 'alt' ? 'Instrucciones especiales:' : 'Special Instructions:'}
+                </span>{' '}{specialInstructions}
               </div>
             )}
           </div>
@@ -188,6 +190,7 @@ function PrintRoutePage({
         positionName={positionName} route={route}
         prospectName={prospectName} buildingName={buildingName}
         specialInstructions={specialInstructions} revisedDate={revisedDate}
+        lang={lang}
       />
       <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
         <colgroup>
