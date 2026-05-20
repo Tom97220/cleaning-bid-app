@@ -46,6 +46,10 @@ function parseFrequency(text: string): [string, string] {
   return m ? [m[1].trim(), m[2].trim()] : [text, '']
 }
 
+const DAY_ES: Record<string, string> = {
+  Sun: 'Dom', Mon: 'Lun', Tue: 'Mar', Wed: 'Mié', Thu: 'Jue', Fri: 'Vie', Sat: 'Sáb',
+}
+
 // ─── Style constants ──────────────────────────────────────────────────────────
 
 const pThStyle: React.CSSProperties = {
@@ -90,7 +94,7 @@ function PrintPage({ children, pageNum, totalPages, first = false }: {
       style={{
         fontFamily: 'Arial, Helvetica, sans-serif',
         padding: '0.75in',
-        minHeight: '9.5in',
+        minHeight: '11in',
         display: 'flex',
         flexDirection: 'column',
         boxSizing: 'border-box',
@@ -112,26 +116,34 @@ function PrintRouteHeader({
   positionName: string; route: string; prospectName: string; buildingName: string
   specialInstructions: string; revisedDate: string
 }) {
-  const titleLine = [positionName, route].filter(Boolean).join('  |  ')
-  const siteLine  = [prospectName, buildingName].filter(Boolean).join(' — ')
+  const siteLine = [prospectName, buildingName].filter(Boolean).join(' — ')
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', marginBottom: '10px' }}>
         <div>
-          <div style={{ fontSize: '24px', fontWeight: '900', lineHeight: '1.1', color: '#111827' }}>
-            {titleLine || 'Job Card'}
+          <div style={{ fontSize: '22px', fontWeight: '700', lineHeight: '1.2', color: '#111827' }}>
+            {positionName || 'Job Card'}
           </div>
+          {route && (
+            <div style={{ fontSize: '13px', color: '#374151', marginTop: '4px' }}>{route}</div>
+          )}
           {siteLine && (
-            <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '5px' }}>{siteLine}</div>
+            <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '3px' }}>{siteLine}</div>
           )}
         </div>
-        <div style={{ textAlign: 'right', fontSize: '11px', color: '#374151', maxWidth: '260px', paddingLeft: '20px', flexShrink: 0 }}>
-          {specialInstructions && (
-            <div style={{ marginBottom: '4px', lineHeight: '1.5' }}>
-              <span style={{ fontWeight: '700' }}>Special Instructions:</span>{' '}{specialInstructions}
-            </div>
-          )}
-          <div style={{ color: '#9ca3af', marginTop: '2px' }}>Revised: {fmtDate(revisedDate)}</div>
+        <div style={{
+          display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+          textAlign: 'right', fontSize: '11px', color: '#374151',
+          maxWidth: '260px', paddingLeft: '20px', flexShrink: 0,
+        }}>
+          <div>
+            {specialInstructions && (
+              <div style={{ lineHeight: '1.5' }}>
+                <span style={{ fontWeight: '700' }}>Special Instructions:</span>{' '}{specialInstructions}
+              </div>
+            )}
+          </div>
+          <div style={{ color: '#9ca3af' }}>Revised: {fmtDate(revisedDate)}</div>
         </div>
       </div>
       <div style={{ borderTop: '3px solid #111827', marginBottom: '14px' }} />
@@ -287,65 +299,37 @@ function PrintTasksPage({
         </div>
       </div>
 
-      {/* Core Details | Detail Schedule — always render, two equal columns */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
-        <div>
-          <div style={pSecStyle}>Core Details</div>
+      {/* Area Schedule — unified table */}
+      <div>
+        <div style={pSecStyle}>Area Schedule</div>
+        {coreDetails.length === 0 || serviceDays.length === 0 ? (
+          <span style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>No schedule defined</span>
+        ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={{ ...pThStyle, width: '35%' }}>Core</th>
                 <th style={pThStyle}>Area / Location</th>
+                {serviceDays.map(day => (
+                  <th key={day} style={{ ...pThStyle, textAlign: 'center', width: '48px' }}>
+                    {lang === 'alt' ? (DAY_ES[day] ?? day) : day}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {coreDetails.length === 0 ? (
-                <tr>
-                  <td colSpan={2} style={{ ...pTdStyle, color: '#6b7280', fontStyle: 'italic' }}>
-                    No cores defined
-                  </td>
-                </tr>
-              ) : (
-                coreDetails.map((c, idx) => (
-                  <tr key={idx}>
-                    <td style={pTdStyle}>{c.day_period || `Core ${idx + 1}`}</td>
-                    <td style={pTdStyle}>{coreArea(c)}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div>
-          <div style={pSecStyle}>Detail Schedule</div>
-          {coreDetails.length === 0 || serviceDays.length === 0 ? (
-            <span style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>No schedule defined</span>
-          ) : (
-            <table style={{ borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={{ ...pThStyle, minWidth: '70px' }}>Core</th>
+              {coreDetails.map((c, coreIdx) => (
+                <tr key={coreIdx}>
+                  <td style={pTdStyle}>{coreArea(c)}</td>
                   {serviceDays.map(day => (
-                    <th key={day} style={{ ...pThStyle, minWidth: '36px', textAlign: 'center' }}>{day}</th>
+                    <td key={day} style={{ ...pTdStyle, textAlign: 'center', fontWeight: '700', fontSize: '14px' }}>
+                      {scheduleAssignments[day] === coreIdx ? '✓' : ''}
+                    </td>
                   ))}
                 </tr>
-              </thead>
-              <tbody>
-                {coreDetails.map((c, coreIdx) => (
-                  <tr key={coreIdx}>
-                    <td style={pTdStyle}>{c.day_period || `C${coreIdx + 1}`}</td>
-                    {serviceDays.map(day => (
-                      <td key={day} style={{ ...pTdStyle, textAlign: 'center', fontWeight: '700', fontSize: '14px' }}>
-                        {scheduleAssignments[day] === coreIdx ? '✓' : ''}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </>
   )
@@ -384,7 +368,7 @@ export default function PrintView({
       <style>{`
         * { box-sizing: border-box; }
         body { margin: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        @page { size: letter portrait; margin: 0.5in; }
+        @page { size: letter portrait; margin: 0; }
         @media print { .jc-page { break-before: page; page-break-before: always; } }
       `}</style>
 

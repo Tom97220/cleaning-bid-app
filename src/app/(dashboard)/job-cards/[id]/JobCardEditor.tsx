@@ -814,98 +814,92 @@ export default function JobCardEditor({
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <p className={lbl}>Core Details</p>
+                <p className={lbl}>Area Schedule</p>
                 <button onClick={() => setCoreDetails(p => [
-                  ...p, { localId: uid(), day_period: `Core ${p.length + 1}`, zone_area: '', zone_area_alt: '' }
+                  ...p, { localId: uid(), day_period: '', zone_area: '', zone_area_alt: '' }
                 ])} className="text-xs font-medium text-brand-600 hover:text-brand-800 flex items-center gap-1">
-                  <span className="text-base leading-none">+</span> Add Core
+                  <span className="text-base leading-none">+</span> Add Row
                 </button>
               </div>
 
               {coreDetails.length === 0 ? (
-                <p className="text-sm text-gray-400 italic">No cores defined yet.</p>
+                <p className="text-sm text-gray-400 italic">No areas defined yet.</p>
               ) : (
-                <div className="space-y-2">
-                  {coreDetails.map((r, i) => (
-                    <div key={r.localId} className="flex items-start gap-3">
-                      <div className="mt-1">
-                        <UpDownDel
-                          onUp={() => setCoreDetails(p => moveUp(p, i))}
-                          onDown={() => setCoreDetails(p => moveDown(p, i))}
-                          onDel={() => {
-                            setCoreDetails(p => removeAt(p, i))
-                            setHdr(prev => {
-                              const assignments: Record<string, number> = {}
-                              for (const [day, idx] of Object.entries(prev.schedule_assignments)) {
-                                if (idx < i) assignments[day] = idx
-                                else if (idx > i) assignments[day] = idx - 1
-                              }
-                              return { ...prev, schedule_assignments: assignments }
-                            })
-                          }}
-                          first={i === 0} last={i === coreDetails.length - 1}
-                        />
-                      </div>
-                      <div className="w-28 flex-shrink-0">
-                        <input type="text" value={r.day_period}
-                          onChange={e => setCoreDetails(p => p.map((x, j) => j === i ? { ...x, day_period: e.target.value } : x))}
-                          placeholder={`Core ${i + 1}`} maxLength={30} className={`${inp} w-full`} />
-                      </div>
-                      <div className="flex-1">
-                        <input type="text" value={r.zone_area}
-                          onChange={e => setCoreDetails(p => p.map((x, j) => j === i ? { ...x, zone_area: e.target.value } : x))}
-                          placeholder="Area / Location" maxLength={50} className={`${inp} w-full`} />
-                        {r.zone_area_alt && (
-                          <p className="mt-0.5 text-xs text-indigo-600 italic">
-                            <span className="font-semibold">ES:</span> {r.zone_area_alt}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {hdr.service_days.length > 0 && coreDetails.length > 0 && (
-              <div>
-                <p className={`${lbl} mb-2`}>Detail Schedule — assign one core per service day</p>
                 <div className="overflow-x-auto">
-                  <table className="text-xs border-collapse">
+                  <table className="text-xs border-collapse w-full">
                     <thead>
                       <tr>
-                        <th className="border border-gray-200 px-3 py-1.5 text-left text-gray-600 font-semibold bg-gray-50 w-32">Core</th>
+                        <th className="border border-gray-200 px-3 py-1.5 text-left text-gray-600 font-semibold bg-gray-50">
+                          Area / Location
+                        </th>
                         {hdr.service_days.map(day => (
-                          <th key={day} className="border border-gray-200 px-3 py-1.5 text-center text-gray-600 font-semibold bg-gray-50 w-14">{day}</th>
+                          <th key={day} className="border border-gray-200 px-3 py-1.5 text-center text-gray-600 font-semibold bg-gray-50 w-12">
+                            {day}
+                          </th>
                         ))}
+                        <th className="w-8 border-0" />
                       </tr>
                     </thead>
                     <tbody>
                       {coreDetails.map((core, coreIdx) => (
                         <tr key={core.localId}>
-                          <td className="border border-gray-200 px-3 py-1.5 text-gray-700 font-medium">
-                            {core.day_period || `Core ${coreIdx + 1}`}
+                          <td className="border border-gray-200 px-2 py-1">
+                            <input
+                              type="text"
+                              value={core.zone_area}
+                              onChange={e => setCoreDetails(p => p.map((x, j) => j === coreIdx ? { ...x, zone_area: e.target.value } : x))}
+                              placeholder="Area or location"
+                              maxLength={50}
+                              className={`${inp} w-full`}
+                            />
+                            {core.zone_area_alt && (
+                              <p className="mt-0.5 text-xs text-indigo-600 italic">
+                                <span className="font-semibold">ES:</span> {core.zone_area_alt}
+                              </p>
+                            )}
                           </td>
                           {hdr.service_days.map(day => {
-                            const assigned = hdr.schedule_assignments[day] === coreIdx
+                            const checked = hdr.schedule_assignments[day] === coreIdx
                             return (
-                              <td key={day} className="border border-gray-200 px-3 py-1.5 text-center">
-                                <button type="button"
-                                  onClick={() => setAssignment(day, assigned ? null : coreIdx)}
-                                  className={`w-5 h-5 rounded-full border-2 transition-colors mx-auto block ${
-                                    assigned ? 'bg-brand-600 border-brand-600' : 'bg-white border-gray-300 hover:border-brand-400'
-                                  }`}
+                              <td key={day} className="border border-gray-200 px-3 py-1 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => setAssignment(day, checked ? null : coreIdx)}
+                                  className="w-4 h-4 accent-brand-600 cursor-pointer"
                                 />
                               </td>
                             )
                           })}
+                          <td className="px-1 border-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCoreDetails(p => removeAt(p, coreIdx))
+                                setHdr(prev => {
+                                  const assignments: Record<string, number> = {}
+                                  for (const [day, idx] of Object.entries(prev.schedule_assignments)) {
+                                    if (idx < coreIdx) assignments[day] = idx
+                                    else if (idx > coreIdx) assignments[day] = idx - 1
+                                  }
+                                  return { ...prev, schedule_assignments: assignments }
+                                })
+                              }}
+                              className="p-0.5 rounded hover:bg-red-50 text-gray-300 hover:text-red-400"
+                              title="Delete row"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
