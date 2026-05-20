@@ -85,8 +85,8 @@ const pSecStyle: React.CSSProperties = {
 
 // ─── Print: Page wrapper ──────────────────────────────────────────────────────
 
-function PrintPage({ children, pageNum, totalPages, first = false }: {
-  children: React.ReactNode; pageNum: number; totalPages: number; first?: boolean
+function PrintPage({ children, first = false }: {
+  children: React.ReactNode; first?: boolean
 }) {
   return (
     <div
@@ -95,15 +95,10 @@ function PrintPage({ children, pageNum, totalPages, first = false }: {
         fontFamily: 'Arial, Helvetica, sans-serif',
         padding: '0.75in',
         minHeight: '11in',
-        display: 'flex',
-        flexDirection: 'column',
         boxSizing: 'border-box',
       }}
     >
-      <div style={{ flex: 1 }}>{children}</div>
-      <div style={{ textAlign: 'right', fontSize: '10px', color: '#374151', paddingTop: '12px' }}>
-        Page {pageNum} of {totalPages}
-      </div>
+      {children}
     </div>
   )
 }
@@ -369,11 +364,14 @@ export default function PrintView({
         * { box-sizing: border-box; }
         body { margin: 0; background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         @page { size: letter portrait; margin: 0; }
-        @media print { .jc-page { break-before: page; page-break-before: always; } }
+        @media print {
+          html, body { margin: 0; }
+          .jc-page { break-before: page; page-break-before: always; }
+        }
       `}</style>
 
       {/* Page 1 — Route (English) */}
-      <PrintPage pageNum={1} totalPages={totalPages} first>
+      <PrintPage first>
         <PrintRoutePage
           positionName={positionName}
           route={jobCard.route ?? ''}
@@ -386,7 +384,7 @@ export default function PrintView({
       </PrintPage>
 
       {/* Page 2 — Tasks & Schedule (English) */}
-      <PrintPage pageNum={2} totalPages={totalPages}>
+      <PrintPage>
         <PrintTasksPage
           positionName={positionName}
           route={jobCard.route ?? ''}
@@ -404,7 +402,7 @@ export default function PrintView({
 
       {/* Page 3 — Route (Spanish) */}
       {isTranslated && (
-        <PrintPage pageNum={3} totalPages={4}>
+        <PrintPage>
           <PrintRoutePage
             positionName={positionName}
             route={jobCard.route ?? ''}
@@ -420,7 +418,7 @@ export default function PrintView({
 
       {/* Page 4 — Tasks & Schedule (Spanish) */}
       {isTranslated && (
-        <PrintPage pageNum={4} totalPages={4}>
+        <PrintPage>
           <PrintTasksPage
             positionName={positionName}
             route={jobCard.route ?? ''}
