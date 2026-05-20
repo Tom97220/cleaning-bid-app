@@ -267,7 +267,7 @@ function PrintTasksPage({
       {/* Daily | Detail — two equal columns */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '28px' }}>
         <div>
-          <div style={pSecStyle}>Daily</div>
+          <div style={pSecStyle}>{lang === 'alt' ? 'Diario' : 'Daily'}</div>
           {dailyTasks.length === 0 ? (
             <span style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>None</span>
           ) : (
@@ -279,7 +279,7 @@ function PrintTasksPage({
           )}
         </div>
         <div>
-          <div style={pSecStyle}>Detail</div>
+          <div style={pSecStyle}>{lang === 'alt' ? 'Detalle' : 'Detail'}</div>
           {detailTasks.length === 0 ? (
             <span style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>None</span>
           ) : (
@@ -307,7 +307,7 @@ function PrintTasksPage({
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={pThStyle}>Area / Location</th>
+                <th style={pThStyle}>{lang === 'alt' ? 'Área / Ubicación' : 'Area / Location'}</th>
                 {serviceDays.map(day => (
                   <th key={day} style={{ ...pThStyle, textAlign: 'center', width: '48px' }}>
                     {lang === 'alt' ? (DAY_ES[day] ?? day) : day}
