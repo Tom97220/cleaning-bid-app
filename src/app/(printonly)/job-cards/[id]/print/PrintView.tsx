@@ -252,7 +252,8 @@ function PrintTasksPage({
 }) {
   function text(en: string, alt: string | null) { return lang === 'en' ? en : (alt || en) }
   function coreArea(c: PrintCoreRow) {
-    return lang === 'en' ? (c.zone_area ?? '') : (c.zone_area_alt || c.zone_area || '')
+    const name = c.zone_area || c.day_period
+    return lang === 'en' ? name : (c.zone_area_alt || name)
   }
 
   return (
@@ -299,7 +300,7 @@ function PrintTasksPage({
 
       {/* Area Schedule — unified table */}
       <div>
-        <div style={pSecStyle}>Area Schedule</div>
+        <div style={pSecStyle}>{lang === 'alt' ? 'Horario de Detalle' : 'Detail Schedule'}</div>
         {coreDetails.length === 0 || serviceDays.length === 0 ? (
           <span style={{ fontSize: '12px', color: '#6b7280', fontStyle: 'italic' }}>No schedule defined</span>
         ) : (
