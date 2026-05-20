@@ -116,7 +116,7 @@ function PrintRouteHeader({
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', marginBottom: '10px' }}>
         <div>
-          <div style={{ fontSize: '22px', fontWeight: '700', lineHeight: '1.2', color: '#111827' }}>
+          <div style={{ fontSize: '24px', fontWeight: '900', lineHeight: '1.2', color: '#111827' }}>
             {positionName || 'Job Card'}
           </div>
           {route && (
