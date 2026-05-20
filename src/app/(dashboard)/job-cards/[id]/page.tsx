@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import Header from '@/components/layout/Header'
 import JobCardEditor from './JobCardEditor'
 
+export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Job Card | CleanBid Pro', robots: 'noindex' }
 
 export default async function JobCardPage({
@@ -15,10 +16,10 @@ export default async function JobCardPage({
 
   const [
     { data: jobCard },
-    { data: routeRows },
-    { data: dailyTasks },
-    { data: coreDetails },
-    { data: detailTasks },
+    { data: routeRows,   error: rrErr  },
+    { data: dailyTasks,  error: dtErr  },
+    { data: coreDetails, error: cdErr  },
+    { data: detailTasks, error: wdtErr },
     { data: prospects },
     { data: positions },
   ] = await Promise.all([
@@ -34,6 +35,17 @@ export default async function JobCardPage({
     supabase.from('prospects').select('id, company_name').order('company_name'),
     supabase.from('positions').select('id, position_name').order('position_name'),
   ])
+
+  if (rrErr)  console.error('[job-card page] job_card_route_rows error:', rrErr)
+  if (dtErr)  console.error('[job-card page] job_card_daily_tasks error:', dtErr)
+  if (cdErr)  console.error('[job-card page] job_card_detail_schedule error:', cdErr)
+  if (wdtErr) console.error('[job-card page] job_card_when_detailing error:', wdtErr)
+  console.log('[job-card page] server fetch counts for', id, {
+    routeRows:   routeRows?.length   ?? 'null',
+    dailyTasks:  dailyTasks?.length  ?? 'null',
+    coreDetails: coreDetails?.length ?? 'null',
+    detailTasks: detailTasks?.length ?? 'null',
+  })
 
   if (!jobCard) notFound()
 

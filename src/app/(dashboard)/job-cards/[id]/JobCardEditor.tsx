@@ -233,6 +233,77 @@ export default function JobCardEditor({
   // Cache: English text → Spanish translation (session-scoped)
   const translationCache = useRef<Map<string, string>>(new Map())
 
+  // Guard against saving empty state over real data (e.g. if initial load failed)
+  const initialHadData = useRef({
+    routeRows:   initialRouteRows.length   > 0,
+    dailyTasks:  initialDailyTasks.length  > 0,
+    coreDetails: initialCoreDetails.length > 0,
+    detailTasks: initialDetailTasks.length > 0,
+  })
+
+  // Client-side fallback: if server props were empty (e.g. a caching/RLS issue),
+  // fetch child records directly from Supabase on mount.
+  useEffect(() => {
+    const allEmpty =
+      initialRouteRows.length === 0 &&
+      initialDailyTasks.length === 0 &&
+      initialCoreDetails.length === 0 &&
+      initialDetailTasks.length === 0
+
+    if (!allEmpty) return
+
+    async function loadChildData() {
+      const [
+        { data: rr, error: rrErr },
+        { data: dt, error: dtErr },
+        { data: cd, error: cdErr },
+        { data: wdt, error: wdtErr },
+      ] = await Promise.all([
+        supabase.from('job_card_route_rows').select('*').eq('job_card_id', jobCard.id).order('sort_order'),
+        supabase.from('job_card_daily_tasks').select('*').eq('job_card_id', jobCard.id).order('sort_order'),
+        supabase.from('job_card_detail_schedule').select('*').eq('job_card_id', jobCard.id).order('sort_order'),
+        supabase.from('job_card_when_detailing').select('*').eq('job_card_id', jobCard.id).order('sort_order'),
+      ])
+      console.log('[JobCardEditor] client-side fallback', {
+        routesCount:   rr?.length  ?? 0,  routesError:   rrErr  ?? null,
+        tasksCount:    dt?.length  ?? 0,  tasksError:    dtErr  ?? null,
+        scheduleCount: cd?.length  ?? 0,  scheduleError: cdErr  ?? null,
+        detailsCount:  wdt?.length ?? 0,  detailsError:  wdtErr ?? null,
+      })
+
+      if (rr?.length) {
+        setRouteRows(rr.map((r: DBRouteRow) => ({
+          localId: uid(),
+          row_type: r.row_type as RouteRowType,
+          time: r.row_type === 'clock_in'  ? (jobCard.shift_start ?? '')
+              : r.row_type === 'clock_out' ? (jobCard.shift_end   ?? '')
+              : (r.time ?? ''),
+          area_location: r.area_location ?? '',
+          notes:         r.notes         ?? '',
+          notes_alt:     r.notes_alt     ?? '',
+        })))
+      }
+      if (dt?.length) {
+        setDailyTasks(dt.map((t: DBDailyTask) => ({
+          localId: uid(), description_en: t.description_en, description_alt: t.description_alt ?? '',
+        })))
+      }
+      if (cd?.length) {
+        setCoreDetails(cd.map((r: DBDetailRow) => ({
+          localId: uid(), day_period: r.day_period, zone_area: r.zone_area ?? '', zone_area_alt: r.zone_area_alt ?? '',
+        })))
+      }
+      if (wdt?.length) {
+        setDetailTasks(wdt.map((t: DBWhenDetail) => ({
+          localId: uid(), description_en: t.description_en, description_alt: t.description_alt ?? '',
+        })))
+      }
+    }
+
+    void loadChildData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Auto-sync Clock In time with shift_start
   useEffect(() => {
     setRouteRows(prev => prev.map(r =>
@@ -359,6 +430,19 @@ export default function JobCardEditor({
   async function handleSave() {
     setSaving(true); setError(null); setSaved(false)
 
+    // Abort if a section that had data on load is now empty — prevents delete-without-reinsert data loss
+    const h = initialHadData.current
+    if (
+      (h.routeRows   && routeRows.length   === 0) ||
+      (h.dailyTasks  && dailyTasks.length  === 0) ||
+      (h.coreDetails && coreDetails.length === 0) ||
+      (h.detailTasks && detailTasks.length === 0)
+    ) {
+      setError('Save blocked: one or more sections appear empty but had data when loaded. Refresh the page and try again.')
+      setSaving(false)
+      return
+    }
+
     const payload = {
       prospect_id:          hdr.prospect_id,
       building_id:          hdr.building_id          || null,
@@ -379,50 +463,43 @@ export default function JobCardEditor({
     const { error: e0 } = await supabase.from('job_cards').update(payload).eq('id', jobCard.id)
     if (e0) { setError(e0.message); setSaving(false); return }
 
-    for (const tbl of ['job_card_route_rows', 'job_card_daily_tasks', 'job_card_detail_schedule', 'job_card_when_detailing'] as const) {
+    // Build all insert payloads before deleting, so a schema error aborts
+    // before any data is lost.
+    const routeInsert = routeRows.map((r, i) => ({
+      job_card_id: jobCard.id, sort_order: i, row_type: r.row_type,
+      time: r.time || null, area_location: r.area_location || null,
+      notes: r.notes || null, notes_alt: r.notes_alt || null,
+    }))
+    const dailyInsert = dailyTasks.map((t, i) => ({
+      job_card_id: jobCard.id, sort_order: i,
+      description_en: t.description_en, description_alt: t.description_alt || null,
+    }))
+    const coreInsert = coreDetails.map((r, i) => ({
+      job_card_id: jobCard.id, sort_order: i,
+      day_period: r.day_period, zone_area: r.zone_area || null, zone_area_alt: r.zone_area_alt || null,
+    }))
+    const detailInsert = detailTasks.map((t, i) => ({
+      job_card_id: jobCard.id, sort_order: i,
+      description_en: t.description_en, description_alt: t.description_alt || null,
+    }))
+
+    // Delete then insert (within each table sequentially to preserve order).
+    const tables = [
+      { tbl: 'job_card_route_rows'     as const, rows: routeInsert  },
+      { tbl: 'job_card_daily_tasks'    as const, rows: dailyInsert  },
+      { tbl: 'job_card_detail_schedule'as const, rows: coreInsert   },
+      { tbl: 'job_card_when_detailing' as const, rows: detailInsert },
+    ]
+
+    for (const { tbl, rows } of tables) {
       const { error: de } = await supabase.from(tbl).delete().eq('job_card_id', jobCard.id)
       if (de) { setError(de.message); setSaving(false); return }
-    }
 
-    if (routeRows.length > 0) {
-      const { error: e } = await supabase.from('job_card_route_rows').insert(
-        routeRows.map((r, i) => ({
-          job_card_id: jobCard.id, sort_order: i, row_type: r.row_type,
-          time: r.time || null, area_location: r.area_location || null,
-          notes: r.notes || null, notes_alt: r.notes_alt || null,
-        }))
-      )
-      if (e) { setError(e.message); setSaving(false); return }
-    }
-
-    if (dailyTasks.length > 0) {
-      const { error: e } = await supabase.from('job_card_daily_tasks').insert(
-        dailyTasks.map((t, i) => ({
-          job_card_id: jobCard.id, sort_order: i,
-          description_en: t.description_en, description_alt: t.description_alt || null,
-        }))
-      )
-      if (e) { setError(e.message); setSaving(false); return }
-    }
-
-    if (coreDetails.length > 0) {
-      const { error: e } = await supabase.from('job_card_detail_schedule').insert(
-        coreDetails.map((r, i) => ({
-          job_card_id: jobCard.id, sort_order: i,
-          day_period: r.day_period, zone_area: r.zone_area || null, zone_area_alt: r.zone_area_alt || null,
-        }))
-      )
-      if (e) { setError(e.message); setSaving(false); return }
-    }
-
-    if (detailTasks.length > 0) {
-      const { error: e } = await supabase.from('job_card_when_detailing').insert(
-        detailTasks.map((t, i) => ({
-          job_card_id: jobCard.id, sort_order: i,
-          description_en: t.description_en, description_alt: t.description_alt || null,
-        }))
-      )
-      if (e) { setError(e.message); setSaving(false); return }
+      if (rows.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: ie } = await supabase.from(tbl).insert(rows as any[])
+        if (ie) { setError(ie.message); setSaving(false); return }
+      }
     }
 
     setSaved(true); setSaving(false)
