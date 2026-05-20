@@ -20,8 +20,8 @@ export default function BuildingTabNav({
 
   const tabs = [
     { label: 'Areas',     href: base,                     active: isAreas    },
-    { label: 'Job Cards', href: `${base}?tab=jobcards`,   active: isJobCards },
     { label: 'Bid',       href: `${base}/bid`,            active: isBid      },
+    { label: 'Job Cards', href: `${base}?tab=jobcards`,   active: isJobCards },
   ]
 
   return (
