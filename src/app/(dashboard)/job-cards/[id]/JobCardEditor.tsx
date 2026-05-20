@@ -78,15 +78,16 @@ const selCls = 'border border-gray-200 rounded px-1 py-1 text-sm bg-white focus:
 
 // ─── TimePicker ───────────────────────────────────────────────────────────────
 
-function TimePicker({ value, onChange, disabled }: {
+function TimePicker({ value, onChange, disabled, defaultAmPm = 'AM' }: {
   value: string
   onChange: (v: string) => void
   disabled?: boolean
+  defaultAmPm?: 'AM' | 'PM'
 }) {
   const m      = value ? value.match(/^(\d+):(\d+)\s*(AM|PM)$/i) : null
   const hour   = m ? m[1] : ''
   const minute = m ? m[2] : '00'
-  const ampm   = (m ? m[3].toUpperCase() : 'AM') as 'AM' | 'PM'
+  const ampm   = (m ? m[3].toUpperCase() : defaultAmPm) as 'AM' | 'PM'
 
   function emit(h: string, min: string, ap: 'AM' | 'PM') {
     onChange(h ? `${h}:${min} ${ap}` : '')
@@ -685,6 +686,7 @@ export default function JobCardEditor({
                       <TimePicker
                         value={row.time}
                         onChange={v => setRouteRows(p => p.map((r, x) => x === i ? { ...r, time: v } : r))}
+                        defaultAmPm={(hdr.shift_start.match(/\b(AM|PM)\b/i)?.[1]?.toUpperCase() ?? 'AM') as 'AM' | 'PM'}
                       />
                     </div>
                     <div className="flex-1 min-w-0">
