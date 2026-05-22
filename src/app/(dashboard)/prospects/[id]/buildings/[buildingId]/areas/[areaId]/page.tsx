@@ -43,6 +43,9 @@ export default async function AreaDetailPage({
 
   if (!area) notFound()
 
+  const totalSqft    = (area.carpet_sqft ?? 0) + (area.tile_vct_sqft ?? 0) + (area.other_sqft ?? 0)
+  const hasTotalSqft = area.carpet_sqft != null || area.tile_vct_sqft != null || area.other_sqft != null
+
   const isAdmin   = role === 'admin'
   const lineItems = (lineItemsRaw ?? []) as unknown as TaskLineItemRow[]
 
@@ -74,13 +77,16 @@ export default async function AreaDetailPage({
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Details</h3>
           <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <InfoChip
-              label="Square Footage"
-              value={area.square_footage != null ? area.square_footage.toLocaleString() : null}
-            />
-            <InfoChip label="Frequency" value={formatFrequency(area.frequency)} />
-            <InfoChip label="Print Order" value={area.print_order} />
-            <InfoChip label="Notes" value={area.notes} />
+            <InfoChip label="Room Count"       value={area.room_count} />
+            <InfoChip label="Carpet Sq Ft"     value={area.carpet_sqft != null ? area.carpet_sqft.toLocaleString() : null} />
+            <InfoChip label="Tile / VCT Sq Ft" value={area.tile_vct_sqft != null ? area.tile_vct_sqft.toLocaleString() : null} />
+            <InfoChip label="Other Sq Ft"      value={area.other_sqft != null ? area.other_sqft.toLocaleString() : null} />
+            <InfoChip label="Total Sq Ft"      value={hasTotalSqft ? totalSqft.toLocaleString() : null} />
+            <InfoChip label="Square Footage"   value={area.square_footage != null ? area.square_footage.toLocaleString() : null} />
+            <InfoChip label="Fixtures"         value={area.fixtures} />
+            <InfoChip label="Frequency"        value={formatFrequency(area.frequency)} />
+            <InfoChip label="Print Order"      value={area.print_order} />
+            <InfoChip label="Notes"            value={area.notes} />
           </dl>
         </div>
 

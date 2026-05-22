@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import Link from 'next/link'
 import { createArea, updateArea, type ActionState } from './actions'
 import type { Area } from '@/types/area'
@@ -23,6 +23,12 @@ export default function AreaForm({
     : createArea.bind(null, buildingId, prospectId)
 
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(action, null)
+
+  const [carpetSqft,  setCarpetSqft]  = useState<number | null>(area?.carpet_sqft   ?? null)
+  const [tileVctSqft, setTileVctSqft] = useState<number | null>(area?.tile_vct_sqft ?? null)
+  const [otherSqft,   setOtherSqft]   = useState<number | null>(area?.other_sqft    ?? null)
+  const totalSqft    = (carpetSqft ?? 0) + (tileVctSqft ?? 0) + (otherSqft ?? 0)
+  const hasTotalSqft = carpetSqft != null || tileVctSqft != null || otherSqft != null
 
   const cancelHref = `/prospects/${prospectId}/buildings/${buildingId}`
 
@@ -97,6 +103,89 @@ export default function AreaForm({
               className={inputClass}
             />
             <p className="text-xs text-gray-400 mt-1">Controls report output order</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Floor &amp; Fixtures</h2>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Room Count</label>
+            <input
+              name="room_count"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={area?.room_count ?? ''}
+              placeholder="e.g. 22"
+              className={inputClass}
+            />
+            <p className="text-xs text-gray-400 mt-1">Number of rooms in this area</p>
+          </div>
+          <div>
+            <label className={labelClass}>Fixtures</label>
+            <input
+              name="fixtures"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={area?.fixtures ?? ''}
+              placeholder="e.g. 8"
+              className={inputClass}
+            />
+            <p className="text-xs text-gray-400 mt-1">Total fixture count</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 gap-4">
+          <div>
+            <label className={labelClass}>Carpet Sq Ft</label>
+            <input
+              name="carpet_sqft"
+              type="number"
+              min="0"
+              step="any"
+              defaultValue={area?.carpet_sqft ?? ''}
+              placeholder="0"
+              className={inputClass}
+              onChange={(e) => setCarpetSqft(e.target.value ? parseFloat(e.target.value) : null)}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Tile / VCT Sq Ft</label>
+            <input
+              name="tile_vct_sqft"
+              type="number"
+              min="0"
+              step="any"
+              defaultValue={area?.tile_vct_sqft ?? ''}
+              placeholder="0"
+              className={inputClass}
+              onChange={(e) => setTileVctSqft(e.target.value ? parseFloat(e.target.value) : null)}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Other Sq Ft</label>
+            <input
+              name="other_sqft"
+              type="number"
+              min="0"
+              step="any"
+              defaultValue={area?.other_sqft ?? ''}
+              placeholder="0"
+              className={inputClass}
+              onChange={(e) => setOtherSqft(e.target.value ? parseFloat(e.target.value) : null)}
+            />
+            <p className="text-xs text-gray-400 mt-1">Concrete, wood, rubber, etc.</p>
+          </div>
+          <div>
+            <label className={labelClass}>Total Sq Ft</label>
+            <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700 tabular-nums">
+              {hasTotalSqft ? totalSqft.toLocaleString() : '—'}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Carpet + Tile/VCT + Other</p>
           </div>
         </div>
       </section>

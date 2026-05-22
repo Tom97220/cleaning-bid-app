@@ -20,15 +20,25 @@ async function assertAdmin(): Promise<ActionState> {
 }
 
 function extractAreaData(formData: FormData) {
-  const sqftStr  = (formData.get('square_footage') as string)?.trim()
-  const freqStr  = (formData.get('frequency') as string)?.trim()
-  const orderStr = (formData.get('print_order') as string)?.trim()
+  const sqftStr     = (formData.get('square_footage') as string)?.trim()
+  const freqStr     = (formData.get('frequency') as string)?.trim()
+  const orderStr    = (formData.get('print_order') as string)?.trim()
+  const roomCntStr  = (formData.get('room_count') as string)?.trim()
+  const carpetStr   = (formData.get('carpet_sqft') as string)?.trim()
+  const tileStr     = (formData.get('tile_vct_sqft') as string)?.trim()
+  const otherStr    = (formData.get('other_sqft') as string)?.trim()
+  const fixturesStr = (formData.get('fixtures') as string)?.trim()
   return {
     area_name:      (formData.get('area_name') as string).trim(),
-    square_footage: sqftStr  ? parseFloat(sqftStr)    : null,
-    frequency:      freqStr  ? parseInt(freqStr, 10)  : null,
-    print_order:    orderStr ? parseInt(orderStr, 10) : null,
+    square_footage: sqftStr    ? parseFloat(sqftStr)    : null,
+    frequency:      freqStr    ? parseInt(freqStr, 10)  : null,
+    print_order:    orderStr   ? parseInt(orderStr, 10) : null,
     notes:          (formData.get('notes') as string)?.trim() || null,
+    room_count:    roomCntStr  ? parseInt(roomCntStr, 10)  : null,
+    carpet_sqft:   carpetStr   ? parseFloat(carpetStr)     : null,
+    tile_vct_sqft: tileStr     ? parseFloat(tileStr)       : null,
+    other_sqft:    otherStr    ? parseFloat(otherStr)      : null,
+    fixtures:      fixturesStr ? parseInt(fixturesStr, 10) : null,
   }
 }
 
