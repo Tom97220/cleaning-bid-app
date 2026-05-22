@@ -4,8 +4,15 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/supabase/auth'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import type { Area } from '@/types/area'
 
 export type ActionState = { error: string } | null
+
+export type AreaPatch = Partial<Pick<Area,
+  | 'area_name' | 'room_count' | 'carpet_sqft' | 'tile_vct_sqft'
+  | 'other_sqft' | 'fixtures' | 'frequency' | 'print_order'
+  | 'notes' | 'square_footage'
+>>
 
 async function assertAuthenticated(): Promise<ActionState> {
   const role = await getUserRole()
@@ -100,5 +107,19 @@ export async function deleteArea(
   if (error) return { error: error.message }
 
   revalidatePath(buildingPath(prospectId, buildingId))
+  return null
+}
+
+export async function updateAreaField(
+  id: string,
+  patch: AreaPatch,
+): Promise<ActionState> {
+  const authError = await assertAuthenticated()
+  if (authError) return authError
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('areas').update(patch).eq('id', id)
+  if (error) return { error: error.message }
+
   return null
 }

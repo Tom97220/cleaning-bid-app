@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/supabase/auth'
 import Header from '@/components/layout/Header'
-import AreaList from './areas/AreaList'
+import AreaSpreadsheet from './areas/AreaSpreadsheet'
 import BuildingTabNav from './BuildingTabNav'
 import type { BuildingRow } from '@/types/building'
 
@@ -95,9 +95,9 @@ export default async function BuildingDetailPage({
 
       <BuildingTabNav prospectId={id} buildingId={buildingId} activeTab={tab} />
 
-      <div className="p-6 space-y-6 max-w-5xl">
+      <div className="p-6 space-y-6">
         {/* Info Cards — always visible */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-5xl">
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Details</h3>
             <dl className="space-y-2">
@@ -134,7 +134,7 @@ export default async function BuildingDetailPage({
 
         {/* Tab content */}
         {showJobCards ? (
-          <div className="space-y-3">
+          <div className="space-y-3 max-w-5xl">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-gray-800">
                 Job Cards
@@ -194,20 +194,12 @@ export default async function BuildingDetailPage({
             )}
           </div>
         ) : (
-          <div className="space-y-3">
-            <h2 className="text-base font-semibold text-gray-800">
-              Areas
-              <span className="ml-2 text-sm font-normal text-gray-400">
-                ({areas?.length ?? 0})
-              </span>
-            </h2>
-            <AreaList
-              areas={areas ?? []}
-              buildingId={buildingId}
-              prospectId={id}
-              isAdmin={isAdmin}
-            />
-          </div>
+          <AreaSpreadsheet
+            areas={areas ?? []}
+            buildingId={buildingId}
+            prospectId={id}
+            isAdmin={isAdmin}
+          />
         )}
       </div>
     </div>
