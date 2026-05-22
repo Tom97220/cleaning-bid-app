@@ -1,11 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { updateAreaField, type AreaPatch } from './actions'
+import { createTaskLineItemInline, type InlineTaskData } from './[areaId]/task-line-items/actions'
 import type { Area } from '@/types/area'
-import type { TaskLineItemRow } from '@/types/task-line-item'
+import type { TaskCodeForForm, TaskLineItemRow } from '@/types/task-line-item'
+import SearchableSelect, { type SelectOption } from '@/components/ui/SearchableSelect'
 
 const TH = 'px-2 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap select-none'
 const TD = 'px-1 py-0.5'
@@ -16,16 +18,190 @@ const cellInput = [
   'hover:bg-white hover:ring-1 hover:ring-gray-200',
 ].join(' ')
 
+function InlineTaskRow({
+  areaId,
+  taskCodes,
+  defaultFrequency,
+  defaultQuantity,
+  onCreated,
+}: {
+  areaId:           string
+  taskCodes:        TaskCodeForForm[]
+  defaultFrequency: number | null
+  defaultQuantity:  number | null
+  onCreated:        (row: TaskLineItemRow) => void
+}) {
+  const [taskCodeId, setTaskCodeId]   = useState('')
+  const [taskName, setTaskName]       = useState('')
+  const [frequency, setFrequency]     = useState(defaultFrequency != null ? String(defaultFrequency) : '')
+  const [percent, setPercent]         = useState('100')
+  const [quantity, setQuantity]       = useState(defaultQuantity != null ? String(defaultQuantity) : '')
+  const [minutes, setMinutes]         = useState('')
+  const [creating, setCreating]       = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+  const [resetKey, setResetKey]       = useState(0)
+
+  const taskNameRef       = useRef<HTMLInputElement>(null)
+  const hasActiveFocusRef = useRef(false)
+  const pendingCreateRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mountedRef        = useRef(true)
+  const valuesRef         = useRef({ taskCodeId, taskName, frequency, percent, quantity, minutes })
+  valuesRef.current = { taskCodeId, taskName, frequency, percent, quantity, minutes }
+
+  useEffect(() => () => {
+    mountedRef.current = false
+    if (pendingCreateRef.current) clearTimeout(pendingCreateRef.current)
+  }, [])
+
+  const codeOptions: SelectOption[] = taskCodes.map(tc => ({
+    value:      tc.id,
+    label:      tc.task_code,
+    searchText: `${tc.task_code} ${tc.task_name}`,
+  }))
+
+  function handleFocus() {
+    hasActiveFocusRef.current = true
+    if (pendingCreateRef.current) {
+      clearTimeout(pendingCreateRef.current)
+      pendingCreateRef.current = null
+    }
+  }
+
+  function handleBlur() {
+    hasActiveFocusRef.current = false
+    pendingCreateRef.current = setTimeout(async () => {
+      if (hasActiveFocusRef.current || !mountedRef.current) return
+      const v = valuesRef.current
+      if (!v.taskName.trim()) return
+
+      setCreating(true)
+      setCreateError(null)
+
+      const tc  = taskCodes.find(t => t.id === v.taskCodeId)
+      const pct = parseInt(v.percent, 10) || 100
+      const qty = v.quantity  ? parseFloat(v.quantity)  : null
+      const min = v.minutes   ? parseFloat(v.minutes)   : null
+      const frq = v.frequency ? parseInt(v.frequency, 10) : null
+
+      const data: InlineTaskData = {
+        task_code_id: v.taskCodeId || null,
+        task_name:    v.taskName.trim(),
+        position_id:  tc?.position_id  ?? null,
+        frequency:    frq,
+        percent:      pct,
+        quantity:     qty,
+        minutes:      min,
+        measure:      tc?.unit_of_measure       ?? null,
+        type:         tc?.task_types?.type_name ?? null,
+      }
+
+      const result = await createTaskLineItemInline(areaId, data)
+      if (!mountedRef.current) return
+
+      setCreating(false)
+      if (result.error) { setCreateError(result.error); return }
+      if (result.row) {
+        onCreated(result.row)
+        setTaskCodeId('')
+        setTaskName('')
+        setFrequency(defaultFrequency != null ? String(defaultFrequency) : '')
+        setPercent('100')
+        setQuantity(defaultQuantity != null ? String(defaultQuantity) : '')
+        setMinutes('')
+        setResetKey(k => k + 1)
+      }
+    }, 200)
+  }
+
+  function handleCodeSelect(value: string) {
+    setTaskCodeId(value)
+    if (value) {
+      const tc = taskCodes.find(t => t.id === value)
+      if (tc) {
+        setTaskName(tc.task_name)
+        setMinutes(tc.production_rate != null ? String(tc.production_rate) : '')
+      }
+      setTimeout(() => taskNameRef.current?.focus(), 160)
+    }
+  }
+
+  if (creating) {
+    return (
+      <tr className="border-t border-dashed border-gray-200">
+        <td colSpan={8} className="px-4 py-2 text-center text-xs text-gray-400 italic">Saving…</td>
+      </tr>
+    )
+  }
+
+  return (
+    <>
+      {createError && (
+        <tr>
+          <td colSpan={8} className="px-3 py-1">
+            <span className="text-xs text-red-600">{createError}</span>
+          </td>
+        </tr>
+      )}
+      <tr className="border-t border-dashed border-gray-200 bg-blue-50/30">
+        <td className="px-1 py-1 min-w-[7rem]">
+          <div onFocus={handleFocus} onBlur={handleBlur}>
+            <SearchableSelect
+              key={resetKey}
+              name="inline_task_code"
+              options={codeOptions}
+              placeholder="Code…"
+              onSelect={handleCodeSelect}
+            />
+          </div>
+        </td>
+        <td className="px-1 py-1 min-w-[10rem]">
+          <input ref={taskNameRef} type="text" placeholder="Task name…"
+            value={taskName} onChange={(e) => setTaskName(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur} className={cellInput} />
+        </td>
+        <td className="px-1 py-1 w-16">
+          <input type="number" min="1" step="1" placeholder="—"
+            value={frequency} onChange={(e) => setFrequency(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-1 py-1 w-14">
+          <input type="number" min="0" max="100" step="1"
+            value={percent} onChange={(e) => setPercent(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-1 py-1 w-20">
+          <input type="number" min="0" step="any" placeholder="—"
+            value={quantity} onChange={(e) => setQuantity(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-1 py-1 w-20">
+          <input type="number" min="0" step="any" placeholder="—"
+            value={minutes} onChange={(e) => setMinutes(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-2 py-1 text-xs text-gray-400 italic">—</td>
+        <td className="px-2 py-1 text-xs text-gray-400">Tab to save</td>
+      </tr>
+    </>
+  )
+}
+
 export default function AreaSpreadsheet({
   areas: initialAreas,
   buildingId,
   prospectId,
   isAdmin: _isAdmin,
+  taskCodes,
 }: {
   areas:      Area[]
   buildingId: string
   prospectId: string
   isAdmin:    boolean
+  taskCodes:  TaskCodeForForm[]
 }) {
   const [areas, setAreas]               = useState<Area[]>(initialAreas)
   const [selectedId, setSelectedId]     = useState<string | null>(null)
@@ -93,6 +269,19 @@ export default function AreaSpreadsheet({
   }
   const totalSqft    = totals.carpet_sqft + totals.tile_vct_sqft + totals.other_sqft
   const selectedArea = areas.find((a) => a.id === selectedId)
+
+  const hasSqftBreakdown = selectedArea != null &&
+    (selectedArea.carpet_sqft != null || selectedArea.tile_vct_sqft != null || selectedArea.other_sqft != null)
+  const defaultQuantity: number | null = selectedArea == null
+    ? null
+    : hasSqftBreakdown
+      ? (selectedArea.carpet_sqft ?? 0) + (selectedArea.tile_vct_sqft ?? 0) + (selectedArea.other_sqft ?? 0)
+      : selectedArea.square_footage ?? null
+
+  function handleTaskCreated(row: TaskLineItemRow) {
+    setTasks(prev => [...prev, row])
+    setTaskCounts(prev => ({ ...prev, [row.area_id]: (prev[row.area_id] ?? 0) + 1 }))
+  }
 
   function fmt(n: number) { return n > 0 ? n.toLocaleString() : '—' }
 
@@ -292,7 +481,7 @@ export default function AreaSpreadsheet({
           ) : loadingTasks ? (
             <div className="px-4 py-8 text-center text-sm text-gray-400">Loading…</div>
           ) : (
-            <div className="overflow-x-auto">
+            <div>
               <table className="min-w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
@@ -348,17 +537,14 @@ export default function AreaSpreadsheet({
                       </tr>
                     ))
                   )}
-                  <tr className="border-t border-dashed border-gray-200">
-                    <td colSpan={8}>
-                      <Link
-                        href={`${basePath}/areas/${selectedId}/task-line-items/new`}
-                        className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-400 hover:text-brand-600 transition-colors"
-                      >
-                        <span className="text-base leading-none">+</span>
-                        <span>Add task</span>
-                      </Link>
-                    </td>
-                  </tr>
+                  <InlineTaskRow
+                    key={selectedId}
+                    areaId={selectedId!}
+                    taskCodes={taskCodes}
+                    defaultFrequency={selectedArea?.frequency ?? null}
+                    defaultQuantity={defaultQuantity}
+                    onCreated={handleTaskCreated}
+                  />
                 </tbody>
               </table>
             </div>

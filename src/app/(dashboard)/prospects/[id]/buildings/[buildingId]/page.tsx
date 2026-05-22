@@ -6,6 +6,7 @@ import Header from '@/components/layout/Header'
 import AreaSpreadsheet from './areas/AreaSpreadsheet'
 import BuildingTabNav from './BuildingTabNav'
 import type { BuildingRow } from '@/types/building'
+import type { TaskCodeForForm } from '@/types/task-line-item'
 
 export const metadata = { title: 'Building | CleanBid Pro' }
 
@@ -43,7 +44,7 @@ export default async function BuildingDetailPage({
 
   const showJobCards = tab === 'jobcards'
 
-  const [{ data: building }, { data: areas }, { data: jobCardsRaw }] = await Promise.all([
+  const [{ data: building }, { data: areas }, { data: jobCardsRaw }, { data: taskCodesRaw }] = await Promise.all([
     supabase
       .from('buildings')
       .select('*, building_types(type_name)')
@@ -60,6 +61,12 @@ export default async function BuildingDetailPage({
           .eq('building_id', buildingId)
           .order('revised_date', { ascending: false })
       : Promise.resolve({ data: null }),
+    showJobCards
+      ? Promise.resolve({ data: null })
+      : supabase
+          .from('task_codes')
+          .select('id, task_code, task_name, position_id, unit_of_measure, production_rate, description, task_types(type_name)')
+          .order('task_code'),
   ])
 
   if (!building) notFound()
@@ -199,6 +206,7 @@ export default async function BuildingDetailPage({
             buildingId={buildingId}
             prospectId={id}
             isAdmin={isAdmin}
+            taskCodes={(taskCodesRaw ?? []) as unknown as TaskCodeForForm[]}
           />
         )}
       </div>

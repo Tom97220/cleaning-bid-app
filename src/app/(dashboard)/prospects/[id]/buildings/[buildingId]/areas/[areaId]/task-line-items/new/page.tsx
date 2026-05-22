@@ -19,7 +19,7 @@ export default async function NewTaskLineItemPage({
   const [{ data: area }, { data: taskCodesRaw }, { data: positions }] = await Promise.all([
     supabase
       .from('areas')
-      .select('area_name, frequency, square_footage')
+      .select('area_name, frequency, square_footage, carpet_sqft, tile_vct_sqft, other_sqft')
       .eq('id', areaId)
       .eq('building_id', buildingId)
       .single(),
@@ -35,6 +35,11 @@ export default async function NewTaskLineItemPage({
 
   if (!area) notFound()
 
+  const hasSqftBreakdown = area.carpet_sqft != null || area.tile_vct_sqft != null || area.other_sqft != null
+  const defaultQuantity = hasSqftBreakdown
+    ? (area.carpet_sqft ?? 0) + (area.tile_vct_sqft ?? 0) + (area.other_sqft ?? 0)
+    : area.square_footage ?? null
+
   const taskCodes = (taskCodesRaw ?? []) as unknown as TaskCodeForForm[]
 
   return (
@@ -48,7 +53,7 @@ export default async function NewTaskLineItemPage({
           taskCodes={taskCodes}
           positions={positions ?? []}
           defaultFrequency={area.frequency}
-          defaultQuantity={area.square_footage}
+          defaultQuantity={defaultQuantity}
         />
       </div>
     </div>

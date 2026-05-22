@@ -25,7 +25,7 @@ export default async function EditTaskLineItemPage({
       .single(),
     supabase
       .from('areas')
-      .select('area_name, frequency, square_footage')
+      .select('area_name, frequency, square_footage, carpet_sqft, tile_vct_sqft, other_sqft')
       .eq('id', areaId)
       .eq('building_id', buildingId)
       .single(),
@@ -40,6 +40,11 @@ export default async function EditTaskLineItemPage({
   ])
 
   if (!item || !area) notFound()
+
+  const hasSqftBreakdown = area.carpet_sqft != null || area.tile_vct_sqft != null || area.other_sqft != null
+  const defaultQuantity = hasSqftBreakdown
+    ? (area.carpet_sqft ?? 0) + (area.tile_vct_sqft ?? 0) + (area.other_sqft ?? 0)
+    : area.square_footage ?? null
 
   const taskCodes = (taskCodesRaw ?? []) as unknown as TaskCodeForForm[]
 
@@ -58,7 +63,7 @@ export default async function EditTaskLineItemPage({
           taskCodes={taskCodes}
           positions={positions ?? []}
           defaultFrequency={area.frequency}
-          defaultQuantity={area.square_footage}
+          defaultQuantity={defaultQuantity}
         />
       </div>
     </div>

@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/supabase/auth'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { calculateHours } from '@/types/task-line-item'
+import { calculateHours, type TaskLineItemRow } from '@/types/task-line-item'
 
 export type ActionState = { error: string } | null
 
@@ -117,4 +117,36 @@ export async function deleteTaskLineItem(
 
   revalidatePath(areaPath(prospectId, buildingId, areaId))
   return null
+}
+
+export type InlineTaskData = {
+  task_code_id: string | null
+  task_name:    string
+  position_id:  string | null
+  frequency:    number | null
+  percent:      number
+  quantity:     number | null
+  minutes:      number | null
+  measure:      string | null
+  type:         string | null
+}
+
+export async function createTaskLineItemInline(
+  areaId: string,
+  data:   InlineTaskData,
+): Promise<{ row: TaskLineItemRow | null; error: string | null }> {
+  const role = await getUserRole()
+  if (!role) return { row: null, error: 'You must be signed in.' }
+
+  const hours = calculateHours(data.measure, data.quantity, data.minutes, data.frequency, data.percent)
+
+  const supabase = await createClient()
+  const { data: inserted, error } = await supabase
+    .from('task_line_items')
+    .insert({ ...data, area_id: areaId, ...hours })
+    .select('*, task_codes(task_code), positions(position_name)')
+    .single()
+
+  if (error) return { row: null, error: error.message }
+  return { row: inserted as unknown as TaskLineItemRow, error: null }
 }
