@@ -197,12 +197,14 @@ export default function AreaSpreadsheet({
   prospectId,
   isAdmin: _isAdmin,
   taskCodes,
+  buildingSqFt,
 }: {
-  areas:      Area[]
-  buildingId: string
-  prospectId: string
-  isAdmin:    boolean
-  taskCodes:  TaskCodeForForm[]
+  areas:        Area[]
+  buildingId:   string
+  prospectId:   string
+  isAdmin:      boolean
+  taskCodes:    TaskCodeForForm[]
+  buildingSqFt: number | null
 }) {
   const [areas, setAreas]               = useState<Area[]>(initialAreas)
   const [selectedId, setSelectedId]     = useState<string | null>(null)
@@ -315,6 +317,7 @@ export default function AreaSpreadsheet({
             No areas added yet — click &quot;+ Add Area&quot; to get started.
           </div>
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
@@ -453,6 +456,19 @@ export default function AreaSpreadsheet({
               </tfoot>
             </table>
           </div>
+          <div className="px-4 py-2.5 border-t border-gray-100 flex items-center gap-6 flex-wrap text-xs text-gray-400">
+            {buildingSqFt != null && (
+              <span>Building Total: <span className="tabular-nums text-gray-500">{buildingSqFt.toLocaleString()}</span></span>
+            )}
+            <span>Cleanable from Areas: <span className="tabular-nums text-gray-500">{totalSqft.toLocaleString()}</span></span>
+            {buildingSqFt != null && (
+              <span>Non-cleanable: <span className="tabular-nums text-gray-500">{(buildingSqFt - totalSqft).toLocaleString()}</span></span>
+            )}
+            {buildingSqFt != null && totalSqft > buildingSqFt && (
+              <span className="italic">Areas exceed building total — verify entries</span>
+            )}
+          </div>
+          </>
         )}
       </div>
 

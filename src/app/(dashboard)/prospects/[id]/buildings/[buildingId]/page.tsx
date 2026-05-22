@@ -207,6 +207,7 @@ export default async function BuildingDetailPage({
             prospectId={id}
             isAdmin={isAdmin}
             taskCodes={(taskCodesRaw ?? []) as unknown as TaskCodeForForm[]}
+            buildingSqFt={building.square_feet ?? null}
           />
         )}
       </div>
