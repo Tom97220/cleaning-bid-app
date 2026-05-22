@@ -24,6 +24,11 @@ export interface Area {
   frequency:      number | null
   print_order:    number | null
   notes:          string | null
+  room_count:     number | null
+  carpet_sqft:    number | null
+  tile_vct_sqft:  number | null
+  other_sqft:     number | null
+  fixtures:       number | null
   created_at:     string
   updated_at:     string
 }
