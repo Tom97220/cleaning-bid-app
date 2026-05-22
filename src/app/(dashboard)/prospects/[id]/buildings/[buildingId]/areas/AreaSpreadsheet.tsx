@@ -156,8 +156,9 @@ function InlineTaskRow({
         </td>
         <td className="px-1 py-1 min-w-[10rem]">
           <input ref={taskNameRef} type="text" placeholder="Task name…"
-            value={taskName} onChange={(e) => setTaskName(e.target.value)}
-            onFocus={handleFocus} onBlur={handleBlur} className={cellInput} />
+            value={taskName} readOnly
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} bg-gray-50 cursor-default focus:ring-0`} />
         </td>
         <td className="px-1 py-1 w-16">
           <input type="number" min="1" step="1" placeholder="—"

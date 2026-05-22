@@ -140,9 +140,8 @@ export default function TaskLineItemForm({
               type="text"
               required
               value={taskName}
-              onChange={(e) => setTaskName(e.target.value)}
-              placeholder="e.g. Vacuum Carpet"
-              className={inputClass}
+              readOnly
+              className={`${inputClass} bg-gray-50 cursor-default focus:ring-0`}
             />
           </div>
           <div>
