@@ -457,14 +457,14 @@ export default function AreaSpreadsheet({
             </table>
           </div>
           <div className="px-4 py-2.5 border-t border-gray-100 flex items-center gap-6 flex-wrap text-xs text-gray-400">
-            {buildingSqFt && (
+            {(buildingSqFt ?? 0) > 0 && (
               <span>Building Total: <span className="tabular-nums text-gray-500">{buildingSqFt.toLocaleString()}</span></span>
             )}
             <span>Cleanable from Areas: <span className="tabular-nums text-gray-500">{totalSqft.toLocaleString()}</span></span>
-            {buildingSqFt && (
+            {(buildingSqFt ?? 0) > 0 && (
               <span>Non-cleanable: <span className="tabular-nums text-gray-500">{(buildingSqFt - totalSqft).toLocaleString()}</span></span>
             )}
-            {buildingSqFt && totalSqft > buildingSqFt && (
+            {(buildingSqFt ?? 0) > 0 && totalSqft > buildingSqFt && (
               <span className="italic">Areas exceed building total — verify entries</span>
             )}
           </div>
