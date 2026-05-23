@@ -128,7 +128,7 @@ function InlineTaskRow({
   if (creating) {
     return (
       <tr className="border-t border-dashed border-gray-200">
-        <td colSpan={8} className="px-4 py-2 text-center text-xs text-gray-400 italic">Saving…</td>
+        <td colSpan={11} className="px-4 py-2 text-center text-xs text-gray-400 italic">Saving…</td>
       </tr>
     )
   }
@@ -137,7 +137,7 @@ function InlineTaskRow({
     <>
       {createError && (
         <tr>
-          <td colSpan={8} className="px-3 py-1">
+          <td colSpan={11} className="px-3 py-1">
             <span className="text-xs text-red-600">{createError}</span>
           </td>
         </tr>
@@ -184,6 +184,9 @@ function InlineTaskRow({
             onFocus={handleFocus} onBlur={handleBlur}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
+        <td className="px-2 py-1 text-xs text-gray-400 italic">—</td>
+        <td className="px-2 py-1 text-xs text-gray-400 italic">—</td>
+        <td className="px-2 py-1 text-xs text-gray-400 italic">—</td>
         <td className="px-2 py-1 text-xs text-gray-400 italic">—</td>
         <td className="px-2 py-1 text-xs text-gray-400">Tab to save</td>
       </tr>
@@ -502,7 +505,7 @@ export default function AreaSpreadsheet({
               <table className="min-w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {['Code', 'Task Name', 'Freq', '%', 'Qty', 'Min/unit', 'Yearly Hrs', ''].map((h) => (
+                    {['Code', 'Task Name', 'Freq', '%', 'Qty', 'Min/unit', 'Daily Hrs', 'Weekly Hrs', 'Monthly Hrs', 'Yearly Hrs', ''].map((h) => (
                       <th key={h} className={TH}>{h}</th>
                     ))}
                   </tr>
@@ -539,6 +542,15 @@ export default function AreaSpreadsheet({
                               {task.measure === 'sqft_per_hour' ? 'sf/hr' : 'min/u'}
                             </span>
                           )}
+                        </td>
+                        <td className="px-2 py-2 text-sm tabular-nums text-gray-700">
+                          {task.daily_hrs != null ? task.daily_hrs.toFixed(2) : '—'}
+                        </td>
+                        <td className="px-2 py-2 text-sm tabular-nums text-gray-700">
+                          {task.weekly_hrs != null ? task.weekly_hrs.toFixed(2) : '—'}
+                        </td>
+                        <td className="px-2 py-2 text-sm tabular-nums text-gray-700">
+                          {task.monthly_hrs != null ? task.monthly_hrs.toFixed(2) : '—'}
                         </td>
                         <td className="px-2 py-2 text-sm font-medium tabular-nums text-gray-900">
                           {task.yearly_hrs != null ? task.yearly_hrs.toFixed(2) : '—'}
