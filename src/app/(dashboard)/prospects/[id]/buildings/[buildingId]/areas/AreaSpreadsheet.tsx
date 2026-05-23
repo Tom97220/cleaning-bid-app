@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { updateAreaField, type AreaPatch } from './actions'
 import { createTaskLineItemInline, type InlineTaskData } from './[areaId]/task-line-items/actions'
 import type { Area } from '@/types/area'
+import { calculateHours } from '@/types/task-line-item'
 import type { TaskCodeForForm, TaskLineItemRow } from '@/types/task-line-item'
 import SearchableSelect, { type SelectOption } from '@/components/ui/SearchableSelect'
 
@@ -37,6 +38,7 @@ function InlineTaskRow({
   const [percent, setPercent]         = useState('100')
   const [quantity, setQuantity]       = useState(defaultQuantity != null ? String(defaultQuantity) : '')
   const [minutes, setMinutes]         = useState('')
+  const [measure, setMeasure]         = useState<string | null>(null)
   const [creating, setCreating]       = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [resetKey, setResetKey]       = useState(0)
@@ -108,6 +110,7 @@ function InlineTaskRow({
         setPercent('100')
         setQuantity(defaultQuantity != null ? String(defaultQuantity) : '')
         setMinutes('')
+        setMeasure(null)
         setResetKey(k => k + 1)
       }
     }, 200)
@@ -120,8 +123,11 @@ function InlineTaskRow({
       if (tc) {
         setTaskName(tc.task_name)
         setMinutes(tc.production_rate != null ? String(tc.production_rate) : '')
+        setMeasure(tc.unit_of_measure ?? null)
       }
       setTimeout(() => taskNameRef.current?.focus(), 160)
+    } else {
+      setMeasure(null)
     }
   }
 
@@ -131,6 +137,20 @@ function InlineTaskRow({
         <td colSpan={11} className="px-4 py-2 text-center text-xs text-gray-400 italic">Saving…</td>
       </tr>
     )
+  }
+
+  const liveHrs = measure != null
+    ? calculateHours(
+        measure,
+        quantity  ? parseFloat(quantity)    : null,
+        minutes   ? parseFloat(minutes)     : null,
+        frequency ? parseInt(frequency, 10) : null,
+        parseInt(percent, 10) || 100,
+      )
+    : null
+
+  function fmtHr(v: number | null) {
+    return v != null ? v.toFixed(2) : '—'
   }
 
   return (
@@ -184,10 +204,10 @@ function InlineTaskRow({
             onFocus={handleFocus} onBlur={handleBlur}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
-        <td className="px-2 py-1 text-xs text-gray-400 italic">—</td>
-        <td className="px-2 py-1 text-xs text-gray-400 italic">—</td>
-        <td className="px-2 py-1 text-xs text-gray-400 italic">—</td>
-        <td className="px-2 py-1 text-xs text-gray-400 italic">—</td>
+        <td className="px-2 py-1 text-sm tabular-nums text-gray-700">{fmtHr(liveHrs?.daily_hrs   ?? null)}</td>
+        <td className="px-2 py-1 text-sm tabular-nums text-gray-700">{fmtHr(liveHrs?.weekly_hrs  ?? null)}</td>
+        <td className="px-2 py-1 text-sm tabular-nums text-gray-700">{fmtHr(liveHrs?.monthly_hrs ?? null)}</td>
+        <td className="px-2 py-1 text-sm font-medium tabular-nums text-gray-900">{fmtHr(liveHrs?.yearly_hrs  ?? null)}</td>
         <td className="px-2 py-1 text-xs text-gray-400">Tab to save</td>
       </tr>
     </>
