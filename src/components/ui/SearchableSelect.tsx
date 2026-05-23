@@ -94,6 +94,14 @@ export default function SearchableSelect({
         const item = filtered[highlightedIndex - 1]
         if (item) select(item.value, item.label)
       }
+    } else if (e.key === 'Tab') {
+      if (!open || highlightedIndex < 0) return
+      if (highlightedIndex === 0) {
+        select('', '')
+      } else {
+        const item = filtered[highlightedIndex - 1]
+        if (item) select(item.value, item.label)
+      }
     } else if (e.key === 'Escape') {
       e.preventDefault()
       setOpen(false)
