@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/supabase/auth'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { calculateHours, type TaskLineItemRow } from '@/types/task-line-item'
+import { calculateHours, type TaskLineItem, type TaskLineItemRow } from '@/types/task-line-item'
 
 export type ActionState = { error: string } | null
 
@@ -149,4 +149,53 @@ export async function createTaskLineItemInline(
 
   if (error) return { row: null, error: error.message }
   return { row: inserted as unknown as TaskLineItemRow, error: null }
+}
+
+export type TaskLineItemPatch = Partial<Pick<TaskLineItem,
+  | 'task_code_id' | 'task_name' | 'position_id'
+  | 'frequency' | 'percent' | 'quantity' | 'minutes' | 'measure'
+>>
+
+export async function updateTaskLineItemField(
+  id: string,
+  patch: TaskLineItemPatch,
+): Promise<{ row: TaskLineItemRow | null; error: string | null }> {
+  const role = await getUserRole()
+  if (!role) return { row: null, error: 'You must be signed in.' }
+
+  const hourFields = ['quantity', 'minutes', 'frequency', 'percent', 'measure'] as const
+  const needsRecalc = hourFields.some(k => k in patch)
+
+  const supabase = await createClient()
+  let updateData: Record<string, unknown> = { ...patch }
+
+  if (needsRecalc) {
+    const { data: current, error: fetchError } = await supabase
+      .from('task_line_items')
+      .select('measure, quantity, minutes, frequency, percent')
+      .eq('id', id)
+      .single()
+    if (fetchError || !current) return { row: null, error: fetchError?.message ?? 'Task not found.' }
+
+    const merged = { ...current, ...patch }
+    const pct   = patch.percent ?? current.percent
+    const hours = calculateHours(
+      merged.measure   ?? null,
+      merged.quantity  ?? null,
+      merged.minutes   ?? null,
+      merged.frequency ?? null,
+      pct,
+    )
+    updateData = { ...updateData, ...hours }
+  }
+
+  const { data: updated, error } = await supabase
+    .from('task_line_items')
+    .update(updateData)
+    .eq('id', id)
+    .select('*, task_codes(task_code), positions(position_name)')
+    .single()
+
+  if (error) return { row: null, error: error.message }
+  return { row: updated as unknown as TaskLineItemRow, error: null }
 }
