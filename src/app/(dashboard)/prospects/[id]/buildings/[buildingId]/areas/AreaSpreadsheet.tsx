@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { updateAreaField, type AreaPatch } from './actions'
-import { createTaskLineItemInline, type InlineTaskData } from './[areaId]/task-line-items/actions'
+import { createTaskLineItemInline, type InlineTaskData, updateTaskLineItemField, type TaskLineItemPatch } from './[areaId]/task-line-items/actions'
 import type { Area } from '@/types/area'
 import { calculateHours } from '@/types/task-line-item'
 import type { TaskCodeForForm, TaskLineItemRow } from '@/types/task-line-item'
@@ -26,12 +26,14 @@ function InlineTaskRow({
   defaultFrequency,
   defaultQuantity,
   onCreated,
+  positions,
 }: {
   areaId:           string
   taskCodes:        TaskCodeForForm[]
   defaultFrequency: number | null
   defaultQuantity:  number | null
   onCreated:        (row: TaskLineItemRow) => void
+  positions:        Pick<Position, 'id' | 'position_name'>[]
 }) {
   const [taskCodeId, setTaskCodeId]   = useState('')
   const [taskName, setTaskName]       = useState('')
@@ -40,6 +42,7 @@ function InlineTaskRow({
   const [quantity, setQuantity]       = useState(defaultQuantity != null ? String(defaultQuantity) : '')
   const [minutes, setMinutes]         = useState('')
   const [measure, setMeasure]         = useState<string | null>(null)
+  const [positionId, setPositionId]   = useState('')
   const [creating, setCreating]       = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [resetKey, setResetKey]       = useState(0)
@@ -48,8 +51,8 @@ function InlineTaskRow({
   const hasActiveFocusRef = useRef(false)
   const pendingCreateRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef        = useRef(true)
-  const valuesRef         = useRef({ taskCodeId, taskName, frequency, percent, quantity, minutes })
-  valuesRef.current = { taskCodeId, taskName, frequency, percent, quantity, minutes }
+  const valuesRef         = useRef({ taskCodeId, taskName, positionId, frequency, percent, quantity, minutes })
+  valuesRef.current = { taskCodeId, taskName, positionId, frequency, percent, quantity, minutes }
 
   useEffect(() => () => {
     mountedRef.current = false
@@ -60,6 +63,11 @@ function InlineTaskRow({
     value:      tc.id,
     label:      tc.task_code,
     searchText: `${tc.task_code} ${tc.task_name}`,
+  }))
+
+  const positionOptions: SelectOption[] = positions.map(p => ({
+    value: p.id,
+    label: p.position_name,
   }))
 
   function handleFocus() {
@@ -89,7 +97,7 @@ function InlineTaskRow({
       const data: InlineTaskData = {
         task_code_id: v.taskCodeId || null,
         task_name:    v.taskName.trim(),
-        position_id:  tc?.position_id  ?? null,
+        position_id:  v.positionId     || null,
         frequency:    frq,
         percent:      pct,
         quantity:     qty,
@@ -112,6 +120,7 @@ function InlineTaskRow({
         setQuantity(defaultQuantity != null ? String(defaultQuantity) : '')
         setMinutes('')
         setMeasure(null)
+        setPositionId('')
         setResetKey(k => k + 1)
       }
     }, 200)
@@ -125,10 +134,12 @@ function InlineTaskRow({
         setTaskName(tc.task_name)
         setMinutes(tc.production_rate != null ? String(tc.production_rate) : '')
         setMeasure(tc.unit_of_measure ?? null)
+        setPositionId(tc.position_id ?? '')
       }
       setTimeout(() => taskNameRef.current?.focus(), 160)
     } else {
       setMeasure(null)
+      setPositionId('')
     }
   }
 
@@ -181,6 +192,18 @@ function InlineTaskRow({
             onFocus={handleFocus} onBlur={handleBlur}
             className={`${cellInput} bg-gray-50 cursor-default focus:ring-0`} />
         </td>
+        <td className="px-1 py-1 min-w-[8rem]">
+          <div onFocus={handleFocus} onBlur={handleBlur}>
+            <SearchableSelect
+              key={`pos-${taskCodeId}-${resetKey}`}
+              name="inline_position"
+              options={positionOptions}
+              defaultValue={positionId}
+              placeholder="Position…"
+              onSelect={setPositionId}
+            />
+          </div>
+        </td>
         <td className="px-1 py-1 w-16">
           <input type="number" min="1" step="1" placeholder="—"
             value={frequency} onChange={(e) => setFrequency(e.target.value)}
@@ -209,7 +232,194 @@ function InlineTaskRow({
         <td className="px-2 py-1 text-sm tabular-nums text-gray-700">{fmtHr(liveHrs?.weekly_hrs  ?? null)}</td>
         <td className="px-2 py-1 text-sm tabular-nums text-gray-700">{fmtHr(liveHrs?.monthly_hrs ?? null)}</td>
         <td className="px-2 py-1 text-sm font-medium tabular-nums text-gray-900">{fmtHr(liveHrs?.yearly_hrs  ?? null)}</td>
-        <td className="px-2 py-1 text-xs text-gray-400">Tab to save</td>
+      </tr>
+    </>
+  )
+}
+
+function SavedTaskRow({
+  task,
+  taskCodes,
+  positions,
+  onUpdated,
+}: {
+  task:      TaskLineItemRow
+  taskCodes: TaskCodeForForm[]
+  positions: Pick<Position, 'id' | 'position_name'>[]
+  onUpdated: (row: TaskLineItemRow) => void
+}) {
+  const [taskCodeId, setTaskCodeId] = useState(task.task_code_id ?? '')
+  const [taskName, setTaskName]     = useState(task.task_name)
+  const [positionId, setPositionId] = useState(task.position_id ?? '')
+  const [frequency, setFrequency]   = useState(task.frequency != null ? String(task.frequency) : '')
+  const [percent, setPercent]       = useState(String(task.percent))
+  const [quantity, setQuantity]     = useState(task.quantity != null ? String(task.quantity) : '')
+  const [minutes, setMinutes]       = useState(task.minutes != null ? String(task.minutes) : '')
+  const [measure, setMeasure]       = useState<string | null>(task.measure)
+  const [saving, setSaving]         = useState(false)
+  const [rowError, setRowError]     = useState<string | null>(null)
+  const [syncVersion, setSyncVersion] = useState(0)
+
+  const hasActiveFocusRef = useRef(false)
+  const inFlightSavesRef  = useRef(0)
+
+  useEffect(() => {
+    if (hasActiveFocusRef.current || inFlightSavesRef.current > 0) return
+    setTaskCodeId(task.task_code_id ?? '')
+    setTaskName(task.task_name)
+    setPositionId(task.position_id ?? '')
+    setFrequency(task.frequency != null ? String(task.frequency) : '')
+    setPercent(String(task.percent))
+    setQuantity(task.quantity != null ? String(task.quantity) : '')
+    setMinutes(task.minutes != null ? String(task.minutes) : '')
+    setMeasure(task.measure)
+    setSyncVersion(v => v + 1)
+  }, [task])
+
+  const codeOptions: SelectOption[] = taskCodes.map(tc => ({
+    value: tc.id, label: tc.task_code, searchText: `${tc.task_code} ${tc.task_name}`,
+  }))
+
+  const positionOptions: SelectOption[] = positions.map(p => ({
+    value: p.id, label: p.position_name,
+  }))
+
+  const liveHrs = measure != null
+    ? calculateHours(
+        measure,
+        quantity  ? parseFloat(quantity)    : null,
+        minutes   ? parseFloat(minutes)     : null,
+        frequency ? parseInt(frequency, 10) : null,
+        parseInt(percent, 10) || 100,
+      )
+    : null
+
+  function fmtHr(v: number | null) { return v != null ? v.toFixed(2) : '—' }
+
+  async function save(patch: TaskLineItemPatch) {
+    inFlightSavesRef.current++
+    setSaving(true)
+    setRowError(null)
+    try {
+      const result = await updateTaskLineItemField(task.id, patch)
+      if (result.error) { setRowError(result.error); return }
+      if (result.row && inFlightSavesRef.current === 1) onUpdated(result.row)
+    } finally {
+      inFlightSavesRef.current--
+      if (inFlightSavesRef.current === 0) setSaving(false)
+    }
+  }
+
+  async function handleCodeSelect(value: string) {
+    const tc = value ? taskCodes.find(t => t.id === value) : null
+    setTaskCodeId(value)
+    if (tc) {
+      setTaskName(tc.task_name)
+      setMinutes(tc.production_rate != null ? String(tc.production_rate) : '')
+      setMeasure(tc.unit_of_measure ?? null)
+      setPositionId(tc.position_id ?? '')
+      await save({
+        task_code_id: value,
+        task_name:    tc.task_name,
+        minutes:      tc.production_rate ?? null,
+        measure:      tc.unit_of_measure ?? null,
+        position_id:  tc.position_id     ?? null,
+      })
+    } else {
+      setTaskName('')
+      setMeasure(null)
+      setPositionId('')
+      await save({ task_code_id: null, task_name: '', minutes: null, measure: null, position_id: null })
+    }
+  }
+
+  async function handlePositionSelect(value: string) {
+    setPositionId(value)
+    await save({ position_id: value || null })
+  }
+
+  async function handleNumBlur(field: keyof TaskLineItemPatch, raw: string, isInt: boolean) {
+    const trimmed = raw.trim()
+    const value: number | null = trimmed === '' ? null : isInt ? parseInt(trimmed, 10) : parseFloat(trimmed)
+    if (value !== null && Number.isNaN(value)) return
+    await save({ [field]: value } as TaskLineItemPatch)
+  }
+
+  return (
+    <>
+      {rowError && (
+        <tr>
+          <td colSpan={11} className="px-3 py-1">
+            <span className="text-xs text-red-600">{rowError}</span>
+          </td>
+        </tr>
+      )}
+      <tr className={`hover:bg-gray-50 transition-colors${saving ? ' opacity-60' : ''}`}>
+        <td className="px-1 py-1 min-w-[7rem]">
+          <div
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={() => { hasActiveFocusRef.current = false }}
+          >
+            <SearchableSelect
+              key={`code-${syncVersion}`}
+              name={`task_code_${task.id}`}
+              options={codeOptions}
+              defaultValue={taskCodeId}
+              placeholder="Code…"
+              onSelect={handleCodeSelect}
+            />
+          </div>
+        </td>
+        <td className="px-2 py-2 text-sm font-medium text-gray-900 whitespace-nowrap">
+          {taskName || '—'}
+        </td>
+        <td className="px-1 py-1 min-w-[8rem]">
+          <div
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={() => { hasActiveFocusRef.current = false }}
+          >
+            <SearchableSelect
+              key={`pos-${syncVersion}`}
+              name={`position_${task.id}`}
+              options={positionOptions}
+              defaultValue={positionId}
+              placeholder="Position…"
+              onSelect={handlePositionSelect}
+            />
+          </div>
+        </td>
+        <td className="px-1 py-1 w-16">
+          <input type="number" min="1" step="1" placeholder="—"
+            value={frequency} onChange={e => setFrequency(e.target.value)}
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('frequency', e.target.value, true) }}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-1 py-1 w-14">
+          <input type="number" min="0" max="100" step="1"
+            value={percent} onChange={e => setPercent(e.target.value)}
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('percent', e.target.value, false) }}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-1 py-1 w-20">
+          <input type="number" min="0" step="any" placeholder="—"
+            value={quantity} onChange={e => setQuantity(e.target.value)}
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('quantity', e.target.value, false) }}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-1 py-1 w-20">
+          <input type="number" min="0" step="any" placeholder="—"
+            value={minutes} onChange={e => setMinutes(e.target.value)}
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('minutes', e.target.value, false) }}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-2 py-1 text-sm tabular-nums text-gray-700">{fmtHr(liveHrs?.daily_hrs   ?? null)}</td>
+        <td className="px-2 py-1 text-sm tabular-nums text-gray-700">{fmtHr(liveHrs?.weekly_hrs  ?? null)}</td>
+        <td className="px-2 py-1 text-sm tabular-nums text-gray-700">{fmtHr(liveHrs?.monthly_hrs ?? null)}</td>
+        <td className="px-2 py-1 text-sm font-medium tabular-nums text-gray-900">{fmtHr(liveHrs?.yearly_hrs  ?? null)}</td>
       </tr>
     </>
   )
@@ -222,7 +432,7 @@ export default function AreaSpreadsheet({
   isAdmin: _isAdmin,
   taskCodes,
   buildingSqFt,
-  positions: _positions,
+  positions,
 }: {
   areas:        Area[]
   buildingId:   string
@@ -310,6 +520,10 @@ export default function AreaSpreadsheet({
   function handleTaskCreated(row: TaskLineItemRow) {
     setTasks(prev => [...prev, row])
     setTaskCounts(prev => ({ ...prev, [row.area_id]: (prev[row.area_id] ?? 0) + 1 }))
+  }
+
+  function handleTaskUpdated(row: TaskLineItemRow) {
+    setTasks(prev => prev.map(t => t.id === row.id ? row : t))
   }
 
   function fmt(n: number) { return n > 0 ? n.toLocaleString() : '—' }
@@ -501,20 +715,12 @@ export default function AreaSpreadsheet({
       {/* Task pane */}
       {areas.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-gray-100">
             <span className="text-sm font-semibold text-gray-700">
               {selectedArea ? (
                 <>Tasks &mdash; <span className="font-normal text-gray-600">{selectedArea.area_name}</span></>
               ) : 'Tasks'}
             </span>
-            {selectedId && (
-              <Link
-                href={`${basePath}/areas/${selectedId}/task-line-items/new`}
-                className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-              >
-                + Add Task
-              </Link>
-            )}
           </div>
 
           {!selectedId ? (
@@ -528,7 +734,7 @@ export default function AreaSpreadsheet({
               <table className="min-w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {['Code', 'Task Name', 'Freq', '%', 'Qty', 'Min/unit', 'Daily Hrs', 'Weekly Hrs', 'Monthly Hrs', 'Yearly Hrs', ''].map((h) => (
+                    {['Code', 'Task Name', 'Position', 'Freq', '%', 'Qty', 'Min/unit', 'Daily Hrs', 'Weekly Hrs', 'Monthly Hrs', 'Yearly Hrs'].map((h) => (
                       <th key={h} className={TH}>{h}</th>
                     ))}
                   </tr>
@@ -536,63 +742,26 @@ export default function AreaSpreadsheet({
                 <tbody className="divide-y divide-gray-100">
                   {tasks.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-6 text-center text-sm text-gray-400">
+                      <td colSpan={11} className="px-4 py-6 text-center text-sm text-gray-400">
                         No tasks for this area.
                       </td>
                     </tr>
                   ) : (
                     tasks.map((task) => (
-                      <tr key={task.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-2 py-2 text-xs font-mono text-gray-500 whitespace-nowrap">
-                          {task.task_codes?.task_code ?? '—'}
-                        </td>
-                        <td className="px-2 py-2 text-sm font-medium text-gray-900 whitespace-nowrap">
-                          {task.task_name}
-                        </td>
-                        <td className="px-2 py-2 text-sm tabular-nums text-gray-700">
-                          {task.frequency ?? '—'}
-                        </td>
-                        <td className="px-2 py-2 text-sm tabular-nums text-gray-700">
-                          {task.percent}%
-                        </td>
-                        <td className="px-2 py-2 text-sm tabular-nums text-gray-700">
-                          {task.quantity != null ? task.quantity.toLocaleString() : '—'}
-                        </td>
-                        <td className="px-2 py-2 text-sm tabular-nums text-gray-700 whitespace-nowrap">
-                          {task.minutes != null ? task.minutes.toLocaleString() : '—'}
-                          {task.measure && (
-                            <span className="ml-1 text-xs text-gray-400">
-                              {task.measure === 'sqft_per_hour' ? 'sf/hr' : 'min/u'}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-2 py-2 text-sm tabular-nums text-gray-700">
-                          {task.daily_hrs != null ? task.daily_hrs.toFixed(2) : '—'}
-                        </td>
-                        <td className="px-2 py-2 text-sm tabular-nums text-gray-700">
-                          {task.weekly_hrs != null ? task.weekly_hrs.toFixed(2) : '—'}
-                        </td>
-                        <td className="px-2 py-2 text-sm tabular-nums text-gray-700">
-                          {task.monthly_hrs != null ? task.monthly_hrs.toFixed(2) : '—'}
-                        </td>
-                        <td className="px-2 py-2 text-sm font-medium tabular-nums text-gray-900">
-                          {task.yearly_hrs != null ? task.yearly_hrs.toFixed(2) : '—'}
-                        </td>
-                        <td className="px-2 py-2 whitespace-nowrap">
-                          <Link
-                            href={`${basePath}/areas/${selectedId}/task-line-items/${task.id}/edit`}
-                            className="text-sm text-brand-600 hover:text-brand-800 font-medium"
-                          >
-                            Edit
-                          </Link>
-                        </td>
-                      </tr>
+                      <SavedTaskRow
+                        key={task.id}
+                        task={task}
+                        taskCodes={taskCodes}
+                        positions={positions}
+                        onUpdated={handleTaskUpdated}
+                      />
                     ))
                   )}
                   <InlineTaskRow
                     key={selectedId}
                     areaId={selectedId!}
                     taskCodes={taskCodes}
+                    positions={positions}
                     defaultFrequency={selectedArea?.frequency ?? null}
                     defaultQuantity={defaultQuantity}
                     onCreated={handleTaskCreated}
