@@ -8,6 +8,7 @@ import { createTaskLineItemInline, type InlineTaskData } from './[areaId]/task-l
 import type { Area } from '@/types/area'
 import { calculateHours } from '@/types/task-line-item'
 import type { TaskCodeForForm, TaskLineItemRow } from '@/types/task-line-item'
+import type { Position } from '@/types/position'
 import SearchableSelect, { type SelectOption } from '@/components/ui/SearchableSelect'
 
 const TH = 'px-2 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap select-none'
@@ -221,6 +222,7 @@ export default function AreaSpreadsheet({
   isAdmin: _isAdmin,
   taskCodes,
   buildingSqFt,
+  positions: _positions,
 }: {
   areas:        Area[]
   buildingId:   string
@@ -228,6 +230,7 @@ export default function AreaSpreadsheet({
   isAdmin:      boolean
   taskCodes:    TaskCodeForForm[]
   buildingSqFt: number | null
+  positions:    Pick<Position, 'id' | 'position_name'>[]
 }) {
   const [areas, setAreas]               = useState<Area[]>(initialAreas)
   const [selectedId, setSelectedId]     = useState<string | null>(null)

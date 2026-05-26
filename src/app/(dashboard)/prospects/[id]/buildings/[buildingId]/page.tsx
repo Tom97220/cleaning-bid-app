@@ -44,7 +44,7 @@ export default async function BuildingDetailPage({
 
   const showJobCards = tab === 'jobcards'
 
-  const [{ data: building }, { data: areas }, { data: jobCardsRaw }, { data: taskCodesRaw }] = await Promise.all([
+  const [{ data: building }, { data: areas }, { data: jobCardsRaw }, { data: taskCodesRaw }, { data: positionsRaw }] = await Promise.all([
     supabase
       .from('buildings')
       .select('*, building_types(type_name)')
@@ -67,6 +67,9 @@ export default async function BuildingDetailPage({
           .from('task_codes')
           .select('id, task_code, task_name, position_id, unit_of_measure, production_rate, description, task_types(type_name)')
           .order('task_code'),
+    showJobCards
+      ? Promise.resolve({ data: null })
+      : supabase.from('positions').select('id, position_name').order('position_name'),
   ])
 
   if (!building) notFound()
@@ -208,6 +211,7 @@ export default async function BuildingDetailPage({
             isAdmin={isAdmin}
             taskCodes={(taskCodesRaw ?? []) as unknown as TaskCodeForForm[]}
             buildingSqFt={building.square_feet ?? null}
+            positions={positionsRaw ?? []}
           />
         )}
       </div>
