@@ -46,7 +46,6 @@ export default async function AreaDetailPage({
   const totalSqft    = (area.carpet_sqft ?? 0) + (area.tile_vct_sqft ?? 0) + (area.other_sqft ?? 0)
   const hasTotalSqft = area.carpet_sqft != null || area.tile_vct_sqft != null || area.other_sqft != null
 
-  const isAdmin   = role === 'admin'
   const lineItems = (lineItemsRaw ?? []) as unknown as TaskLineItemRow[]
 
   return (
@@ -103,7 +102,6 @@ export default async function AreaDetailPage({
             areaId={areaId}
             buildingId={buildingId}
             prospectId={id}
-            isAdmin={isAdmin}
           />
         </div>
       </div>

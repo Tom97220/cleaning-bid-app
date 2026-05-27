@@ -14,12 +14,6 @@ async function assertAuthenticated(): Promise<ActionState> {
   return null
 }
 
-async function assertAdmin(): Promise<ActionState> {
-  const role = await getUserRole()
-  if (role !== 'admin') return { error: 'Only admins can delete task line items.' }
-  return null
-}
-
 function str(fd: FormData, key: string): string | null {
   return (fd.get(key) as string)?.trim() || null
 }
@@ -108,8 +102,8 @@ export async function deleteTaskLineItem(
   buildingId: string,
   prospectId: string,
 ): Promise<ActionState> {
-  const authError = await assertAdmin()
-  if (authError) return authError
+  const role = await getUserRole()
+  if (!role) return { error: 'You must be signed in.' }
 
   const supabase = await createClient()
   const { error } = await supabase.from('task_line_items').delete().eq('id', id)

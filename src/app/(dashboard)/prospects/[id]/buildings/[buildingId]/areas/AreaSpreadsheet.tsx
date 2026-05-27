@@ -4,12 +4,14 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { updateAreaField, type AreaPatch } from './actions'
-import { createTaskLineItemInline, type InlineTaskData, updateTaskLineItemField, type TaskLineItemPatch } from './[areaId]/task-line-items/actions'
+import { createTaskLineItemInline, type InlineTaskData, updateTaskLineItemField, type TaskLineItemPatch, deleteTaskLineItem } from './[areaId]/task-line-items/actions'
 import type { Area } from '@/types/area'
 import { calculateHours } from '@/types/task-line-item'
 import type { TaskCodeForForm, TaskLineItemRow } from '@/types/task-line-item'
 import type { Position } from '@/types/position'
 import SearchableSelect, { type SelectOption } from '@/components/ui/SearchableSelect'
+
+type PendingDelete = { taskId: string; taskName: string; areaId: string; timeoutId: ReturnType<typeof setTimeout> }
 
 const TH = 'px-2 py-2.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap select-none'
 const TD = 'px-1 py-0.5'
@@ -242,11 +244,13 @@ function SavedTaskRow({
   taskCodes,
   positions,
   onUpdated,
+  onDelete,
 }: {
   task:      TaskLineItemRow
   taskCodes: TaskCodeForForm[]
   positions: Pick<Position, 'id' | 'position_name'>[]
   onUpdated: (row: TaskLineItemRow) => void
+  onDelete:  (taskId: string, taskName: string, areaId: string) => void
 }) {
   const [taskCodeId, setTaskCodeId] = useState(task.task_code_id ?? '')
   const [taskName, setTaskName]     = useState(task.task_name)
@@ -356,18 +360,28 @@ function SavedTaskRow({
       )}
       <tr className={`hover:bg-gray-50 transition-colors${saving ? ' opacity-60' : ''}`}>
         <td className="px-1 py-1 min-w-[7rem]">
-          <div
-            onFocus={() => { hasActiveFocusRef.current = true }}
-            onBlur={() => { hasActiveFocusRef.current = false }}
-          >
-            <SearchableSelect
-              key={`code-${syncVersion}`}
-              name={`task_code_${task.id}`}
-              options={codeOptions}
-              defaultValue={taskCodeId}
-              placeholder="Code…"
-              onSelect={handleCodeSelect}
-            />
+          <div className="flex items-center gap-1">
+            <div className="flex-1"
+              onFocus={() => { hasActiveFocusRef.current = true }}
+              onBlur={() => { hasActiveFocusRef.current = false }}
+            >
+              <SearchableSelect
+                key={`code-${syncVersion}`}
+                name={`task_code_${task.id}`}
+                options={codeOptions}
+                defaultValue={taskCodeId}
+                placeholder="Code…"
+                onSelect={handleCodeSelect}
+              />
+            </div>
+            <button
+              onClick={() => onDelete(task.id, task.task_name, task.area_id)}
+              tabIndex={-1}
+              title="Delete task"
+              className="shrink-0 text-gray-300 hover:text-red-500 transition-colors text-base leading-none px-0.5"
+            >
+              ×
+            </button>
           </div>
         </td>
         <td className="px-2 py-2 text-sm font-medium text-gray-900 whitespace-nowrap">
@@ -448,8 +462,15 @@ export default function AreaSpreadsheet({
   const [loadingTasks, setLoadingTasks] = useState(false)
   const [taskCounts, setTaskCounts]     = useState<Record<string, number>>({})
   const [saveError, setSaveError]       = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
+  const pendingDeleteRef = useRef<PendingDelete | null>(null)
+  pendingDeleteRef.current = pendingDelete
 
   const basePath = `/prospects/${prospectId}/buildings/${buildingId}`
+
+  useEffect(() => () => {
+    if (pendingDeleteRef.current) clearTimeout(pendingDeleteRef.current.timeoutId)
+  }, [])
 
   useEffect(() => {
     if (!initialAreas.length) return
@@ -525,6 +546,49 @@ export default function AreaSpreadsheet({
   function handleTaskUpdated(row: TaskLineItemRow) {
     setTasks(prev => prev.map(t => t.id === row.id ? row : t))
   }
+
+  function handleTaskDelete(taskId: string, taskName: string, areaId: string) {
+    const taskToDelete = tasks.find(t => t.id === taskId)!
+
+    if (pendingDeleteRef.current) {
+      clearTimeout(pendingDeleteRef.current.timeoutId)
+      const prev = pendingDeleteRef.current
+      const prevTask = tasks.find(t => t.id === prev.taskId)!
+      setPendingDelete(null)
+      setTasks(t => t.filter(r => r.id !== prev.taskId))
+      setTaskCounts(c => ({ ...c, [prev.areaId]: Math.max(0, (c[prev.areaId] ?? 0) - 1) }))
+      void (async () => {
+        const result = await deleteTaskLineItem(prev.taskId, prev.areaId, buildingId, prospectId)
+        if (result?.error) {
+          setTasks(t => [...t, prevTask])
+          setTaskCounts(c => ({ ...c, [prev.areaId]: (c[prev.areaId] ?? 0) + 1 }))
+          setSaveError(`Couldn't delete "${prev.taskName}": ${result.error}`)
+        }
+      })()
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setPendingDelete(null)
+      setTasks(t => t.filter(r => r.id !== taskId))
+      setTaskCounts(c => ({ ...c, [areaId]: Math.max(0, (c[areaId] ?? 0) - 1) }))
+      const result = await deleteTaskLineItem(taskId, areaId, buildingId, prospectId)
+      if (result?.error) {
+        setTasks(t => [...t, taskToDelete])
+        setTaskCounts(c => ({ ...c, [areaId]: (c[areaId] ?? 0) + 1 }))
+        setSaveError(`Couldn't delete "${taskName}": ${result.error}`)
+      }
+    }, 5000)
+
+    setPendingDelete({ taskId, taskName, areaId, timeoutId })
+  }
+
+  function handleUndo() {
+    if (!pendingDelete) return
+    clearTimeout(pendingDelete.timeoutId)
+    setPendingDelete(null)
+  }
+
+  const visibleTasks = tasks.filter(t => t.id !== pendingDelete?.taskId)
 
   function fmt(n: number) { return n > 0 ? n.toLocaleString() : '—' }
 
@@ -740,20 +804,21 @@ export default function AreaSpreadsheet({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {tasks.length === 0 ? (
+                  {visibleTasks.length === 0 ? (
                     <tr>
                       <td colSpan={11} className="px-4 py-6 text-center text-sm text-gray-400">
                         No tasks for this area.
                       </td>
                     </tr>
                   ) : (
-                    tasks.map((task) => (
+                    visibleTasks.map((task) => (
                       <SavedTaskRow
                         key={task.id}
                         task={task}
                         taskCodes={taskCodes}
                         positions={positions}
                         onUpdated={handleTaskUpdated}
+                        onDelete={handleTaskDelete}
                       />
                     ))
                   )}
@@ -770,6 +835,18 @@ export default function AreaSpreadsheet({
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {pendingDelete && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 text-white text-sm px-4 py-3 rounded-lg shadow-lg">
+          <span>&ldquo;{pendingDelete.taskName}&rdquo; deleted</span>
+          <button
+            onClick={handleUndo}
+            className="px-2 py-0.5 bg-white/15 hover:bg-white/25 rounded text-xs font-semibold whitespace-nowrap transition-colors"
+          >
+            Undo
+          </button>
         </div>
       )}
     </div>

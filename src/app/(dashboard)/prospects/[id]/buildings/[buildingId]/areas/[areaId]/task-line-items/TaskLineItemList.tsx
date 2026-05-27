@@ -10,13 +10,11 @@ export default function TaskLineItemList({
   areaId,
   buildingId,
   prospectId,
-  isAdmin,
 }: {
   items: TaskLineItemRow[]
   areaId: string
   buildingId: string
   prospectId: string
-  isAdmin: boolean
 }) {
   const [search, setSearch]          = useState('')
   const [deletingId, setDeletingId]  = useState<string | null>(null)
@@ -126,15 +124,13 @@ export default function TaskLineItemList({
                       >
                         Edit
                       </Link>
-                      {isAdmin && (
-                        <button
-                          onClick={() => handleDelete(item.id, item.task_name)}
-                          disabled={isPending && deletingId === item.id}
-                          className="text-sm text-red-500 hover:text-red-700 font-medium disabled:opacity-40"
-                        >
-                          {isPending && deletingId === item.id ? 'Deleting…' : 'Delete'}
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleDelete(item.id, item.task_name)}
+                        disabled={isPending && deletingId === item.id}
+                        className="text-sm text-red-500 hover:text-red-700 font-medium disabled:opacity-40"
+                      >
+                        {isPending && deletingId === item.id ? 'Deleting…' : 'Delete'}
+                      </button>
                     </div>
                   </td>
                 </tr>
