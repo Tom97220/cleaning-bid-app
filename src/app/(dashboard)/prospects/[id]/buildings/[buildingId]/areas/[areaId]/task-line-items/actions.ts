@@ -141,7 +141,10 @@ export async function createTaskLineItemInline(
     .select('*, task_codes(task_code), positions(position_name)')
     .single()
 
-  if (error) return { row: null, error: error.message }
+  if (error) {
+    if (error.code === '23505') return { row: null, error: 'Task code already exists in this area.' }
+    return { row: null, error: error.message }
+  }
   return { row: inserted as unknown as TaskLineItemRow, error: null }
 }
 
@@ -190,6 +193,9 @@ export async function updateTaskLineItemField(
     .select('*, task_codes(task_code), positions(position_name)')
     .single()
 
-  if (error) return { row: null, error: error.message }
+  if (error) {
+    if (error.code === '23505') return { row: null, error: 'Task code already exists in this area.' }
+    return { row: null, error: error.message }
+  }
   return { row: updated as unknown as TaskLineItemRow, error: null }
 }
