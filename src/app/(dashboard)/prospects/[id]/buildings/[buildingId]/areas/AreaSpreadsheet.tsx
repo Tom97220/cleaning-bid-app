@@ -49,7 +49,9 @@ function InlineTaskRow({
   const [createError, setCreateError] = useState<string | null>(null)
   const [resetKey, setResetKey]       = useState(0)
 
-  const taskNameRef       = useRef<HTMLInputElement>(null)
+  const frequencyRef      = useRef<HTMLInputElement>(null)
+  const quantityRef       = useRef<HTMLInputElement>(null)
+  const minutesRef        = useRef<HTMLInputElement>(null)
   const hasActiveFocusRef = useRef(false)
   const pendingCreateRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef        = useRef(true)
@@ -147,7 +149,13 @@ function InlineTaskRow({
         setMeasure(tc.unit_of_measure ?? null)
         setPositionId(tc.position_id ?? '')
       }
-      setTimeout(() => taskNameRef.current?.focus(), 160)
+      setTimeout(() => {
+        const v = valuesRef.current
+        if (!v.frequency)     frequencyRef.current?.focus()
+        else if (!v.quantity) quantityRef.current?.focus()
+        else if (!v.minutes)  minutesRef.current?.focus()
+        // else: all filled, no focus — natural blur-save fires
+      }, 160)
     } else {
       setMeasure(null)
       setPositionId('')
@@ -198,7 +206,7 @@ function InlineTaskRow({
           </div>
         </td>
         <td className="px-1 py-1 min-w-[10rem]">
-          <input ref={taskNameRef} type="text" placeholder="Task name…"
+          <input type="text" placeholder="Task name…"
             value={taskName} readOnly
             onFocus={handleFocus} onBlur={handleBlur}
             className={`${cellInput} bg-gray-50 cursor-default focus:ring-0`} />
@@ -216,7 +224,7 @@ function InlineTaskRow({
           </div>
         </td>
         <td className="px-1 py-1 w-16">
-          <input type="number" min="1" step="1" placeholder="—"
+          <input ref={frequencyRef} type="number" min="1" step="1" placeholder="—"
             value={frequency} onChange={(e) => setFrequency(e.target.value)}
             onFocus={handleFocus} onBlur={handleBlur}
             className={`${cellInput} tabular-nums text-right`} />
@@ -228,13 +236,13 @@ function InlineTaskRow({
             className={`${cellInput} tabular-nums text-right`} />
         </td>
         <td className="px-1 py-1 w-20">
-          <input type="number" min="0" step="any" placeholder="—"
+          <input ref={quantityRef} type="number" min="0" step="any" placeholder="—"
             value={quantity} onChange={(e) => setQuantity(e.target.value)}
             onFocus={handleFocus} onBlur={handleBlur}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
         <td className="px-1 py-1 w-20">
-          <input type="number" min="0" step="any" placeholder="—"
+          <input ref={minutesRef} type="number" min="0" step="any" placeholder="—"
             value={minutes} onChange={(e) => setMinutes(e.target.value)}
             onFocus={handleFocus} onBlur={handleBlur}
             className={`${cellInput} tabular-nums text-right`} />
