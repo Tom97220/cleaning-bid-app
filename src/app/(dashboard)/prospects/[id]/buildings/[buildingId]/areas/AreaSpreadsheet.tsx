@@ -112,7 +112,16 @@ function InlineTaskRow({
       if (!mountedRef.current) return
 
       setCreating(false)
-      if (result.error) { setCreateError(result.error); return }
+      if (result.error) {
+        setCreateError(result.error)
+        setTaskCodeId('')
+        setTaskName('')
+        setMinutes('')
+        setMeasure(null)
+        setPositionId('')
+        setResetKey(k => k + 1)
+        return
+      }
       if (result.row) {
         onCreated(result.row)
         setTaskCodeId('')
