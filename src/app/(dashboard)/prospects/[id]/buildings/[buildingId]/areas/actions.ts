@@ -123,3 +123,32 @@ export async function updateAreaField(
 
   return null
 }
+
+export type InlineAreaData = {
+  area_name:     string
+  print_order:   number | null
+  room_count:    number | null
+  carpet_sqft:   number | null
+  tile_vct_sqft: number | null
+  other_sqft:    number | null
+  fixtures:      number | null
+  frequency:     number | null
+}
+
+export async function createAreaInline(
+  buildingId: string,
+  data: InlineAreaData,
+): Promise<{ row: Area | null; error: string | null }> {
+  const authError = await assertAuthenticated()
+  if (authError) return { row: null, error: authError.error }
+
+  const supabase = await createClient()
+  const { data: row, error } = await supabase
+    .from('areas')
+    .insert({ ...data, building_id: buildingId })
+    .select()
+    .single()
+
+  if (error) return { row: null, error: error.message }
+  return { row: row as Area, error: null }
+}

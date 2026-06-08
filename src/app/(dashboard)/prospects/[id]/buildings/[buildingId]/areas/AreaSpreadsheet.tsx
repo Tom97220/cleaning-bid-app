@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { updateAreaField, type AreaPatch } from './actions'
+import { updateAreaField, createAreaInline, type AreaPatch, type InlineAreaData } from './actions'
 import { createTaskLineItemInline, type InlineTaskData, updateTaskLineItemField, type TaskLineItemPatch, deleteTaskLineItem } from './[areaId]/task-line-items/actions'
 import type { Area } from '@/types/area'
 import { calculateHours } from '@/types/task-line-item'
@@ -467,6 +466,343 @@ function SavedTaskRow({
   )
 }
 
+function SavedAreaRow({
+  area,
+  taskCount,
+  isSelected,
+  onSelect,
+  onUpdated,
+}: {
+  area:       Area
+  taskCount:  number
+  isSelected: boolean
+  onSelect:   (id: string) => void
+  onUpdated:  (patch: AreaPatch) => void
+}) {
+  const [areaName,    setAreaName]    = useState(area.area_name)
+  const [printOrder,  setPrintOrder]  = useState(area.print_order    != null ? String(area.print_order)    : '')
+  const [roomCount,   setRoomCount]   = useState(area.room_count     != null ? String(area.room_count)     : '')
+  const [carpetSqft,  setCarpetSqft]  = useState(area.carpet_sqft    != null ? String(area.carpet_sqft)    : '')
+  const [tileVctSqft, setTileVctSqft] = useState(area.tile_vct_sqft  != null ? String(area.tile_vct_sqft)  : '')
+  const [otherSqft,   setOtherSqft]   = useState(area.other_sqft     != null ? String(area.other_sqft)     : '')
+  const [fixtures,    setFixtures]    = useState(area.fixtures        != null ? String(area.fixtures)       : '')
+  const [frequency,   setFrequency]   = useState(area.frequency       != null ? String(area.frequency)      : '')
+  const [saving,   setSaving]   = useState(false)
+  const [rowError, setRowError] = useState<string | null>(null)
+
+  const hasActiveFocusRef = useRef(false)
+  const inFlightSavesRef  = useRef(0)
+  const mountedRef        = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => { mountedRef.current = false }
+  }, [])
+
+  useEffect(() => {
+    if (hasActiveFocusRef.current || inFlightSavesRef.current > 0) return
+    setAreaName(area.area_name)
+    setPrintOrder(area.print_order    != null ? String(area.print_order)   : '')
+    setRoomCount(area.room_count      != null ? String(area.room_count)    : '')
+    setCarpetSqft(area.carpet_sqft    != null ? String(area.carpet_sqft)   : '')
+    setTileVctSqft(area.tile_vct_sqft != null ? String(area.tile_vct_sqft) : '')
+    setOtherSqft(area.other_sqft      != null ? String(area.other_sqft)    : '')
+    setFixtures(area.fixtures         != null ? String(area.fixtures)      : '')
+    setFrequency(area.frequency       != null ? String(area.frequency)     : '')
+  }, [area])
+
+  const rowTotal = (parseFloat(carpetSqft) || 0)
+                 + (parseFloat(tileVctSqft) || 0)
+                 + (parseFloat(otherSqft)   || 0)
+
+  async function save(patch: AreaPatch) {
+    inFlightSavesRef.current++
+    setSaving(true)
+    setRowError(null)
+    try {
+      const result = await updateAreaField(area.id, patch)
+      if (!mountedRef.current) return
+      if (result?.error) { setRowError(result.error); return }
+      if (inFlightSavesRef.current === 1) onUpdated(patch)
+    } finally {
+      if (mountedRef.current) {
+        inFlightSavesRef.current--
+        if (inFlightSavesRef.current === 0) setSaving(false)
+      }
+    }
+  }
+
+  async function handleTextBlur(field: keyof AreaPatch, raw: string) {
+    const value = raw.trim()
+    if (!value) {
+      if (field === 'area_name') {
+        setRowError('Area name is required.')
+        setAreaName(area.area_name)
+      }
+      return
+    }
+    await save({ [field]: value } as AreaPatch)
+  }
+
+  async function handleNumBlur(field: keyof AreaPatch, raw: string, isInt: boolean) {
+    const trimmed = raw.trim()
+    const value: number | null = trimmed === '' ? null
+      : isInt ? parseInt(trimmed, 10) : parseFloat(trimmed)
+    if (value !== null && Number.isNaN(value)) return
+    await save({ [field]: value } as AreaPatch)
+  }
+
+  return (
+    <>
+      {rowError && (
+        <tr>
+          <td colSpan={10} className="px-3 py-1">
+            <span className="text-xs text-red-600">{rowError}</span>
+          </td>
+        </tr>
+      )}
+      <tr
+        onClick={() => onSelect(area.id)}
+        className={[
+          'cursor-pointer transition-colors border-l-4',
+          isSelected
+            ? 'bg-blue-50 border-l-blue-500'
+            : `hover:bg-gray-50 border-l-transparent${saving ? ' opacity-60' : ''}`,
+        ].join(' ')}
+      >
+        <td className={TD} onClick={e => e.stopPropagation()}>
+          <input type="number" min="1" step="1" placeholder="—"
+            value={printOrder} onChange={e => setPrintOrder(e.target.value)}
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('print_order', e.target.value, true) }}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className={TD} onClick={e => e.stopPropagation()}>
+          <div className="flex items-center gap-1.5">
+            <input type="text" maxLength={50}
+              value={areaName} onChange={e => setAreaName(e.target.value)}
+              onFocus={() => { hasActiveFocusRef.current = true }}
+              onBlur={e => { hasActiveFocusRef.current = false; void handleTextBlur('area_name', e.target.value) }}
+              className={cellInput} />
+            {area.notes && (
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0" title={area.notes} />
+            )}
+          </div>
+        </td>
+        <td className={TD} onClick={e => e.stopPropagation()}>
+          <input type="number" min="0" step="1" placeholder="—"
+            value={roomCount} onChange={e => setRoomCount(e.target.value)}
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('room_count', e.target.value, true) }}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className={TD} onClick={e => e.stopPropagation()}>
+          <input type="number" min="0" step="any" placeholder="—"
+            value={carpetSqft} onChange={e => setCarpetSqft(e.target.value)}
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('carpet_sqft', e.target.value, false) }}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className={TD} onClick={e => e.stopPropagation()}>
+          <input type="number" min="0" step="any" placeholder="—"
+            value={tileVctSqft} onChange={e => setTileVctSqft(e.target.value)}
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('tile_vct_sqft', e.target.value, false) }}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className={TD} onClick={e => e.stopPropagation()}>
+          <input type="number" min="0" step="any" placeholder="—"
+            value={otherSqft} onChange={e => setOtherSqft(e.target.value)}
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('other_sqft', e.target.value, false) }}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-2 py-1 text-right text-sm tabular-nums text-gray-500 pr-3">
+          {rowTotal > 0 ? rowTotal.toLocaleString() : '—'}
+        </td>
+        <td className={TD} onClick={e => e.stopPropagation()}>
+          <input type="number" min="0" step="1" placeholder="—"
+            value={fixtures} onChange={e => setFixtures(e.target.value)}
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('fixtures', e.target.value, true) }}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className={TD} onClick={e => e.stopPropagation()}>
+          <input type="number" min="1" step="1" placeholder="—"
+            value={frequency} onChange={e => setFrequency(e.target.value)}
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('frequency', e.target.value, true) }}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-2 py-1 text-center">
+          <span className="text-xs tabular-nums text-gray-500">{taskCount}</span>
+        </td>
+      </tr>
+    </>
+  )
+}
+
+function InlineAreaRow({
+  buildingId,
+  onCreated,
+}: {
+  buildingId: string
+  onCreated:  (area: Area) => void
+}) {
+  const [areaName,    setAreaName]    = useState('')
+  const [printOrder,  setPrintOrder]  = useState('')
+  const [roomCount,   setRoomCount]   = useState('')
+  const [carpetSqft,  setCarpetSqft]  = useState('')
+  const [tileVctSqft, setTileVctSqft] = useState('')
+  const [otherSqft,   setOtherSqft]   = useState('')
+  const [fixtures,    setFixtures]    = useState('')
+  const [frequency,   setFrequency]   = useState('')
+  const [creating,    setCreating]    = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+
+  const hasActiveFocusRef = useRef(false)
+  const pendingCreateRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mountedRef        = useRef(true)
+  const valuesRef         = useRef({ areaName, printOrder, roomCount, carpetSqft, tileVctSqft, otherSqft, fixtures, frequency })
+  valuesRef.current = { areaName, printOrder, roomCount, carpetSqft, tileVctSqft, otherSqft, fixtures, frequency }
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      if (pendingCreateRef.current) clearTimeout(pendingCreateRef.current)
+    }
+  }, [])
+
+  async function doCreate() {
+    if (!mountedRef.current) return
+    const v = valuesRef.current
+    if (!v.areaName.trim()) return
+
+    setCreating(true)
+    setCreateError(null)
+
+    const data: InlineAreaData = {
+      area_name:     v.areaName.trim(),
+      print_order:   v.printOrder   ? parseInt(v.printOrder, 10)  : null,
+      room_count:    v.roomCount    ? parseInt(v.roomCount, 10)   : null,
+      carpet_sqft:   v.carpetSqft   ? parseFloat(v.carpetSqft)   : null,
+      tile_vct_sqft: v.tileVctSqft  ? parseFloat(v.tileVctSqft)  : null,
+      other_sqft:    v.otherSqft    ? parseFloat(v.otherSqft)    : null,
+      fixtures:      v.fixtures     ? parseInt(v.fixtures, 10)   : null,
+      frequency:     v.frequency    ? parseInt(v.frequency, 10)  : null,
+    }
+
+    const result = await createAreaInline(buildingId, data)
+    if (!mountedRef.current) return
+
+    setCreating(false)
+    if (result.error) {
+      setCreateError(result.error)
+      return
+    }
+    if (result.row) {
+      onCreated(result.row)
+      setAreaName('')
+      setPrintOrder('')
+      setRoomCount('')
+      setCarpetSqft('')
+      setTileVctSqft('')
+      setOtherSqft('')
+      setFixtures('')
+      setFrequency('')
+    }
+  }
+
+  function handleFocus() {
+    hasActiveFocusRef.current = true
+    if (pendingCreateRef.current) {
+      clearTimeout(pendingCreateRef.current)
+      pendingCreateRef.current = null
+    }
+  }
+
+  function handleBlur() {
+    hasActiveFocusRef.current = false
+    pendingCreateRef.current = setTimeout(async () => {
+      if (hasActiveFocusRef.current || !mountedRef.current) return
+      await doCreate()
+    }, 200)
+  }
+
+  if (creating) {
+    return (
+      <tr className="border-t border-dashed border-gray-200">
+        <td colSpan={10} className="px-4 py-2 text-center text-xs text-gray-400 italic">Saving…</td>
+      </tr>
+    )
+  }
+
+  return (
+    <>
+      {createError && (
+        <tr>
+          <td colSpan={10} className="px-3 py-1">
+            <span className="text-xs text-red-600">{createError}</span>
+          </td>
+        </tr>
+      )}
+      <tr className="border-t border-dashed border-gray-200 bg-blue-50/30">
+        <td className="px-1 py-1 w-14">
+          <input type="number" min="1" step="1" placeholder="—"
+            value={printOrder} onChange={e => setPrintOrder(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-1 py-1 min-w-[10rem]">
+          <input type="text" maxLength={50} placeholder="Area name…"
+            value={areaName} onChange={e => setAreaName(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={cellInput} />
+        </td>
+        <td className="px-1 py-1 w-16">
+          <input type="number" min="0" step="1" placeholder="—"
+            value={roomCount} onChange={e => setRoomCount(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-1 py-1 w-24">
+          <input type="number" min="0" step="any" placeholder="—"
+            value={carpetSqft} onChange={e => setCarpetSqft(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-1 py-1 w-28">
+          <input type="number" min="0" step="any" placeholder="—"
+            value={tileVctSqft} onChange={e => setTileVctSqft(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-1 py-1 w-24">
+          <input type="number" min="0" step="any" placeholder="—"
+            value={otherSqft} onChange={e => setOtherSqft(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-2 py-1 text-sm tabular-nums text-gray-400">—</td>
+        <td className="px-1 py-1 w-16">
+          <input type="number" min="0" step="1" placeholder="—"
+            value={fixtures} onChange={e => setFixtures(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-1 py-1 w-16">
+          <input type="number" min="1" step="1" placeholder="—"
+            value={frequency} onChange={e => setFrequency(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-2 py-1 text-center text-xs text-gray-400">—</td>
+      </tr>
+    </>
+  )
+}
+
 export default function AreaSpreadsheet({
   areas: initialAreas,
   buildingId,
@@ -493,8 +829,6 @@ export default function AreaSpreadsheet({
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const pendingDeleteRef = useRef<PendingDelete | null>(null)
   pendingDeleteRef.current = pendingDelete
-
-  const basePath = `/prospects/${prospectId}/buildings/${buildingId}`
 
   useEffect(() => () => {
     if (pendingDeleteRef.current) clearTimeout(pendingDeleteRef.current.timeoutId)
@@ -530,21 +864,14 @@ export default function AreaSpreadsheet({
     setLoadingTasks(false)
   }
 
-  async function saveNum(areaId: string, field: keyof AreaPatch, raw: string, isInt: boolean) {
-    const trimmed = raw.trim()
-    const value: number | null = trimmed === '' ? null : isInt ? parseInt(trimmed, 10) : parseFloat(trimmed)
-    if (value !== null && Number.isNaN(value)) return
-    setAreas((prev) => prev.map((a) => a.id === areaId ? { ...a, [field]: value } : a))
-    const result = await updateAreaField(areaId, { [field]: value } as AreaPatch)
-    if (result?.error) setSaveError(result.error)
+  function handleAreaCreated(area: Area) {
+    setAreas(prev => [...prev, area])
+    setTaskCounts(prev => ({ ...prev, [area.id]: 0 }))
   }
 
-  async function saveText(areaId: string, raw: string) {
-    const value = raw.trim()
-    if (!value) return
-    setAreas((prev) => prev.map((a) => a.id === areaId ? { ...a, area_name: value } : a))
-    const result = await updateAreaField(areaId, { area_name: value })
-    if (result?.error) setSaveError(result.error)
+  // patch-merge because updateAreaField returns ActionState, not the updated row
+  function handleAreaUpdated(id: string, patch: AreaPatch) {
+    setAreas(prev => prev.map(a => a.id === id ? { ...a, ...patch } : a))
   }
 
   const totals = {
@@ -631,26 +958,14 @@ export default function AreaSpreadsheet({
 
       {/* Areas pane */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+        <div className="px-4 py-3 border-b border-gray-100">
           <span className="text-sm font-semibold text-gray-700">
             Areas
             <span className="ml-1.5 text-xs font-normal text-gray-400">({areas.length})</span>
           </span>
-          <Link
-            href={`${basePath}/areas/new`}
-            className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
-          >
-            + Add Area
-          </Link>
         </div>
 
-        {areas.length === 0 ? (
-          <div className="px-4 py-12 text-center text-sm text-gray-400">
-            No areas added yet — click &quot;+ Add Area&quot; to get started.
-          </div>
-        ) : (
-          <>
-          <div className="overflow-x-auto">
+        <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -667,110 +982,20 @@ export default function AreaSpreadsheet({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {areas.map((area) => {
-                  const rowTotal   = (area.carpet_sqft ?? 0) + (area.tile_vct_sqft ?? 0) + (area.other_sqft ?? 0)
-                  const isSelected = selectedId === area.id
-                  return (
-                    <tr
-                      key={area.id}
-                      onClick={() => selectArea(area.id)}
-                      className={[
-                        'cursor-pointer transition-colors border-l-4',
-                        isSelected
-                          ? 'bg-blue-50 border-l-blue-500'
-                          : 'hover:bg-gray-50 border-l-transparent',
-                      ].join(' ')}
-                    >
-                      <td className={TD}>
-                        <input
-                          type="number" min="1" step="1"
-                          defaultValue={area.print_order ?? ''}
-                          placeholder="—"
-                          className={`${cellInput} tabular-nums text-right`}
-                          onBlur={(e) => saveNum(area.id, 'print_order', e.target.value, true)}
-                        />
-                      </td>
-                      <td className={TD}>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="text" maxLength={50}
-                            defaultValue={area.area_name}
-                            className={cellInput}
-                            onBlur={(e) => saveText(area.id, e.target.value)}
-                          />
-                          {area.notes && (
-                            <span
-                              className="w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0"
-                              title={area.notes}
-                            />
-                          )}
-                        </div>
-                      </td>
-                      <td className={TD}>
-                        <input
-                          type="number" min="0" step="1"
-                          defaultValue={area.room_count ?? ''}
-                          placeholder="—"
-                          className={`${cellInput} tabular-nums text-right`}
-                          onBlur={(e) => saveNum(area.id, 'room_count', e.target.value, true)}
-                        />
-                      </td>
-                      <td className={TD}>
-                        <input
-                          type="number" min="0" step="any"
-                          defaultValue={area.carpet_sqft ?? ''}
-                          placeholder="—"
-                          className={`${cellInput} tabular-nums text-right`}
-                          onBlur={(e) => saveNum(area.id, 'carpet_sqft', e.target.value, false)}
-                        />
-                      </td>
-                      <td className={TD}>
-                        <input
-                          type="number" min="0" step="any"
-                          defaultValue={area.tile_vct_sqft ?? ''}
-                          placeholder="—"
-                          className={`${cellInput} tabular-nums text-right`}
-                          onBlur={(e) => saveNum(area.id, 'tile_vct_sqft', e.target.value, false)}
-                        />
-                      </td>
-                      <td className={TD}>
-                        <input
-                          type="number" min="0" step="any"
-                          defaultValue={area.other_sqft ?? ''}
-                          placeholder="—"
-                          className={`${cellInput} tabular-nums text-right`}
-                          onBlur={(e) => saveNum(area.id, 'other_sqft', e.target.value, false)}
-                        />
-                      </td>
-                      <td className="px-2 py-1 text-right text-sm tabular-nums text-gray-500 pr-3">
-                        {rowTotal > 0 ? rowTotal.toLocaleString() : '—'}
-                      </td>
-                      <td className={TD}>
-                        <input
-                          type="number" min="0" step="1"
-                          defaultValue={area.fixtures ?? ''}
-                          placeholder="—"
-                          className={`${cellInput} tabular-nums text-right`}
-                          onBlur={(e) => saveNum(area.id, 'fixtures', e.target.value, true)}
-                        />
-                      </td>
-                      <td className={TD}>
-                        <input
-                          type="number" min="1" step="1"
-                          defaultValue={area.frequency ?? ''}
-                          placeholder="—"
-                          className={`${cellInput} tabular-nums text-right`}
-                          onBlur={(e) => saveNum(area.id, 'frequency', e.target.value, true)}
-                        />
-                      </td>
-                      <td className="px-2 py-1 text-center">
-                        <span className="text-xs tabular-nums text-gray-500">
-                          {taskCounts[area.id] ?? 0}
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
+                {areas.map((area) => (
+                  <SavedAreaRow
+                    key={area.id}
+                    area={area}
+                    taskCount={taskCounts[area.id] ?? 0}
+                    isSelected={selectedId === area.id}
+                    onSelect={selectArea}
+                    onUpdated={(patch) => handleAreaUpdated(area.id, patch)}
+                  />
+                ))}
+                <InlineAreaRow
+                  buildingId={buildingId}
+                  onCreated={handleAreaCreated}
+                />
               </tbody>
               <tfoot>
                 <tr className="bg-gray-50 border-t-2 border-gray-200">
@@ -800,8 +1025,6 @@ export default function AreaSpreadsheet({
               <span className="italic">Areas exceed building total — verify entries</span>
             )}
           </div>
-          </>
-        )}
       </div>
 
       {/* Task pane */}
