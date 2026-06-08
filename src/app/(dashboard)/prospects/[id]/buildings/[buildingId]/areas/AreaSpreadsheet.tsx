@@ -58,9 +58,12 @@ function InlineTaskRow({
   const valuesRef         = useRef({ taskCodeId, taskName, positionId, frequency, percent, quantity, minutes })
   valuesRef.current = { taskCodeId, taskName, positionId, frequency, percent, quantity, minutes }
 
-  useEffect(() => () => {
-    mountedRef.current = false
-    if (pendingCreateRef.current) clearTimeout(pendingCreateRef.current)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      if (pendingCreateRef.current) clearTimeout(pendingCreateRef.current)
+    }
   }, [])
 
   const codeOptions: SelectOption[] = taskCodes.map(tc => ({
@@ -74,6 +77,60 @@ function InlineTaskRow({
     label: p.position_name,
   }))
 
+  async function doCreate() {
+    if (!mountedRef.current) return
+    const v = valuesRef.current
+    if (!v.taskName.trim()) return
+
+    setCreating(true)
+    setCreateError(null)
+
+    const tc  = taskCodes.find(t => t.id === v.taskCodeId)
+    const pct = parseInt(v.percent, 10) || 100
+    const qty = v.quantity  ? parseFloat(v.quantity)  : null
+    const min = v.minutes   ? parseFloat(v.minutes)   : null
+    const frq = v.frequency ? parseInt(v.frequency, 10) : null
+
+    const data: InlineTaskData = {
+      task_code_id: v.taskCodeId || null,
+      task_name:    v.taskName.trim(),
+      position_id:  v.positionId     || null,
+      frequency:    frq,
+      percent:      pct,
+      quantity:     qty,
+      minutes:      min,
+      measure:      tc?.unit_of_measure       ?? null,
+      type:         tc?.task_types?.type_name ?? null,
+    }
+
+    const result = await createTaskLineItemInline(areaId, data)
+    if (!mountedRef.current) return
+
+    setCreating(false)
+    if (result.error) {
+      setCreateError(result.error)
+      setTaskCodeId('')
+      setTaskName('')
+      setMinutes('')
+      setMeasure(null)
+      setPositionId('')
+      setResetKey(k => k + 1)
+      return
+    }
+    if (result.row) {
+      onCreated(result.row)
+      setTaskCodeId('')
+      setTaskName('')
+      setFrequency(defaultFrequency != null ? String(defaultFrequency) : '')
+      setPercent('100')
+      setQuantity(defaultQuantity != null ? String(defaultQuantity) : '')
+      setMinutes('')
+      setMeasure(null)
+      setPositionId('')
+      setResetKey(k => k + 1)
+    }
+  }
+
   function handleFocus() {
     hasActiveFocusRef.current = true
     if (pendingCreateRef.current) {
@@ -86,56 +143,7 @@ function InlineTaskRow({
     hasActiveFocusRef.current = false
     pendingCreateRef.current = setTimeout(async () => {
       if (hasActiveFocusRef.current || !mountedRef.current) return
-      const v = valuesRef.current
-      if (!v.taskName.trim()) return
-
-      setCreating(true)
-      setCreateError(null)
-
-      const tc  = taskCodes.find(t => t.id === v.taskCodeId)
-      const pct = parseInt(v.percent, 10) || 100
-      const qty = v.quantity  ? parseFloat(v.quantity)  : null
-      const min = v.minutes   ? parseFloat(v.minutes)   : null
-      const frq = v.frequency ? parseInt(v.frequency, 10) : null
-
-      const data: InlineTaskData = {
-        task_code_id: v.taskCodeId || null,
-        task_name:    v.taskName.trim(),
-        position_id:  v.positionId     || null,
-        frequency:    frq,
-        percent:      pct,
-        quantity:     qty,
-        minutes:      min,
-        measure:      tc?.unit_of_measure       ?? null,
-        type:         tc?.task_types?.type_name ?? null,
-      }
-
-      const result = await createTaskLineItemInline(areaId, data)
-      if (!mountedRef.current) return
-
-      setCreating(false)
-      if (result.error) {
-        setCreateError(result.error)
-        setTaskCodeId('')
-        setTaskName('')
-        setMinutes('')
-        setMeasure(null)
-        setPositionId('')
-        setResetKey(k => k + 1)
-        return
-      }
-      if (result.row) {
-        onCreated(result.row)
-        setTaskCodeId('')
-        setTaskName('')
-        setFrequency(defaultFrequency != null ? String(defaultFrequency) : '')
-        setPercent('100')
-        setQuantity(defaultQuantity != null ? String(defaultQuantity) : '')
-        setMinutes('')
-        setMeasure(null)
-        setPositionId('')
-        setResetKey(k => k + 1)
-      }
+      await doCreate()
     }, 200)
   }
 
@@ -154,7 +162,10 @@ function InlineTaskRow({
         if (!v.frequency)     frequencyRef.current?.focus()
         else if (!v.quantity) quantityRef.current?.focus()
         else if (!v.minutes)  minutesRef.current?.focus()
-        // else: all filled, no focus — natural blur-save fires
+        else {
+          if (pendingCreateRef.current) { clearTimeout(pendingCreateRef.current); pendingCreateRef.current = null }
+          void doCreate()
+        }
       }, 160)
     } else {
       setMeasure(null)
