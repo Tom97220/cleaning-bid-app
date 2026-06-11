@@ -36,7 +36,19 @@ export interface CompanyLocation {
 }
 
 interface Prospect { id: string; company_name: string }
-interface Building { id: string; building_name: string; square_feet: number | null }
+interface Building {
+  id: string
+  building_name: string
+  square_feet: number | null
+  address: string | null
+  address_2: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
+  floors: number | null
+  notes: string | null
+  service_days: number | null
+}
 
 interface TaskLineItem {
   id: string
@@ -59,6 +71,12 @@ interface Area {
   frequency: number | null
   created_at: string
   task_line_items: TaskLineItem[]
+  square_footage: number | null
+  carpet_sqft: number | null
+  tile_vct_sqft: number | null
+  other_sqft: number | null
+  fixtures: number | null
+  room_count: number | null
 }
 
 interface ReportData {
@@ -75,6 +93,7 @@ interface ReportData {
 
 const REPORT_OPTIONS = [
   { key: 'cover_page',       label: 'Cover Page',                          category: 'Document', isScope: false },
+  { key: 'pinpoint',         label: 'Pinpoint',                            category: 'Document', isScope: false },
   { key: 'scope_no_codes',   label: 'Scope of Work (without task codes)',   category: 'Workload', isScope: true  },
   { key: 'scope_with_codes', label: 'Scope of Work (with task codes)',      category: 'Workload', isScope: true  },
   { key: 'wl_summary',       label: 'Work Load Development Summary',        category: 'Workload', isScope: false },
@@ -772,6 +791,265 @@ function InvestmentRecapReport({ data, company, location }: { data: ReportData; 
   )
 }
 
+// ─── Report 7: Pinpoint ───────────────────────────────────────────────────────
+
+function PinpointReport({ data, company, location }: { data: ReportData; company: CompanySettings | null; location: CompanyLocation | null }) {
+  const { building, prospect, areas, bidLaborLines } = data
+
+  const fmtN = (n: number | null | undefined) =>
+    n == null ? '—' : n.toLocaleString('en-US', { maximumFractionDigits: 0 })
+
+  const totalCarpet = areas.reduce((s, a) => s + (a.carpet_sqft   ?? 0), 0)
+  const totalTile   = areas.reduce((s, a) => s + (a.tile_vct_sqft ?? 0), 0)
+  const totalOther  = areas.reduce((s, a) => s + (a.other_sqft    ?? 0), 0)
+  const totalFloor  = totalCarpet + totalTile + totalOther
+  const pct = (n: number) => totalFloor > 0 ? `${((n / totalFloor) * 100).toFixed(1)}%` : '—'
+
+  const serviceDays = building.service_days ?? 260
+  const staffingRows = bidLaborLines.map(line => ({
+    position: line.positions?.position_name ?? '—',
+    annual:   line.annual_hours ?? 0,
+    monthly:  (line.annual_hours ?? 0) / 12,
+    weekly:   (line.annual_hours ?? 0) / 52,
+    daily:    (line.annual_hours ?? 0) / serviceDays,
+  }))
+
+  // form cell classes for Page 1 building profile grid
+  const pL = 'px-2 py-1.5 text-xs text-gray-600 align-top border-r border-b border-gray-200'
+  const pV = 'px-2 py-1.5 text-xs text-center text-gray-900 border-b border-gray-200'
+
+  // compact cell classes for the area grid (many columns — use xs sizing)
+  const agTh  = 'border border-gray-300 px-2 py-1.5 text-left  text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+  const agThR = 'border border-gray-300 px-2 py-1.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+  const agTd  = 'border border-gray-300 px-2 py-1   text-xs text-gray-700'
+  const agTdR = 'border border-gray-300 px-2 py-1   text-xs text-right tabular-nums text-gray-700'
+
+  type GridRow = { label: string; getValue: (a: Area) => number | null | undefined; getTotal: () => number | null }
+  const gridRows: GridRow[] = [
+    { label: '# Restrooms',    getValue: () => null,            getTotal: () => null },
+    { label: '# Urinals',      getValue: () => null,            getTotal: () => null },
+    { label: '# Toilets',      getValue: () => null,            getTotal: () => null },
+    { label: '# Sinks',        getValue: () => null,            getTotal: () => null },
+    { label: '# Fountains',    getValue: () => null,            getTotal: () => null },
+    { label: '# Showers',      getValue: () => null,            getTotal: () => null },
+    // v1: restroom sqft column not in schema yet. v2 candidate: add restroom_sqft to areas table; Page 1 value should sum across areas.
+    { label: 'Restroom Sqft',  getValue: () => null,            getTotal: () => null },
+    { label: 'Carpet Sqft',    getValue: a => a.carpet_sqft,    getTotal: () => totalCarpet },
+    { label: 'Tile Sqft',      getValue: a => a.tile_vct_sqft,  getTotal: () => totalTile   },
+    { label: 'Other Sqft',     getValue: a => a.other_sqft,     getTotal: () => totalOther  },
+    { label: 'Common Sqft',    getValue: () => null,            getTotal: () => null },
+    { label: '# Rooms',        getValue: a => a.room_count,     getTotal: () => areas.reduce((s, a) => s + (a.room_count     ?? 0), 0) },
+    { label: '# Stairwells',   getValue: () => null,            getTotal: () => null },
+    { label: '# Fixtures',     getValue: a => a.fixtures,       getTotal: () => areas.reduce((s, a) => s + (a.fixtures       ?? 0), 0) },
+    { label: 'Sqft',           getValue: a => a.square_footage, getTotal: () => areas.reduce((s, a) => s + (a.square_footage ?? 0), 0) },
+    { label: 'Cleanable Sqft', getValue: () => null,            getTotal: () => null },
+  ]
+
+  return (
+    <>
+      {/* ── Page 1: Building Profile ──────────────────────────────────────── */}
+      <div className="report-section">
+        <ReportHeader title="Building Profile" prospect={prospect} building={building} company={company} location={location} />
+
+        <div className="flex gap-4 items-start">
+
+          {/* Form grid — ~60% */}
+          <div className="flex-[3] min-w-0">
+            <table className="w-full border-collapse border border-gray-300 text-xs">
+              <colgroup>
+                <col style={{ width: '30%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '28%' }} />
+                <col style={{ width: '24%' }} />
+              </colgroup>
+              <tbody>
+                <tr className="bg-blue-50">
+                  <td className={pL}>Name of Building</td>
+                  <td className={pV} colSpan={3}>{building.building_name || '—'}</td>
+                </tr>
+                <tr className="bg-blue-100">
+                  <td className={pL}>Address</td>
+                  <td className={pV} colSpan={3}>{[building.address, building.address_2].filter(Boolean).join(', ') || '—'}</td>
+                </tr>
+                <tr className="bg-blue-50">
+                  <td className={pL}>City</td>
+                  <td className={pV}>{building.city || '—'}</td>
+                  <td className={pL}>State&ensp;/&ensp;Zip</td>
+                  <td className={pV}>{[building.state, building.zip].filter(Boolean).join('  ') || '—'}</td>
+                </tr>
+                <tr className="bg-blue-100">
+                  <td className={pL}>Total square footage</td>
+                  <td className={pV}>{fmtN(building.square_feet)}</td>
+                  <td className={pL}>Number of floors</td>
+                  <td className={pV}>{building.floors != null ? String(building.floors) : '—'}</td>
+                </tr>
+                <tr className="bg-blue-50">
+                  <td className={pL}>Common area square footage</td>
+                  <td className={pV}>—</td>
+                  <td className={pL}>Number of restrooms</td>
+                  <td className={pV}>—</td>
+                </tr>
+                <tr className="bg-blue-100">
+                  <td className={pL}>Cleanable Tenant Sq. Footage</td>
+                  <td className={pV}>—</td>
+                  <td className={pL}>Number of fixtures in RR&apos;s</td>
+                  <td className={pV}>—</td>
+                </tr>
+                {/* v1: restroom sqft column not in schema yet. v2 candidate: add restroom_sqft to areas table; Page 1 value should sum across areas. */}
+                <tr className="bg-blue-50">
+                  <td className={pL}>Restroom Sqft</td>
+                  <td className={pV}>—</td>
+                  <td className={pL}>Number of toilets</td>
+                  <td className={pV}>—</td>
+                </tr>
+                <tr className="bg-blue-100">
+                  <td className={pL}>Number of stairwells</td>
+                  <td className={pV}>—</td>
+                  <td className={pL}>Number of urinals</td>
+                  <td className={pV}>—</td>
+                </tr>
+                <tr className="bg-blue-50">
+                  <td className={pL}>Stair width / Stair length</td>
+                  <td className={pV}>— / —</td>
+                  <td className={pL}>Number of sinks</td>
+                  <td className={pV}>—</td>
+                </tr>
+                <tr className="bg-blue-100">
+                  <td className={pL}>Stair square feet or #</td>
+                  <td className={pV}>—</td>
+                  <td className={pL}>Number of fountains</td>
+                  <td className={pV}>—</td>
+                </tr>
+                <tr className="bg-blue-50">
+                  <td className={pL}>Number of elevators</td>
+                  <td className={pV}>—</td>
+                  <td className={pL}>Elevator sq. footage</td>
+                  <td className={pV}>—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Right column — Floor Surface Summary */}
+          <div className="flex-[2] min-w-0">
+            <div className="border border-gray-300">
+              <div className="bg-blue-100 text-center py-1.5 text-xs font-bold uppercase tracking-widest text-gray-700 border-b border-gray-300">
+                Floor Surface Summary
+              </div>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="px-2 py-1.5 text-xs font-normal text-gray-600 text-left   border-b border-r border-gray-200 bg-blue-100">Surface</th>
+                    <th className="px-2 py-1.5 text-xs font-normal text-gray-600 text-center border-b border-r border-gray-200 bg-blue-100">Sqft</th>
+                    <th className="px-2 py-1.5 text-xs font-normal text-gray-600 text-center border-b           border-gray-200 bg-blue-100">%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="bg-blue-50">
+                    <td className={pL}>Carpet</td>
+                    <td className={pV}>{fmtN(totalCarpet)}</td>
+                    <td className={pV}>{pct(totalCarpet)}</td>
+                  </tr>
+                  <tr className="bg-blue-100">
+                    <td className={pL}>Tile / VCT</td>
+                    <td className={pV}>{fmtN(totalTile)}</td>
+                    <td className={pV}>{pct(totalTile)}</td>
+                  </tr>
+                  <tr className="bg-blue-50">
+                    <td className={pL}>Other</td>
+                    <td className={pV}>{fmtN(totalOther)}</td>
+                    <td className={pV}>{pct(totalOther)}</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td className="px-2 py-1.5 text-xs font-semibold text-gray-900 border-r border-b border-gray-200 bg-blue-200">Total</td>
+                    <td className="px-2 py-1.5 text-xs text-center font-semibold text-gray-900 border-b border-gray-200 bg-blue-200">{fmtN(totalFloor)}</td>
+                    <td className="px-2 py-1.5 text-xs text-center font-semibold text-gray-900 border-b border-gray-200 bg-blue-200">{totalFloor > 0 ? '100%' : '—'}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── Page 2: Area Grid ─────────────────────────────────────────────── */}
+      <div className="report-section pinpoint-landscape">
+        <ReportHeader title="Pinpoint — Area Grid" prospect={prospect} building={building} company={company} location={location} />
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr>
+                <th className={`${agTh} w-36`}>Area</th>
+                {areas.map(a => (
+                  <th key={a.id} className={`${agThR} whitespace-nowrap`}>{a.area_name}</th>
+                ))}
+                <th className={`${agThR} bg-gray-100 whitespace-nowrap`}>Totals</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gridRows.map(row => {
+                const total = row.getTotal()
+                return (
+                  <tr key={row.label}>
+                    <td className={agTd}>{row.label}</td>
+                    {areas.map(a => (
+                      <td key={a.id} className={agTdR}>{fmtN(row.getValue(a))}</td>
+                    ))}
+                    <td className={`${agTdR} bg-gray-50 font-semibold`}>{fmtN(total)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── Page 3: Production & Staffing Summary ─────────────────────────── */}
+      <div className="report-section">
+        <ReportHeader title="Pinpoint — Production & Staffing Summary" prospect={prospect} building={building} company={company} location={location} />
+        {staffingRows.length === 0 ? (
+          <p className="text-sm text-gray-400 italic">No staffing data available for this building.</p>
+        ) : (
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th className={th}>Position</th>
+                <th className={thR}>Annual Hrs</th>
+                <th className={thR}>Monthly Hrs</th>
+                <th className={thR}>Weekly Hrs</th>
+                <th className={thR}>Daily Hrs</th>
+              </tr>
+            </thead>
+            <tbody>
+              {staffingRows.map((row, i) => (
+                <tr key={i}>
+                  <td className={td}>{row.position}</td>
+                  <td className={tdR}>{fmtHrs(row.annual)}</td>
+                  <td className={tdR}>{fmtHrs(row.monthly)}</td>
+                  <td className={tdR}>{fmtHrs(row.weekly)}</td>
+                  <td className={tdR}>{fmtHrs(row.daily)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td className={tfootTd}>Total</td>
+                <td className={tfootTdR}>{fmtHrs(staffingRows.reduce((s, r) => s + r.annual,  0))}</td>
+                <td className={tfootTdR}>{fmtHrs(staffingRows.reduce((s, r) => s + r.monthly, 0))}</td>
+                <td className={tfootTdR}>{fmtHrs(staffingRows.reduce((s, r) => s + r.weekly,  0))}</td>
+                <td className={tfootTdR}>{fmtHrs(staffingRows.reduce((s, r) => s + r.daily,   0))}</td>
+              </tr>
+            </tfoot>
+          </table>
+        )}
+      </div>
+    </>
+  )
+}
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 export default function ReportsView({
@@ -867,6 +1145,10 @@ export default function ReportsView({
           .cover-page  { break-after: page; height: 100vh !important; min-height: unset !important; }
           .report-section { break-before: page; }
           .report-section:first-child { break-before: auto; }
+          .pinpoint-landscape { page: pinpoint-landscape; }
+        }
+        @page pinpoint-landscape {
+          size: landscape;
         }
       `}</style>
 
@@ -1030,6 +1312,9 @@ export default function ReportsView({
                 )}
 
                 {[
+                  checked.has('pinpoint') && (
+                    <PinpointReport key="pinpoint" data={reportData} company={companySettings} location={selectedLocation} />
+                  ),
                   checked.has('scope_no_codes') && (
                     <ScopeOfWorkReport key="scope_no" data={reportData} withTaskCodes={false} includeAltLang={includeAltLang} company={companySettings} location={selectedLocation} />
                   ),
