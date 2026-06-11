@@ -810,6 +810,7 @@ export default function AreaSpreadsheet({
   isAdmin: _isAdmin,
   taskCodes,
   buildingSqFt,
+  buildingServiceDays,
   positions,
 }: {
   areas:        Area[]
@@ -817,8 +818,9 @@ export default function AreaSpreadsheet({
   prospectId:   string
   isAdmin:      boolean
   taskCodes:    TaskCodeForForm[]
-  buildingSqFt: number | null
-  positions:    Pick<Position, 'id' | 'position_name'>[]
+  buildingSqFt:        number | null
+  buildingServiceDays: number
+  positions:           Pick<Position, 'id' | 'position_name'>[]
 }) {
   const [areas, setAreas]               = useState<Area[]>(initialAreas)
   const [selectedId, setSelectedId]     = useState<string | null>(null)
@@ -1078,7 +1080,7 @@ export default function AreaSpreadsheet({
                     areaId={selectedId!}
                     taskCodes={taskCodes}
                     positions={positions}
-                    defaultFrequency={selectedArea?.frequency ?? null}
+                    defaultFrequency={selectedArea?.frequency ?? buildingServiceDays}
                     defaultQuantity={defaultQuantity}
                     onCreated={handleTaskCreated}
                   />

@@ -16,13 +16,14 @@ export default async function NewTaskLineItemPage({
   const [role, supabase] = await Promise.all([getUserRole(), createClient()])
   if (!role) notFound()
 
-  const [{ data: area }, { data: taskCodesRaw }, { data: positions }] = await Promise.all([
+  const [{ data: area }, { data: buildingRow }, { data: taskCodesRaw }, { data: positions }] = await Promise.all([
     supabase
       .from('areas')
       .select('area_name, frequency, square_footage, carpet_sqft, tile_vct_sqft, other_sqft')
       .eq('id', areaId)
       .eq('building_id', buildingId)
       .single(),
+    supabase.from('buildings').select('service_days').eq('id', buildingId).single(),
     supabase
       .from('task_codes')
       .select('id, task_code, task_name, position_id, unit_of_measure, production_rate, description, task_types(type_name)')
@@ -52,7 +53,7 @@ export default async function NewTaskLineItemPage({
           prospectId={id}
           taskCodes={taskCodes}
           positions={positions ?? []}
-          defaultFrequency={area.frequency}
+          defaultFrequency={buildingRow?.service_days ?? 260}
           defaultQuantity={defaultQuantity}
         />
       </div>

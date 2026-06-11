@@ -114,6 +114,7 @@ export default async function BuildingDetailPage({
               <InfoRow label="Building Type" value={(building as BuildingRow).building_types?.type_name} />
               <InfoRow label="Square Feet" value={building.square_feet != null ? building.square_feet.toLocaleString() : null} />
               <InfoRow label="Floors" value={building.floors} />
+              <InfoRow label="Service Days" value={building.service_days} />
             </dl>
           </div>
 
@@ -211,6 +212,7 @@ export default async function BuildingDetailPage({
             isAdmin={isAdmin}
             taskCodes={(taskCodesRaw ?? []) as unknown as TaskCodeForForm[]}
             buildingSqFt={building.square_feet ?? null}
+            buildingServiceDays={building.service_days}
             positions={positionsRaw ?? []}
           />
         )}

@@ -22,6 +22,7 @@ async function assertAdmin(): Promise<ActionState> {
 function extractBuildingData(formData: FormData) {
   const sqftStr   = (formData.get('square_feet') as string)?.trim()
   const floorsStr = (formData.get('floors') as string)?.trim()
+  const sdStr     = (formData.get('service_days') as string)?.trim()
   return {
     building_name:    (formData.get('building_name') as string).trim(),
     address:          (formData.get('address') as string)?.trim() || null,
@@ -32,6 +33,7 @@ function extractBuildingData(formData: FormData) {
     building_type_id: (formData.get('building_type_id') as string) || null,
     square_feet:      sqftStr   ? parseFloat(sqftStr)     : null,
     floors:           floorsStr ? parseInt(floorsStr, 10) : null,
+    service_days:     sdStr ? parseInt(sdStr, 10) : 260,
     notes:            (formData.get('notes') as string)?.trim() || null,
     directions:       (formData.get('directions') as string)?.trim() || null,
   }
@@ -73,6 +75,53 @@ export async function updateBuilding(
   const supabase = await createClient()
   const { error } = await supabase.from('buildings').update(data).eq('id', id)
   if (error) return { error: error.message }
+
+  revalidatePath(`/prospects/${prospectId}`)
+  redirect(`/prospects/${prospectId}`)
+}
+
+export async function countTasksAtFrequency(buildingId: string, frequency: number): Promise<number> {
+  const supabase = await createClient()
+  const { data: areas } = await supabase.from('areas').select('id').eq('building_id', buildingId)
+  const areaIds = (areas ?? []).map((a) => a.id)
+  if (areaIds.length === 0) return 0
+  const { count } = await supabase
+    .from('task_line_items')
+    .select('*', { count: 'exact', head: true })
+    .eq('frequency', frequency)
+    .in('area_id', areaIds)
+  return count ?? 0
+}
+
+export async function updateBuildingAndTaskFrequency(
+  id: string,
+  prospectId: string,
+  oldFrequency: number,
+  newFrequency: number,
+  formData: FormData
+): Promise<ActionState> {
+  const authError = await assertAuthenticated()
+  if (authError) return authError
+
+  const data = extractBuildingData(formData)
+  if (!data.building_name) return { error: 'Building name is required.' }
+
+  const supabase = await createClient()
+
+  const { error } = await supabase.from('buildings').update(data).eq('id', id)
+  if (error) return { error: error.message }
+
+  const { data: areas } = await supabase.from('areas').select('id').eq('building_id', id)
+  const areaIds = (areas ?? []).map((a) => a.id)
+
+  if (areaIds.length > 0) {
+    const { error: taskError } = await supabase
+      .from('task_line_items')
+      .update({ frequency: newFrequency })
+      .eq('frequency', oldFrequency)
+      .in('area_id', areaIds)
+    if (taskError) return { error: taskError.message }
+  }
 
   revalidatePath(`/prospects/${prospectId}`)
   redirect(`/prospects/${prospectId}`)
