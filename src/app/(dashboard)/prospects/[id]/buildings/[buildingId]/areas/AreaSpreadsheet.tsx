@@ -563,6 +563,7 @@ function SavedAreaRow({
       )}
       <tr
         onClick={() => onSelect(area.id)}
+        onFocus={() => onSelect(area.id)}
         className={[
           'cursor-pointer transition-colors border-l-4',
           isSelected
@@ -570,14 +571,14 @@ function SavedAreaRow({
             : `hover:bg-gray-50 border-l-transparent${saving ? ' opacity-60' : ''}`,
         ].join(' ')}
       >
-        <td className={TD} onClick={e => e.stopPropagation()}>
+        <td className={TD}>
           <input type="number" min="1" step="1" placeholder="—"
             value={printOrder} onChange={e => setPrintOrder(e.target.value)}
             onFocus={() => { hasActiveFocusRef.current = true }}
             onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('print_order', e.target.value, true) }}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
-        <td className={TD} onClick={e => e.stopPropagation()}>
+        <td className={TD}>
           <div className="flex items-center gap-1.5">
             <input type="text" maxLength={50}
               value={areaName} onChange={e => setAreaName(e.target.value)}
@@ -589,28 +590,28 @@ function SavedAreaRow({
             )}
           </div>
         </td>
-        <td className={TD} onClick={e => e.stopPropagation()}>
+        <td className={TD}>
           <input type="number" min="0" step="1" placeholder="—"
             value={roomCount} onChange={e => setRoomCount(e.target.value)}
             onFocus={() => { hasActiveFocusRef.current = true }}
             onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('room_count', e.target.value, true) }}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
-        <td className={TD} onClick={e => e.stopPropagation()}>
+        <td className={TD}>
           <input type="number" min="0" step="any" placeholder="—"
             value={carpetSqft} onChange={e => setCarpetSqft(e.target.value)}
             onFocus={() => { hasActiveFocusRef.current = true }}
             onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('carpet_sqft', e.target.value, false) }}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
-        <td className={TD} onClick={e => e.stopPropagation()}>
+        <td className={TD}>
           <input type="number" min="0" step="any" placeholder="—"
             value={tileVctSqft} onChange={e => setTileVctSqft(e.target.value)}
             onFocus={() => { hasActiveFocusRef.current = true }}
             onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('tile_vct_sqft', e.target.value, false) }}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
-        <td className={TD} onClick={e => e.stopPropagation()}>
+        <td className={TD}>
           <input type="number" min="0" step="any" placeholder="—"
             value={otherSqft} onChange={e => setOtherSqft(e.target.value)}
             onFocus={() => { hasActiveFocusRef.current = true }}
@@ -620,14 +621,14 @@ function SavedAreaRow({
         <td className="px-2 py-1 text-right text-sm tabular-nums text-gray-500 pr-3">
           {rowTotal > 0 ? rowTotal.toLocaleString() : '—'}
         </td>
-        <td className={TD} onClick={e => e.stopPropagation()}>
+        <td className={TD}>
           <input type="number" min="0" step="1" placeholder="—"
             value={fixtures} onChange={e => setFixtures(e.target.value)}
             onFocus={() => { hasActiveFocusRef.current = true }}
             onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('fixtures', e.target.value, true) }}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
-        <td className={TD} onClick={e => e.stopPropagation()}>
+        <td className={TD}>
           <input type="number" min="1" step="1" placeholder="—"
             value={frequency} onChange={e => setFrequency(e.target.value)}
             onFocus={() => { hasActiveFocusRef.current = true }}
