@@ -178,7 +178,7 @@ export default async function BuildingDetailPage({
                       <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Position</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Route</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Revised</th>
-                      <th className="px-4 py-3 w-16" />
+                      <th className="px-4 py-3 w-28" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -189,13 +189,22 @@ export default async function BuildingDetailPage({
                         </td>
                         <td className="px-4 py-3 text-gray-600">{jc.route ?? '—'}</td>
                         <td className="px-4 py-3 text-gray-500 tabular-nums">{fmtDate(jc.revised_date)}</td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
                           <Link
                             href={`/job-cards/${jc.id}`}
                             className="text-xs font-medium text-brand-600 hover:text-brand-800"
                           >
                             Edit
                           </Link>
+                          <span className="mx-1.5 text-gray-300">|</span>
+                          <a
+                            href={`/job-cards/${jc.id}/print`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-medium text-brand-600 hover:text-brand-800"
+                          >
+                            Print
+                          </a>
                         </td>
                       </tr>
                     ))}
