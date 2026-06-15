@@ -35,6 +35,10 @@ export interface JobCard {
   special_instructions_alt: string | null
   directions: string | null
   directions_alt: string | null
+  notes_page1:     string | null
+  notes_page1_alt: string | null
+  notes_page2:     string | null
+  notes_page2_alt: string | null
   revised_date: string
   service_days: string[]
   schedule_assignments: Record<string, number>
@@ -71,6 +75,7 @@ function buildContentSnapshot(
   hdr: {
     prospect_id: string; building_id: string; position_id: string; route: string
     shift_start: string; shift_end: string; special_instructions: string; directions: string
+    notes_page1: string; notes_page2: string
     service_days: string[]; schedule_assignments: Record<string, number>
   },
   routeRows:   { row_type: string; time: string; area_location: string; notes: string }[],
@@ -93,6 +98,8 @@ function buildContentSnapshot(
     shift_end:            hdr.shift_end            || null,
     special_instructions: hdr.special_instructions || null,
     directions:           hdr.directions           || null,
+    notes_page1:          hdr.notes_page1          || null,
+    notes_page2:          hdr.notes_page2          || null,
     service_days:         sortedDays,
     schedule_assignments: sortedAssign,
     route_rows:   sortRouteRows(routeRows).map(r => ({
@@ -240,6 +247,10 @@ export default function JobCardEditor({
     schedule_assignments:     ((jobCard.schedule_assignments   ?? {}) as unknown) as Record<string, number>,
     special_instructions_alt: jobCard.special_instructions_alt ?? '',
     directions_alt:           jobCard.directions_alt           ?? '',
+    notes_page1:              jobCard.notes_page1              ?? '',
+    notes_page1_alt:          jobCard.notes_page1_alt          ?? '',
+    notes_page2:              jobCard.notes_page2              ?? '',
+    notes_page2_alt:          jobCard.notes_page2_alt          ?? '',
   })
 
   // Clock In/Out rows are seeded from shift times; auto-sync via useEffect below
@@ -443,6 +454,8 @@ export default function JobCardEditor({
     routeRows.forEach(r => { if (r.row_type === 'task') queue(r.notes) })
     queue(hdr.special_instructions)
     queue(hdr.directions)
+    queue(hdr.notes_page1)
+    queue(hdr.notes_page2)
 
     try {
       if (needsTranslation.size > 0) {
@@ -471,6 +484,8 @@ export default function JobCardEditor({
         ...prev,
         special_instructions_alt: t.get(prev.special_instructions) ?? prev.special_instructions_alt,
         directions_alt:           t.get(prev.directions)           ?? prev.directions_alt,
+        notes_page1_alt:          t.get(prev.notes_page1)          ?? prev.notes_page1_alt,
+        notes_page2_alt:          t.get(prev.notes_page2)          ?? prev.notes_page2_alt,
       }))
 
       // Persist is_translated flag immediately on success
@@ -519,6 +534,10 @@ export default function JobCardEditor({
       special_instructions_alt: hdr.special_instructions_alt || null,
       directions:               hdr.directions               || null,
       directions_alt:           hdr.directions_alt           || null,
+      notes_page1:              hdr.notes_page1              || null,
+      notes_page1_alt:          hdr.notes_page1_alt          || null,
+      notes_page2:              hdr.notes_page2              || null,
+      notes_page2_alt:          hdr.notes_page2_alt          || null,
       revised_date:             contentChanged ? today : hdr.revised_date,
       service_days:         hdr.service_days,
       schedule_assignments: hdr.schedule_assignments,
@@ -699,6 +718,29 @@ export default function JobCardEditor({
                 {hdr.directions_alt && (
                   <p className="mt-1 text-xs text-indigo-600 italic">
                     <span className="font-semibold">ES:</span> {hdr.directions_alt}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={lbl}>Page 1 Notes</label>
+                <textarea value={hdr.notes_page1} onChange={sh('notes_page1')}
+                  rows={3} placeholder="Optional note printed under the route table…" className={`${inp} w-full resize-none`} />
+                {hdr.notes_page1_alt && (
+                  <p className="mt-1 text-xs text-indigo-600 italic">
+                    <span className="font-semibold">Alt:</span> {hdr.notes_page1_alt}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className={lbl}>Page 2 Notes</label>
+                <textarea value={hdr.notes_page2} onChange={sh('notes_page2')}
+                  rows={3} placeholder="Optional note printed under the schedule table…" className={`${inp} w-full resize-none`} />
+                {hdr.notes_page2_alt && (
+                  <p className="mt-1 text-xs text-indigo-600 italic">
+                    <span className="font-semibold">Alt:</span> {hdr.notes_page2_alt}
                   </p>
                 )}
               </div>

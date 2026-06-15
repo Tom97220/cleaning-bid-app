@@ -11,6 +11,10 @@ export interface PrintJobCard {
   shift_end: string | null
   special_instructions: string | null
   special_instructions_alt: string | null
+  notes_page1:     string | null
+  notes_page1_alt: string | null
+  notes_page2:     string | null
+  notes_page2_alt: string | null
   revised_date: string
   service_days: string[]
   schedule_assignments: unknown
@@ -179,13 +183,15 @@ function PrintCompactHeader({
 // ─── Print: Route page (Pages 1 & 3) ─────────────────────────────────────────
 
 function PrintRoutePage({
-  positionName, route, prospectName, buildingName, specialInstructions, revisedDate, rows, lang = 'en',
+  positionName, route, prospectName, buildingName, specialInstructions, revisedDate, rows, notesEn, notesAlt, lang = 'en',
 }: {
   positionName: string; route: string; prospectName: string; buildingName: string
-  specialInstructions: string; revisedDate: string; rows: PrintRouteRow[]; lang?: 'en' | 'alt'
+  specialInstructions: string; revisedDate: string; rows: PrintRouteRow[]
+  notesEn: string | null; notesAlt: string | null; lang?: 'en' | 'alt'
 }) {
   const sortedRows = sortRouteRows(rows)
   const blanks = Math.max(8, 12 - rows.length)
+  const notes = lang === 'alt' ? (notesAlt || notesEn) : notesEn
   return (
     <>
       <PrintRouteHeader
@@ -238,6 +244,11 @@ function PrintRoutePage({
           ))}
         </tbody>
       </table>
+      {notes && (
+        <div style={{ marginTop: '14px', fontSize: '12px', color: '#374151', whiteSpace: 'pre-wrap' }}>
+          {notes}
+        </div>
+      )}
     </>
   )
 }
@@ -246,13 +257,15 @@ function PrintRoutePage({
 
 function PrintTasksPage({
   positionName, route, prospectName, buildingName, revisedDate,
-  dailyTasks, detailTasks, coreDetails, serviceDays, scheduleAssignments, lang,
+  dailyTasks, detailTasks, coreDetails, serviceDays, scheduleAssignments, notesEn, notesAlt, lang,
 }: {
   positionName: string; route: string; prospectName: string; buildingName: string; revisedDate: string
   dailyTasks: PrintDailyTask[]; detailTasks: PrintDetailTask[]; coreDetails: PrintCoreRow[]
-  serviceDays: string[]; scheduleAssignments: Record<string, number>; lang: 'en' | 'alt'
+  serviceDays: string[]; scheduleAssignments: Record<string, number>
+  notesEn: string | null; notesAlt: string | null; lang: 'en' | 'alt'
 }) {
   function text(en: string, alt: string | null) { return lang === 'en' ? en : (alt || en) }
+  const notes = lang === 'alt' ? (notesAlt || notesEn) : notesEn
   function coreArea(c: PrintCoreRow) {
     const name = c.zone_area || c.day_period
     return lang === 'en' ? name : (c.zone_area_alt || name)
@@ -332,6 +345,11 @@ function PrintTasksPage({
           </table>
         )}
       </div>
+      {notes && (
+        <div style={{ marginTop: '14px', fontSize: '12px', color: '#374151', whiteSpace: 'pre-wrap' }}>
+          {notes}
+        </div>
+      )}
     </>
   )
 }
@@ -386,6 +404,8 @@ export default function PrintView({
           specialInstructions={jobCard.special_instructions ?? ''}
           revisedDate={jobCard.revised_date}
           rows={routeRows}
+          notesEn={jobCard.notes_page1 ?? null}
+          notesAlt={jobCard.notes_page1_alt ?? null}
         />
       </PrintPage>
 
@@ -403,6 +423,8 @@ export default function PrintView({
           serviceDays={serviceDays}
           scheduleAssignments={scheduleAssignments}
           lang="en"
+          notesEn={jobCard.notes_page2 ?? null}
+          notesAlt={jobCard.notes_page2_alt ?? null}
         />
       </PrintPage>
 
@@ -418,6 +440,8 @@ export default function PrintView({
             revisedDate={jobCard.revised_date}
             rows={routeRows}
             lang="alt"
+            notesEn={jobCard.notes_page1 ?? null}
+            notesAlt={jobCard.notes_page1_alt ?? null}
           />
         </PrintPage>
       )}
@@ -437,6 +461,8 @@ export default function PrintView({
             serviceDays={serviceDays}
             scheduleAssignments={scheduleAssignments}
             lang="alt"
+            notesEn={jobCard.notes_page2 ?? null}
+            notesAlt={jobCard.notes_page2_alt ?? null}
           />
         </PrintPage>
       )}
