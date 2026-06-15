@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { sortRouteRows } from '@/lib/sortRouteRows'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,7 +95,7 @@ function buildContentSnapshot(
     directions:           hdr.directions           || null,
     service_days:         sortedDays,
     schedule_assignments: sortedAssign,
-    route_rows:   routeRows.map(r => ({
+    route_rows:   sortRouteRows(routeRows).map(r => ({
       row_type:      r.row_type,
       time:          r.time          || null,
       area_location: r.area_location || null,
@@ -242,7 +243,7 @@ export default function JobCardEditor({
   })
 
   // Clock In/Out rows are seeded from shift times; auto-sync via useEffect below
-  const [routeRows,   setRouteRows]   = useState<LocalRouteRow[]>(initialRouteRows.map(r => ({
+  const [routeRows,   setRouteRows]   = useState<LocalRouteRow[]>(sortRouteRows(initialRouteRows.map(r => ({
     localId: uid(),
     row_type: r.row_type as RouteRowType,
     time: r.row_type === 'clock_in'  ? (jobCard.shift_start ?? '')
@@ -251,7 +252,7 @@ export default function JobCardEditor({
     area_location: r.area_location ?? '',
     notes:         r.notes ?? '',
     notes_alt:     r.notes_alt ?? '',
-  })))
+  }))))
 
   const [dailyTasks,  setDailyTasks]  = useState<LocalDailyTask[]>(initialDailyTasks.map(t => ({
     localId: uid(), description_en: t.description_en, description_alt: t.description_alt ?? '',
@@ -325,7 +326,7 @@ export default function JobCardEditor({
 
       // Map each result once. The same objects go to both the setter and the
       // snapshot so the baseline is guaranteed to match the post-setState state.
-      const mappedRouteRows = (rr ?? []).map((r: DBRouteRow) => ({
+      const mappedRouteRows = sortRouteRows((rr ?? []).map((r: DBRouteRow) => ({
         localId:       uid(),
         row_type:      r.row_type as RouteRowType,
         time:          r.row_type === 'clock_in'  ? (jobCard.shift_start ?? '')
@@ -334,7 +335,7 @@ export default function JobCardEditor({
         area_location: r.area_location ?? '',
         notes:         r.notes         ?? '',
         notes_alt:     r.notes_alt     ?? '',
-      }))
+      })))
       const mappedDailyTasks = (dt ?? []).map((t: DBDailyTask) => ({
         localId: uid(), description_en: t.description_en, description_alt: t.description_alt ?? '',
       }))
@@ -531,7 +532,7 @@ export default function JobCardEditor({
 
     // Build all insert payloads before deleting, so a schema error aborts
     // before any data is lost.
-    const routeInsert = routeRows.map((r, i) => ({
+    const routeInsert = sortRouteRows(routeRows).map((r, i) => ({
       job_card_id: jobCard.id, sort_order: i, row_type: r.row_type,
       time: r.time || null, area_location: r.area_location || null,
       notes: r.notes || null, notes_alt: r.notes_alt || null,
@@ -727,7 +728,8 @@ export default function JobCardEditor({
                   onUp={() => setRouteRows(p => moveUp(p, i))}
                   onDown={() => setRouteRows(p => moveDown(p, i))}
                   onDel={() => setRouteRows(p => removeAt(p, i))}
-                  first={i === 0} last={i === routeRows.length - 1}
+                  first={row.row_type !== 'task' || routeRows[i - 1]?.row_type !== 'task'}
+                  last={row.row_type !== 'task'  || routeRows[i + 1]?.row_type !== 'task'}
                 />
                 {row.row_type !== 'task' ? (
                   <div className="flex items-center gap-3 flex-1">
@@ -774,11 +776,11 @@ export default function JobCardEditor({
             <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
               {(['clock_in', 'clock_out'] as RouteRowType[]).map(type => (
                 <button key={type}
-                  onClick={() => setRouteRows(prev => [...prev, {
+                  onClick={() => setRouteRows(prev => sortRouteRows([...prev, {
                     localId: uid(), row_type: type,
                     time: type === 'clock_in' ? hdr.shift_start : hdr.shift_end,
                     area_location: '', notes: '', notes_alt: '',
-                  }])}
+                  }]))}
                   className="text-xs font-medium text-gray-500 border border-gray-200 hover:border-gray-400 hover:text-gray-700 px-3 py-1 rounded-full transition-colors">
                   + {type === 'clock_in' ? 'CLOCK IN' : 'CLOCK OUT'}
                 </button>

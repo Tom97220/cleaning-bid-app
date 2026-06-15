@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { sortRouteRows } from '@/lib/sortRouteRows'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -183,6 +184,7 @@ function PrintRoutePage({
   positionName: string; route: string; prospectName: string; buildingName: string
   specialInstructions: string; revisedDate: string; rows: PrintRouteRow[]; lang?: 'en' | 'alt'
 }) {
+  const sortedRows = sortRouteRows(rows)
   const blanks = Math.max(8, 12 - rows.length)
   return (
     <>
@@ -206,7 +208,7 @@ function PrintRoutePage({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => {
+          {sortedRows.map((row, i) => {
             if (row.row_type !== 'task') {
               const label = row.row_type === 'clock_in' ? 'CLOCK IN' : 'CLOCK OUT'
               return (
