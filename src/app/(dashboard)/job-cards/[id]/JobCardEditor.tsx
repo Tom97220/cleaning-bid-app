@@ -323,33 +323,40 @@ export default function JobCardEditor({
         detailsCount:  wdt?.length ?? 0,  detailsError:  wdtErr ?? null,
       })
 
-      if (rr?.length) {
-        setRouteRows(rr.map((r: DBRouteRow) => ({
-          localId: uid(),
-          row_type: r.row_type as RouteRowType,
-          time: r.row_type === 'clock_in'  ? (jobCard.shift_start ?? '')
-              : r.row_type === 'clock_out' ? (jobCard.shift_end   ?? '')
-              : (r.time ?? ''),
-          area_location: r.area_location ?? '',
-          notes:         r.notes         ?? '',
-          notes_alt:     r.notes_alt     ?? '',
-        })))
-      }
-      if (dt?.length) {
-        setDailyTasks(dt.map((t: DBDailyTask) => ({
-          localId: uid(), description_en: t.description_en, description_alt: t.description_alt ?? '',
-        })))
-      }
-      if (cd?.length) {
-        setCoreDetails(cd.map((r: DBDetailRow) => ({
-          localId: uid(), day_period: r.day_period, zone_area: r.zone_area ?? '', zone_area_alt: r.zone_area_alt ?? '',
-        })))
-      }
-      if (wdt?.length) {
-        setDetailTasks(wdt.map((t: DBWhenDetail) => ({
-          localId: uid(), description_en: t.description_en, description_alt: t.description_alt ?? '',
-        })))
-      }
+      // Map each result once. The same objects go to both the setter and the
+      // snapshot so the baseline is guaranteed to match the post-setState state.
+      const mappedRouteRows = (rr ?? []).map((r: DBRouteRow) => ({
+        localId:       uid(),
+        row_type:      r.row_type as RouteRowType,
+        time:          r.row_type === 'clock_in'  ? (jobCard.shift_start ?? '')
+                     : r.row_type === 'clock_out' ? (jobCard.shift_end   ?? '')
+                     : (r.time ?? ''),
+        area_location: r.area_location ?? '',
+        notes:         r.notes         ?? '',
+        notes_alt:     r.notes_alt     ?? '',
+      }))
+      const mappedDailyTasks = (dt ?? []).map((t: DBDailyTask) => ({
+        localId: uid(), description_en: t.description_en, description_alt: t.description_alt ?? '',
+      }))
+      const mappedCoreDetails = (cd ?? []).map((r: DBDetailRow) => ({
+        localId: uid(), day_period: r.day_period, zone_area: r.zone_area ?? '', zone_area_alt: r.zone_area_alt ?? '',
+      }))
+      const mappedDetailTasks = (wdt ?? []).map((t: DBWhenDetail) => ({
+        localId: uid(), description_en: t.description_en, description_alt: t.description_alt ?? '',
+      }))
+
+      if (mappedRouteRows.length)   setRouteRows(mappedRouteRows)
+      if (mappedDailyTasks.length)  setDailyTasks(mappedDailyTasks)
+      if (mappedCoreDetails.length) setCoreDetails(mappedCoreDetails)
+      if (mappedDetailTasks.length) setDetailTasks(mappedDetailTasks)
+
+      // Resync baseline: the mount-time snapshot was built from empty arrays
+      // (the condition for this fallback to fire). Reset it now from the exact
+      // same mapped objects passed to the setters — buildContentSnapshot ignores
+      // localId and _alt fields, so no extra stripping needed.
+      contentSnapshot.current = buildContentSnapshot(
+        hdr, mappedRouteRows, mappedDailyTasks, mappedCoreDetails, mappedDetailTasks,
+      )
     }
 
     void loadChildData()
