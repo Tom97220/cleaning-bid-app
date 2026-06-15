@@ -66,6 +66,49 @@ function moveDown<T>(arr: T[], i: number): T[] {
 }
 function removeAt<T>(arr: T[], i: number): T[] { return arr.filter((_, x) => x !== i) }
 
+function buildContentSnapshot(
+  hdr: {
+    prospect_id: string; building_id: string; position_id: string; route: string
+    shift_start: string; shift_end: string; special_instructions: string; directions: string
+    service_days: string[]; schedule_assignments: Record<string, number>
+  },
+  routeRows:   { row_type: string; time: string; area_location: string; notes: string }[],
+  dailyTasks:  { description_en: string }[],
+  coreDetails: { day_period: string; zone_area: string }[],
+  detailTasks: { description_en: string }[],
+): string {
+  const sortedAssign = Object.fromEntries(
+    Object.keys(hdr.schedule_assignments).sort().map(k => [k, hdr.schedule_assignments[k]])
+  )
+  const sortedDays = [...hdr.service_days].sort(
+    (a, b) => ALL_DAYS.indexOf(a) - ALL_DAYS.indexOf(b)
+  )
+  return JSON.stringify({
+    prospect_id:          hdr.prospect_id,
+    building_id:          hdr.building_id          || null,
+    position_id:          hdr.position_id          || null,
+    route:                hdr.route                || null,
+    shift_start:          hdr.shift_start          || null,
+    shift_end:            hdr.shift_end            || null,
+    special_instructions: hdr.special_instructions || null,
+    directions:           hdr.directions           || null,
+    service_days:         sortedDays,
+    schedule_assignments: sortedAssign,
+    route_rows:   routeRows.map(r => ({
+      row_type:      r.row_type,
+      time:          r.time          || null,
+      area_location: r.area_location || null,
+      notes:         r.notes         || null,
+    })),
+    daily_tasks:  dailyTasks.map(t => ({ description_en: t.description_en })),
+    core_details: coreDetails.map(r => ({
+      day_period: r.day_period,
+      zone_area:  r.zone_area  || null,
+    })),
+    detail_tasks: detailTasks.map(t => ({ description_en: t.description_en })),
+  })
+}
+
 const ALL_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const HOURS    = ['1','2','3','4','5','6','7','8','9','10','11','12']
 const MINUTES  = ['00','05','10','15','20','25','30','35','40','45','50','55']
@@ -241,6 +284,14 @@ export default function JobCardEditor({
     coreDetails: initialCoreDetails.length > 0,
     detailTasks: initialDetailTasks.length > 0,
   })
+
+  // Baseline content snapshot captured at mount. Compared at save time to decide
+  // whether revised_date should auto-stamp to today. Reset after every successful
+  // save so the next no-op save (e.g. opening the card the following day) does not
+  // re-stamp.
+  const contentSnapshot = useRef<string>(
+    buildContentSnapshot(hdr, routeRows, dailyTasks, coreDetails, detailTasks)
+  )
 
   // Client-side fallback: if server props were empty (e.g. a caching/RLS issue),
   // fetch child records directly from Supabase on mount.
@@ -444,6 +495,11 @@ export default function JobCardEditor({
       return
     }
 
+    const currentSnapshot = buildContentSnapshot(hdr, routeRows, dailyTasks, coreDetails, detailTasks)
+    const contentChanged  = currentSnapshot !== contentSnapshot.current
+    const d     = new Date()
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
     const payload = {
       prospect_id:          hdr.prospect_id,
       building_id:          hdr.building_id          || null,
@@ -455,11 +511,13 @@ export default function JobCardEditor({
       special_instructions_alt: hdr.special_instructions_alt || null,
       directions:               hdr.directions               || null,
       directions_alt:           hdr.directions_alt           || null,
-      revised_date:             hdr.revised_date,
+      revised_date:             contentChanged ? today : hdr.revised_date,
       service_days:         hdr.service_days,
       schedule_assignments: hdr.schedule_assignments,
       is_translated:        isTranslated,
     }
+
+    if (contentChanged) setHdr(prev => ({ ...prev, revised_date: today }))
 
     const { error: e0 } = await supabase.from('job_cards').update(payload).eq('id', jobCard.id)
     if (e0) { setError(e0.message); setSaving(false); return }
@@ -503,6 +561,7 @@ export default function JobCardEditor({
       }
     }
 
+    contentSnapshot.current = currentSnapshot
     setSaved(true); setSaving(false)
     router.refresh()
   }
