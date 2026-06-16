@@ -796,6 +796,13 @@ function InvestmentRecapReport({ data, company, location }: { data: ReportData; 
 function PinpointReport({ data, company, location }: { data: ReportData; company: CompanySettings | null; location: CompanyLocation | null }) {
   const { building, prospect, areas, bidLaborLines } = data
 
+  const ppTh  = 'border border-gray-300 px-3 py-2 text-left   text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+  const ppThR = 'border border-gray-300 px-3 py-2 text-right  text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+  const ppTd  = 'border border-gray-300 px-3 py-1 text-xs text-gray-700'
+  const ppTdR = 'border border-gray-300 px-3 py-1 text-xs text-right tabular-nums text-gray-700'
+  const ppFt  = 'border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-900 bg-gray-100'
+  const ppFtR = 'border border-gray-300 px-3 py-2 text-xs font-semibold text-right tabular-nums text-gray-900 bg-gray-100'
+
   const fmtN = (n: number | null | undefined) =>
     n == null ? '—' : n.toLocaleString('en-US', { maximumFractionDigits: 0 })
 
@@ -863,64 +870,64 @@ function PinpointReport({ data, company, location }: { data: ReportData; company
                 <col style={{ width: '24%' }} />
               </colgroup>
               <tbody>
-                <tr className="bg-blue-50">
+                <tr className="bg-gray-50">
                   <td className={pL}>Name of Building</td>
                   <td className={pV} colSpan={3}>{building.building_name || '—'}</td>
                 </tr>
-                <tr className="bg-blue-100">
+                <tr className="bg-gray-100">
                   <td className={pL}>Address</td>
                   <td className={pV} colSpan={3}>{[building.address, building.address_2].filter(Boolean).join(', ') || '—'}</td>
                 </tr>
-                <tr className="bg-blue-50">
+                <tr className="bg-gray-50">
                   <td className={pL}>City</td>
                   <td className={pV}>{building.city || '—'}</td>
                   <td className={pL}>State&ensp;/&ensp;Zip</td>
                   <td className={pV}>{[building.state, building.zip].filter(Boolean).join('  ') || '—'}</td>
                 </tr>
-                <tr className="bg-blue-100">
+                <tr className="bg-gray-100">
                   <td className={pL}>Total square footage</td>
                   <td className={pV}>{fmtN(building.square_feet)}</td>
                   <td className={pL}>Number of floors</td>
                   <td className={pV}>{building.floors != null ? String(building.floors) : '—'}</td>
                 </tr>
-                <tr className="bg-blue-50">
+                <tr className="bg-gray-50">
                   <td className={pL}>Common area square footage</td>
                   <td className={pV}>—</td>
                   <td className={pL}>Number of restrooms</td>
                   <td className={pV}>—</td>
                 </tr>
-                <tr className="bg-blue-100">
+                <tr className="bg-gray-100">
                   <td className={pL}>Cleanable Tenant Sq. Footage</td>
                   <td className={pV}>—</td>
                   <td className={pL}>Number of fixtures in RR&apos;s</td>
                   <td className={pV}>—</td>
                 </tr>
                 {/* v1: restroom sqft column not in schema yet. v2 candidate: add restroom_sqft to areas table; Page 1 value should sum across areas. */}
-                <tr className="bg-blue-50">
+                <tr className="bg-gray-50">
                   <td className={pL}>Restroom Sqft</td>
                   <td className={pV}>—</td>
                   <td className={pL}>Number of toilets</td>
                   <td className={pV}>—</td>
                 </tr>
-                <tr className="bg-blue-100">
+                <tr className="bg-gray-100">
                   <td className={pL}>Number of stairwells</td>
                   <td className={pV}>—</td>
                   <td className={pL}>Number of urinals</td>
                   <td className={pV}>—</td>
                 </tr>
-                <tr className="bg-blue-50">
+                <tr className="bg-gray-50">
                   <td className={pL}>Stair width / Stair length</td>
                   <td className={pV}>— / —</td>
                   <td className={pL}>Number of sinks</td>
                   <td className={pV}>—</td>
                 </tr>
-                <tr className="bg-blue-100">
+                <tr className="bg-gray-100">
                   <td className={pL}>Stair square feet or #</td>
                   <td className={pV}>—</td>
                   <td className={pL}>Number of fountains</td>
                   <td className={pV}>—</td>
                 </tr>
-                <tr className="bg-blue-50">
+                <tr className="bg-gray-50">
                   <td className={pL}>Number of elevators</td>
                   <td className={pV}>—</td>
                   <td className={pL}>Elevator sq. footage</td>
@@ -933,29 +940,29 @@ function PinpointReport({ data, company, location }: { data: ReportData; company
           {/* Right column — Floor Surface Summary */}
           <div className="flex-[2] min-w-0">
             <div className="border border-gray-300">
-              <div className="bg-blue-100 text-center py-1.5 text-xs font-bold uppercase tracking-widest text-gray-700 border-b border-gray-300">
+              <div className="bg-gray-100 text-center py-1.5 text-xs font-bold uppercase tracking-widest text-gray-700 border-b border-gray-300">
                 Floor Surface Summary
               </div>
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    <th className="px-2 py-1.5 text-xs font-normal text-gray-600 text-left   border-b border-r border-gray-200 bg-blue-100">Surface</th>
-                    <th className="px-2 py-1.5 text-xs font-normal text-gray-600 text-center border-b border-r border-gray-200 bg-blue-100">Sqft</th>
-                    <th className="px-2 py-1.5 text-xs font-normal text-gray-600 text-center border-b           border-gray-200 bg-blue-100">%</th>
+                    <th className="px-2 py-1.5 text-xs font-normal text-gray-600 text-left   border-b border-r border-gray-200 bg-gray-100">Surface</th>
+                    <th className="px-2 py-1.5 text-xs font-normal text-gray-600 text-center border-b border-r border-gray-200 bg-gray-100">Sqft</th>
+                    <th className="px-2 py-1.5 text-xs font-normal text-gray-600 text-center border-b           border-gray-200 bg-gray-100">%</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="bg-blue-50">
+                  <tr className="bg-gray-50">
                     <td className={pL}>Carpet</td>
                     <td className={pV}>{fmtN(totalCarpet)}</td>
                     <td className={pV}>{pct(totalCarpet)}</td>
                   </tr>
-                  <tr className="bg-blue-100">
+                  <tr className="bg-gray-100">
                     <td className={pL}>Tile / VCT</td>
                     <td className={pV}>{fmtN(totalTile)}</td>
                     <td className={pV}>{pct(totalTile)}</td>
                   </tr>
-                  <tr className="bg-blue-50">
+                  <tr className="bg-gray-50">
                     <td className={pL}>Other</td>
                     <td className={pV}>{fmtN(totalOther)}</td>
                     <td className={pV}>{pct(totalOther)}</td>
@@ -963,9 +970,9 @@ function PinpointReport({ data, company, location }: { data: ReportData; company
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td className="px-2 py-1.5 text-xs font-semibold text-gray-900 border-r border-b border-gray-200 bg-blue-200">Total</td>
-                    <td className="px-2 py-1.5 text-xs text-center font-semibold text-gray-900 border-b border-gray-200 bg-blue-200">{fmtN(totalFloor)}</td>
-                    <td className="px-2 py-1.5 text-xs text-center font-semibold text-gray-900 border-b border-gray-200 bg-blue-200">{totalFloor > 0 ? '100%' : '—'}</td>
+                    <td className="px-2 py-1.5 text-xs font-semibold text-gray-900 border-r border-b border-gray-200 bg-gray-200">Total</td>
+                    <td className="px-2 py-1.5 text-xs text-center font-semibold text-gray-900 border-b border-gray-200 bg-gray-200">{fmtN(totalFloor)}</td>
+                    <td className="px-2 py-1.5 text-xs text-center font-semibold text-gray-900 border-b border-gray-200 bg-gray-200">{totalFloor > 0 ? '100%' : '—'}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -1013,34 +1020,34 @@ function PinpointReport({ data, company, location }: { data: ReportData; company
         {staffingRows.length === 0 ? (
           <p className="text-sm text-gray-400 italic">No staffing data available for this building.</p>
         ) : (
-          <table className="w-full text-sm border-collapse">
+          <table className="w-full text-xs border-collapse">
             <thead>
               <tr>
-                <th className={th}>Position</th>
-                <th className={thR}>Annual Hrs</th>
-                <th className={thR}>Monthly Hrs</th>
-                <th className={thR}>Weekly Hrs</th>
-                <th className={thR}>Daily Hrs</th>
+                <th className={ppTh}>Position</th>
+                <th className={ppThR}>Annual Hrs</th>
+                <th className={ppThR}>Monthly Hrs</th>
+                <th className={ppThR}>Weekly Hrs</th>
+                <th className={ppThR}>Daily Hrs</th>
               </tr>
             </thead>
             <tbody>
               {staffingRows.map((row, i) => (
                 <tr key={i}>
-                  <td className={td}>{row.position}</td>
-                  <td className={tdR}>{fmtHrs(row.annual)}</td>
-                  <td className={tdR}>{fmtHrs(row.monthly)}</td>
-                  <td className={tdR}>{fmtHrs(row.weekly)}</td>
-                  <td className={tdR}>{fmtHrs(row.daily)}</td>
+                  <td className={ppTd}>{row.position}</td>
+                  <td className={ppTdR}>{fmtHrs(row.annual)}</td>
+                  <td className={ppTdR}>{fmtHrs(row.monthly)}</td>
+                  <td className={ppTdR}>{fmtHrs(row.weekly)}</td>
+                  <td className={ppTdR}>{fmtHrs(row.daily)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
-                <td className={tfootTd}>Total</td>
-                <td className={tfootTdR}>{fmtHrs(staffingRows.reduce((s, r) => s + r.annual,  0))}</td>
-                <td className={tfootTdR}>{fmtHrs(staffingRows.reduce((s, r) => s + r.monthly, 0))}</td>
-                <td className={tfootTdR}>{fmtHrs(staffingRows.reduce((s, r) => s + r.weekly,  0))}</td>
-                <td className={tfootTdR}>{fmtHrs(staffingRows.reduce((s, r) => s + r.daily,   0))}</td>
+                <td className={ppFt}>Total</td>
+                <td className={ppFtR}>{fmtHrs(staffingRows.reduce((s, r) => s + r.annual,  0))}</td>
+                <td className={ppFtR}>{fmtHrs(staffingRows.reduce((s, r) => s + r.monthly, 0))}</td>
+                <td className={ppFtR}>{fmtHrs(staffingRows.reduce((s, r) => s + r.weekly,  0))}</td>
+                <td className={ppFtR}>{fmtHrs(staffingRows.reduce((s, r) => s + r.daily,   0))}</td>
               </tr>
             </tfoot>
           </table>
