@@ -725,7 +725,7 @@ export default function JobCardEditor({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={lbl}>Page 1 Notes</label>
+                <label className={lbl}>Daily Cleaning Notes</label>
                 <textarea value={hdr.notes_page1} onChange={sh('notes_page1')}
                   rows={3} placeholder="Optional note printed under the route table…" className={`${inp} w-full resize-none`} />
                 {hdr.notes_page1_alt && (
@@ -735,7 +735,7 @@ export default function JobCardEditor({
                 )}
               </div>
               <div>
-                <label className={lbl}>Page 2 Notes</label>
+                <label className={lbl}>Detail Notes</label>
                 <textarea value={hdr.notes_page2} onChange={sh('notes_page2')}
                   rows={3} placeholder="Optional note printed under the schedule table…" className={`${inp} w-full resize-none`} />
                 {hdr.notes_page2_alt && (
