@@ -245,7 +245,7 @@ function PrintRoutePage({
         </tbody>
       </table>
       {notes && (
-        <div style={{ marginTop: '14px', fontSize: '12px', color: '#374151', whiteSpace: 'pre-wrap' }}>
+        <div style={{ marginTop: '14px', fontSize: '12px', color: '#374151', whiteSpace: 'pre-wrap', border: '1px solid #9ca3af', borderRadius: '4px', padding: '8px' }}>
           {notes}
         </div>
       )}
@@ -346,7 +346,7 @@ function PrintTasksPage({
         )}
       </div>
       {notes && (
-        <div style={{ marginTop: '14px', fontSize: '12px', color: '#374151', whiteSpace: 'pre-wrap' }}>
+        <div style={{ marginTop: '14px', fontSize: '12px', color: '#374151', whiteSpace: 'pre-wrap', border: '1px solid #9ca3af', borderRadius: '4px', padding: '8px' }}>
           {notes}
         </div>
       )}
