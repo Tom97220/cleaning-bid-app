@@ -47,6 +47,9 @@ function InlineTaskRow({
   const [creating, setCreating]       = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [resetKey, setResetKey]       = useState(0)
+  const [isBothCode, setIsBothCode]   = useState(false)
+  const [basis, setBasis]             = useState('')
+  const [bothRates, setBothRates]     = useState<{ sqft: number | null; each: number | null } | null>(null)
 
   const frequencyRef      = useRef<HTMLInputElement>(null)
   const quantityRef       = useRef<HTMLInputElement>(null)
@@ -54,8 +57,8 @@ function InlineTaskRow({
   const hasActiveFocusRef = useRef(false)
   const pendingCreateRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef        = useRef(true)
-  const valuesRef         = useRef({ taskCodeId, taskName, positionId, frequency, percent, quantity, minutes })
-  valuesRef.current = { taskCodeId, taskName, positionId, frequency, percent, quantity, minutes }
+  const valuesRef         = useRef({ taskCodeId, taskName, positionId, frequency, percent, quantity, minutes, measure })
+  valuesRef.current = { taskCodeId, taskName, positionId, frequency, percent, quantity, minutes, measure }
 
   useEffect(() => {
     mountedRef.current = true
@@ -98,7 +101,7 @@ function InlineTaskRow({
       percent:      pct,
       quantity:     qty,
       minutes:      min,
-      measure:      tc?.unit_of_measure       ?? null,
+      measure:      v.measure                 ?? null,
       type:         tc?.task_types?.type_name ?? null,
     }
 
@@ -113,6 +116,9 @@ function InlineTaskRow({
       setMinutes('')
       setMeasure(null)
       setPositionId('')
+      setIsBothCode(false)
+      setBasis('')
+      setBothRates(null)
       setResetKey(k => k + 1)
       return
     }
@@ -126,6 +132,9 @@ function InlineTaskRow({
       setMinutes('')
       setMeasure(null)
       setPositionId('')
+      setIsBothCode(false)
+      setBasis('')
+      setBothRates(null)
       setResetKey(k => k + 1)
     }
   }
@@ -146,15 +155,44 @@ function InlineTaskRow({
     }, 200)
   }
 
+  function applyInlineBasis(rates: { sqft: number | null; each: number | null }, selectedBasis: string) {
+    if (selectedBasis === 'sqft_per_hour') {
+      setMeasure('sqft_per_hour')
+      setMinutes(rates.sqft != null ? String(rates.sqft) : '')
+      if (defaultQuantity != null) setQuantity(String(defaultQuantity))
+    } else {
+      setMeasure('minutes_per_unit')
+      setMinutes(rates.each != null ? String(rates.each) : '')
+      setQuantity('')
+    }
+  }
+
+  function handleBasisChange(newBasis: string) {
+    setBasis(newBasis)
+    if (bothRates) applyInlineBasis(bothRates, newBasis)
+  }
+
   function handleCodeSelect(value: string) {
     setTaskCodeId(value)
     if (value) {
       const tc = taskCodes.find(t => t.id === value)
       if (tc) {
         setTaskName(tc.task_name)
-        setMinutes(tc.production_rate != null ? String(tc.production_rate) : '')
-        setMeasure(tc.unit_of_measure ?? null)
         setPositionId(tc.position_id ?? '')
+        if (tc.unit_of_measure === 'both') {
+          const rates = { sqft: tc.production_rate, each: tc.rate_each }
+          setBothRates(rates)
+          setIsBothCode(true)
+          const initialBasis = tc.default_basis ?? 'sqft_per_hour'
+          setBasis(initialBasis)
+          applyInlineBasis(rates, initialBasis)
+        } else {
+          setIsBothCode(false)
+          setBothRates(null)
+          setBasis('')
+          setMinutes(tc.production_rate != null ? String(tc.production_rate) : '')
+          setMeasure(tc.unit_of_measure ?? null)
+        }
       }
       setTimeout(() => {
         const v = valuesRef.current
@@ -169,6 +207,9 @@ function InlineTaskRow({
     } else {
       setMeasure(null)
       setPositionId('')
+      setIsBothCode(false)
+      setBothRates(null)
+      setBasis('')
     }
   }
 
@@ -200,6 +241,25 @@ function InlineTaskRow({
         <tr>
           <td colSpan={11} className="px-3 py-1">
             <span className="text-xs text-red-600">{createError}</span>
+          </td>
+        </tr>
+      )}
+      {isBothCode && (
+        <tr className="border-t border-dashed border-gray-200 bg-blue-50/30">
+          <td colSpan={11} className="px-3 py-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-500">Basis:</span>
+              <select
+                value={basis}
+                onChange={(e) => handleBasisChange(e.target.value)}
+                onFocus={handleFocus}
+                onBlur={handleBlur}
+                className="text-xs border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              >
+                <option value="sqft_per_hour">Sq Ft per Hour</option>
+                <option value="minutes_per_unit">Minutes per Each</option>
+              </select>
+            </div>
           </td>
         </tr>
       )}
@@ -346,15 +406,26 @@ function SavedTaskRow({
     setTaskCodeId(value)
     if (tc) {
       setTaskName(tc.task_name)
-      setMinutes(tc.production_rate != null ? String(tc.production_rate) : '')
-      setMeasure(tc.unit_of_measure ?? null)
       setPositionId(tc.position_id ?? '')
+
+      let resolvedMeasure: string | null
+      let resolvedRate: number | null
+      if (tc.unit_of_measure === 'both') {
+        resolvedMeasure = tc.default_basis ?? 'sqft_per_hour'
+        resolvedRate = resolvedMeasure === 'sqft_per_hour' ? tc.production_rate : tc.rate_each
+      } else {
+        resolvedMeasure = tc.unit_of_measure ?? null
+        resolvedRate = tc.production_rate ?? null
+      }
+
+      setMinutes(resolvedRate != null ? String(resolvedRate) : '')
+      setMeasure(resolvedMeasure)
       await save({
         task_code_id: value,
         task_name:    tc.task_name,
-        minutes:      tc.production_rate ?? null,
-        measure:      tc.unit_of_measure ?? null,
-        position_id:  tc.position_id     ?? null,
+        minutes:      resolvedRate    ?? null,
+        measure:      resolvedMeasure ?? null,
+        position_id:  tc.position_id  ?? null,
       })
     } else {
       setTaskName('')

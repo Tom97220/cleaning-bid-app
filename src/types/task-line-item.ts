@@ -31,6 +31,8 @@ export interface TaskCodeForForm {
   position_id:     string | null
   unit_of_measure: string
   production_rate: number | null
+  rate_each:       number | null
+  default_basis:   string | null
   description:     string | null
   task_types:      { type_name: string } | null
 }

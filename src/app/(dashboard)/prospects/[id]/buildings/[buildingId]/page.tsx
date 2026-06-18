@@ -65,7 +65,7 @@ export default async function BuildingDetailPage({
       ? Promise.resolve({ data: null })
       : supabase
           .from('task_codes')
-          .select('id, task_code, task_name, position_id, unit_of_measure, production_rate, description, task_types(type_name)')
+          .select('id, task_code, task_name, position_id, unit_of_measure, production_rate, rate_each, default_basis, description, task_types(type_name)')
           .order('task_code'),
     showJobCards
       ? Promise.resolve({ data: null })

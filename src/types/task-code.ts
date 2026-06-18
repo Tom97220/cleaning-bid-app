@@ -1,9 +1,12 @@
-export type UnitOfMeasure = 'sqft_per_hour' | 'minutes_per_unit'
+export type UnitOfMeasure = 'sqft_per_hour' | 'minutes_per_unit' | 'both'
 
 export const UNIT_OF_MEASURE_LABELS: Record<UnitOfMeasure, string> = {
   sqft_per_hour:    'Sq ft per hour',
   minutes_per_unit: 'Minutes per unit',
+  both:             'Both (sq ft + each)',
 }
+
+export type DefaultBasis = 'sqft_per_hour' | 'minutes_per_unit'
 
 export interface TaskCode {
   id:               string
@@ -13,6 +16,8 @@ export interface TaskCode {
   position_id:      string | null
   unit_of_measure:  UnitOfMeasure
   production_rate:  number | null
+  rate_each:        number | null
+  default_basis:    DefaultBasis | null
   description:      string | null
   description_alt:  string | null
   created_at:       string

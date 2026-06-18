@@ -7,7 +7,8 @@ import { redirect } from 'next/navigation'
 
 export type ActionState = { error: string } | null
 
-const VALID_UNITS = ['sqft_per_hour', 'minutes_per_unit'] as const
+const VALID_UNITS = ['sqft_per_hour', 'minutes_per_unit', 'both'] as const
+const VALID_BASIS = ['sqft_per_hour', 'minutes_per_unit'] as const
 
 async function assertAdmin(): Promise<ActionState> {
   const role = await getUserRole()
@@ -16,14 +17,19 @@ async function assertAdmin(): Promise<ActionState> {
 }
 
 function extractTaskCodeData(formData: FormData) {
-  const rateStr = (formData.get('production_rate') as string)?.trim()
+  const rateStr      = (formData.get('production_rate') as string)?.trim()
+  const rateEachStr  = (formData.get('rate_each') as string)?.trim()
+  const uom          = (formData.get('unit_of_measure') as string)
+  const isBoth       = uom === 'both'
   return {
     task_code:        (formData.get('task_code') as string).trim().toUpperCase(),
     task_name:        (formData.get('task_name') as string).trim(),
     task_type_id:     (formData.get('task_type_id') as string) || null,
     position_id:      (formData.get('position_id') as string) || null,
-    unit_of_measure:  (formData.get('unit_of_measure') as string),
+    unit_of_measure:  uom,
     production_rate:  rateStr ? parseFloat(rateStr) : null,
+    rate_each:        isBoth && rateEachStr ? parseFloat(rateEachStr) : null,
+    default_basis:    isBoth ? ((formData.get('default_basis') as string) || null) : null,
     description:      (formData.get('description') as string)?.trim() || null,
     description_alt:  (formData.get('description_alt') as string)?.trim() || null,
   }
@@ -37,6 +43,15 @@ function validateData(data: ReturnType<typeof extractTaskCodeData>): ActionState
   }
   if (data.production_rate !== null && (isNaN(data.production_rate) || data.production_rate <= 0)) {
     return { error: 'Production rate must be a positive number.' }
+  }
+  if (data.unit_of_measure === 'both') {
+    if (!data.production_rate) return { error: 'Sq ft/hour rate is required for Both measure.' }
+    if (!data.rate_each || isNaN(data.rate_each) || data.rate_each <= 0) {
+      return { error: 'Minutes/each rate is required for Both measure.' }
+    }
+    if (!data.default_basis || !VALID_BASIS.includes(data.default_basis as typeof VALID_BASIS[number])) {
+      return { error: 'Default basis is required for Both measure.' }
+    }
   }
   return null
 }

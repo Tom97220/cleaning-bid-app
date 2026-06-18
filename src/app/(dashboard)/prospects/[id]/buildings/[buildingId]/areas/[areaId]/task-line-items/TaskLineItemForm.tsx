@@ -57,6 +57,9 @@ export default function TaskLineItemForm({
   const [measure,     setMeasure]     = useState(item?.measure ?? '')
   const [type,        setType]        = useState(item?.type ?? '')
   const [print,       setPrint]       = useState(item?.print ?? true)
+  const [isBothCode,  setIsBothCode]  = useState(false)
+  const [basis,       setBasis]       = useState('')
+  const [bothRates,   setBothRates]   = useState<{ sqft: number | null; each: number | null } | null>(null)
 
   const taskCodeMap = useMemo(() => {
     const m: Record<string, TaskCodeForForm> = {}
@@ -70,9 +73,39 @@ export default function TaskLineItemForm({
     setTaskName(tc.task_name)
     setPositionId(tc.position_id ?? '')
     setPositionKey((k) => k + 1)
-    setMinutes(tc.production_rate != null ? String(tc.production_rate) : '')
-    setMeasure(tc.unit_of_measure)
     setType(tc.task_types?.type_name ?? '')
+
+    if (tc.unit_of_measure === 'both') {
+      const rates = { sqft: tc.production_rate, each: tc.rate_each }
+      setBothRates(rates)
+      setIsBothCode(true)
+      const initialBasis = tc.default_basis ?? 'sqft_per_hour'
+      setBasis(initialBasis)
+      applyBasisRates(rates, initialBasis)
+    } else {
+      setIsBothCode(false)
+      setBothRates(null)
+      setBasis('')
+      setMinutes(tc.production_rate != null ? String(tc.production_rate) : '')
+      setMeasure(tc.unit_of_measure)
+    }
+  }
+
+  function applyBasisRates(rates: { sqft: number | null; each: number | null }, selectedBasis: string) {
+    if (selectedBasis === 'sqft_per_hour') {
+      setMeasure('sqft_per_hour')
+      setMinutes(rates.sqft != null ? String(rates.sqft) : '')
+      if (defaultQuantity != null) setQuantity(String(defaultQuantity))
+    } else {
+      setMeasure('minutes_per_unit')
+      setMinutes(rates.each != null ? String(rates.each) : '')
+      setQuantity('')
+    }
+  }
+
+  function handleBasisChange(newBasis: string) {
+    setBasis(newBasis)
+    if (bothRates) applyBasisRates(bothRates, newBasis)
   }
 
   const hours = calculateHours(
@@ -214,6 +247,24 @@ export default function TaskLineItemForm({
             />
           </div>
         </div>
+
+        {isBothCode && (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>
+                Basis <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={basis}
+                onChange={(e) => handleBasisChange(e.target.value)}
+                className={inputClass}
+              >
+                <option value="sqft_per_hour">Sq Ft per Hour</option>
+                <option value="minutes_per_unit">Minutes per Each</option>
+              </select>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-4">
           <div>
