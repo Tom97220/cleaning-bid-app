@@ -133,13 +133,19 @@ function ReportHeader({
   title,
   prospect,
   building,
+  logoUrl = null,
 }: {
   title: string
   prospect: Prospect
   building: Building
+  logoUrl?: string | null
 }) {
   return (
     <div className="mb-8">
+      {logoUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logoUrl} alt="Company logo" className="h-12 w-auto object-contain mb-3" />
+      )}
       <div className="border-t-2 border-gray-800 mb-0.5" />
       <div className="border-t border-gray-800 mb-7" />
 
@@ -257,9 +263,9 @@ function PieChart({ segments }: { segments: PieSegment[] }) {
 // ─── Report 1 & 2: Scope of Work ─────────────────────────────────────────────
 
 function ScopeOfWorkReport({
-  data, withTaskCodes, includeAltLang,
+  data, withTaskCodes, includeAltLang, logoUrl = null,
 }: {
-  data: ReportData; withTaskCodes: boolean; includeAltLang: boolean
+  data: ReportData; withTaskCodes: boolean; includeAltLang: boolean; logoUrl?: string | null
 }) {
   const title = withTaskCodes
     ? 'Work Load Specifications / Scope of Work (with Task Codes)'
@@ -273,7 +279,7 @@ function ScopeOfWorkReport({
 
   return (
     <div className="report-section">
-      <ReportHeader title={title} prospect={data.prospect} building={data.building} />
+      <ReportHeader title={title} prospect={data.prospect} building={data.building} logoUrl={logoUrl} />
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
@@ -743,7 +749,7 @@ function InvestmentRecapReport({ data }: { data: ReportData }) {
 
 // ─── Report 7: Pinpoint ───────────────────────────────────────────────────────
 
-function PinpointReport({ data }: { data: ReportData }) {
+function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: string | null }) {
   const { building, prospect, areas, bidLaborLines } = data
 
   const ppTh  = 'border border-gray-300 px-3 py-2 text-left   text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
@@ -806,7 +812,7 @@ function PinpointReport({ data }: { data: ReportData }) {
     <>
       {/* ── Page 1: Building Profile ──────────────────────────────────────── */}
       <div className="report-section">
-        <ReportHeader title="Building Profile" prospect={prospect} building={building} />
+        <ReportHeader title="Building Profile" prospect={prospect} building={building} logoUrl={logoUrl} />
 
         <div className="flex gap-4 items-start">
 
@@ -1251,13 +1257,13 @@ export default function ReportsView({
 
                 {[
                   checked.has('pinpoint') && (
-                    <PinpointReport key="pinpoint" data={reportData} />
+                    <PinpointReport key="pinpoint" data={reportData} logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
                   ),
                   checked.has('scope_no_codes') && (
-                    <ScopeOfWorkReport key="scope_no" data={reportData} withTaskCodes={false} includeAltLang={includeAltLang} />
+                    <ScopeOfWorkReport key="scope_no" data={reportData} withTaskCodes={false} includeAltLang={includeAltLang} logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
                   ),
                   checked.has('scope_with_codes') && (
-                    <ScopeOfWorkReport key="scope_codes" data={reportData} withTaskCodes={true} includeAltLang={includeAltLang} />
+                    <ScopeOfWorkReport key="scope_codes" data={reportData} withTaskCodes={true} includeAltLang={includeAltLang} logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
                   ),
                   checked.has('wl_summary') && (
                     <WorkLoadSummaryReport key="wl_sum" data={reportData} />
