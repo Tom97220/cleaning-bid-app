@@ -116,9 +116,6 @@ const fmtFreq = (freq: number | null): string => {
   return map[freq] ?? `${freq}x/year`
 }
 
-function todayStr() {
-  return new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-}
 
 
 // ─── Table styles ─────────────────────────────────────────────────────────────
@@ -143,10 +140,6 @@ function ReportHeader({
 }) {
   return (
     <div className="mb-8">
-      <div className="mb-3">
-        <span className="text-sm text-gray-500">{todayStr()}</span>
-      </div>
-
       <div className="border-t-2 border-gray-800 mb-0.5" />
       <div className="border-t border-gray-800 mb-7" />
 
@@ -222,7 +215,6 @@ function CoverPage({
             Add company details in Admin &rsaquo; Company Settings
           </p>
         )}
-        <p className="text-xs text-gray-400 mt-5">{todayStr()}</p>
       </div>
     </div>
   )
