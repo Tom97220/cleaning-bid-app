@@ -23,17 +23,6 @@ export interface CompanySettings {
   logo_url: string | null
 }
 
-export interface CompanyLocation {
-  id: string
-  location_name: string
-  address_1: string | null
-  address_2: string | null
-  city: string | null
-  state: string | null
-  zip: string | null
-  phone: string | null
-  is_default: boolean
-}
 
 interface Prospect { id: string; company_name: string }
 interface Building {
@@ -131,15 +120,6 @@ function todayStr() {
   return new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 }
 
-function locationAddressLines(loc: CompanyLocation): string[] {
-  const lines: string[] = []
-  if (loc.address_1) lines.push(loc.address_1)
-  if (loc.address_2) lines.push(loc.address_2)
-  const cityLine = [loc.city, loc.state, loc.zip].filter(Boolean).join(', ')
-  if (cityLine) lines.push(cityLine)
-  if (loc.phone) lines.push(loc.phone)
-  return lines
-}
 
 // ─── Table styles ─────────────────────────────────────────────────────────────
 
@@ -156,30 +136,15 @@ function ReportHeader({
   title,
   prospect,
   building,
-  company,
-  location,
 }: {
   title: string
   prospect: Prospect
   building: Building
-  company: CompanySettings | null
-  location?: CompanyLocation | null
 }) {
-  const addrLines = location ? locationAddressLines(location) : []
   return (
     <div className="mb-8">
-      <div className="flex justify-between items-start mb-3">
-        <span className="text-sm text-gray-500 pt-0.5">{todayStr()}</span>
-        {(company?.company_name || location) && (
-          <div className="text-right">
-            {company?.company_name && (
-              <p className="text-sm font-medium text-gray-600">{company.company_name}</p>
-            )}
-            {addrLines.map((line, i) => (
-              <p key={i} className="text-xs text-gray-400">{line}</p>
-            ))}
-          </div>
-        )}
+      <div className="mb-3">
+        <span className="text-sm text-gray-500">{todayStr()}</span>
       </div>
 
       <div className="border-t-2 border-gray-800 mb-0.5" />
@@ -207,11 +172,11 @@ function ReportHeader({
 function CoverPage({
   data,
   company,
-  location,
+  includeLogo,
 }: {
   data: ReportData
   company: CompanySettings | null
-  location: CompanyLocation | null
+  includeLogo: boolean
 }) {
   return (
     <div
@@ -219,7 +184,7 @@ function CoverPage({
       style={{ minHeight: '1050px' }}
     >
       <div className="text-center pt-16 px-16">
-        {company?.logo_url && (
+        {includeLogo && company?.logo_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={company.logo_url}
@@ -250,15 +215,8 @@ function CoverPage({
 
       <div className="text-center pb-16 px-16">
         <p className="text-xs uppercase tracking-widest text-gray-400 mb-3">Presented by</p>
-        {(company || location) ? (
-          <div className="space-y-0.5">
-            {company?.company_name && (
-              <p className="font-semibold text-gray-800">{company.company_name}</p>
-            )}
-            {location && locationAddressLines(location).map((line, i) => (
-              <p key={i} className="text-sm text-gray-600">{line}</p>
-            ))}
-          </div>
+        {company?.company_name ? (
+          <p className="font-semibold text-gray-800">{company.company_name}</p>
         ) : (
           <p className="text-sm text-gray-400 italic">
             Add company details in Admin &rsaquo; Company Settings
@@ -307,9 +265,9 @@ function PieChart({ segments }: { segments: PieSegment[] }) {
 // ─── Report 1 & 2: Scope of Work ─────────────────────────────────────────────
 
 function ScopeOfWorkReport({
-  data, withTaskCodes, includeAltLang, company, location,
+  data, withTaskCodes, includeAltLang,
 }: {
-  data: ReportData; withTaskCodes: boolean; includeAltLang: boolean; company: CompanySettings | null; location: CompanyLocation | null
+  data: ReportData; withTaskCodes: boolean; includeAltLang: boolean
 }) {
   const title = withTaskCodes
     ? 'Work Load Specifications / Scope of Work (with Task Codes)'
@@ -323,7 +281,7 @@ function ScopeOfWorkReport({
 
   return (
     <div className="report-section">
-      <ReportHeader title={title} prospect={data.prospect} building={data.building} company={company} location={location} />
+      <ReportHeader title={title} prospect={data.prospect} building={data.building} />
       <table className="w-full border-collapse text-sm">
         <thead>
           <tr>
@@ -403,7 +361,7 @@ function ScopeOfWorkReport({
 
 // ─── Report 3: Work Load Development Summary ──────────────────────────────────
 
-function WorkLoadSummaryReport({ data, company, location }: { data: ReportData; company: CompanySettings | null; location: CompanyLocation | null }) {
+function WorkLoadSummaryReport({ data }: { data: ReportData }) {
   const allTasks    = data.areas.flatMap(a => a.task_line_items)
   const annualHours = allTasks.reduce((s, t) => s + (t.yearly_hrs ?? 0), 0)
 
@@ -423,7 +381,7 @@ function WorkLoadSummaryReport({ data, company, location }: { data: ReportData; 
 
   return (
     <div className="report-section">
-      <ReportHeader title="Work Load Development Summary" prospect={data.prospect} building={data.building} company={company} location={location} />
+      <ReportHeader title="Work Load Development Summary" prospect={data.prospect} building={data.building} />
       <div className="max-w-sm">
         <table className="w-full text-sm">
           <tbody className="divide-y divide-gray-100">
@@ -442,7 +400,7 @@ function WorkLoadSummaryReport({ data, company, location }: { data: ReportData; 
 
 // ─── Report 4: Work Load Development Detail ───────────────────────────────────
 
-function WorkLoadDetailReport({ data, company, location }: { data: ReportData; company: CompanySettings | null; location: CompanyLocation | null }) {
+function WorkLoadDetailReport({ data }: { data: ReportData }) {
   const allTasks = data.areas.flatMap(a => a.task_line_items)
   const grand = {
     yearly:  allTasks.reduce((s, t) => s + (t.yearly_hrs  ?? 0), 0),
@@ -453,7 +411,7 @@ function WorkLoadDetailReport({ data, company, location }: { data: ReportData; c
 
   return (
     <div className="report-section">
-      <ReportHeader title="Work Load Development Detail" prospect={data.prospect} building={data.building} company={company} location={location} />
+      <ReportHeader title="Work Load Development Detail" prospect={data.prospect} building={data.building} />
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr>
@@ -515,7 +473,7 @@ function WorkLoadDetailReport({ data, company, location }: { data: ReportData; c
 
 // ─── Report 5: Work Load by Position ─────────────────────────────────────────
 
-function WorkLoadByPositionReport({ data, company, location }: { data: ReportData; company: CompanySettings | null; location: CompanyLocation | null }) {
+function WorkLoadByPositionReport({ data }: { data: ReportData }) {
   const allTasks    = data.areas.flatMap(a => a.task_line_items)
   const totalYearly = allTasks.reduce((s, t) => s + (t.yearly_hrs ?? 0), 0)
 
@@ -536,7 +494,7 @@ function WorkLoadByPositionReport({ data, company, location }: { data: ReportDat
 
   return (
     <div className="report-section">
-      <ReportHeader title="Work Load by Position" prospect={data.prospect} building={data.building} company={company} location={location} />
+      <ReportHeader title="Work Load by Position" prospect={data.prospect} building={data.building} />
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr>
@@ -574,13 +532,13 @@ function WorkLoadByPositionReport({ data, company, location }: { data: ReportDat
 
 // ─── Report 6: Investment Recap ───────────────────────────────────────────────
 
-function InvestmentRecapReport({ data, company, location }: { data: ReportData; company: CompanySettings | null; location: CompanyLocation | null }) {
+function InvestmentRecapReport({ data }: { data: ReportData }) {
   const { bidSummary, bidLaborLines, bidLaborCosts, bidOtherCosts, building } = data
 
   if (!bidSummary) {
     return (
       <div className="report-section">
-        <ReportHeader title="Investment Recap / Bidding Report" prospect={data.prospect} building={data.building} company={company} location={location} />
+        <ReportHeader title="Investment Recap / Bidding Report" prospect={data.prospect} building={data.building} />
         <p className="text-gray-400 italic text-sm">No bid data available for this building.</p>
       </div>
     )
@@ -622,7 +580,7 @@ function InvestmentRecapReport({ data, company, location }: { data: ReportData; 
 
   return (
     <div className="report-section">
-      <ReportHeader title="Investment Recap / Bidding Report" prospect={data.prospect} building={data.building} company={company} />
+      <ReportHeader title="Investment Recap / Bidding Report" prospect={data.prospect} building={data.building} />
 
       {sectionHeader('Section 1 — Labor by Position')}
       <table className="w-full text-sm border-collapse mb-2">
@@ -793,7 +751,7 @@ function InvestmentRecapReport({ data, company, location }: { data: ReportData; 
 
 // ─── Report 7: Pinpoint ───────────────────────────────────────────────────────
 
-function PinpointReport({ data, company, location }: { data: ReportData; company: CompanySettings | null; location: CompanyLocation | null }) {
+function PinpointReport({ data }: { data: ReportData }) {
   const { building, prospect, areas, bidLaborLines } = data
 
   const ppTh  = 'border border-gray-300 px-3 py-2 text-left   text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
@@ -856,7 +814,7 @@ function PinpointReport({ data, company, location }: { data: ReportData; company
     <>
       {/* ── Page 1: Building Profile ──────────────────────────────────────── */}
       <div className="report-section">
-        <ReportHeader title="Building Profile" prospect={prospect} building={building} company={company} location={location} />
+        <ReportHeader title="Building Profile" prospect={prospect} building={building} />
 
         <div className="flex gap-4 items-start">
 
@@ -984,7 +942,7 @@ function PinpointReport({ data, company, location }: { data: ReportData; company
 
       {/* ── Page 2: Area Grid ─────────────────────────────────────────────── */}
       <div className="report-section pinpoint-landscape">
-        <ReportHeader title="Pinpoint — Area Grid" prospect={prospect} building={building} company={company} location={location} />
+        <ReportHeader title="Pinpoint — Area Grid" prospect={prospect} building={building} />
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -1016,7 +974,7 @@ function PinpointReport({ data, company, location }: { data: ReportData; company
 
       {/* ── Page 3: Production & Staffing Summary ─────────────────────────── */}
       <div className="report-section">
-        <ReportHeader title="Pinpoint — Production & Staffing Summary" prospect={prospect} building={building} company={company} location={location} />
+        <ReportHeader title="Pinpoint — Production & Staffing Summary" prospect={prospect} building={building} />
         {staffingRows.length === 0 ? (
           <p className="text-sm text-gray-400 italic">No staffing data available for this building.</p>
         ) : (
@@ -1063,23 +1021,17 @@ export default function ReportsView({
   prospect,
   building,
   companySettings,
-  locations,
 }: {
   prospect: Prospect
   building: Building
   companySettings: CompanySettings | null
-  locations: CompanyLocation[]
 }) {
-  const defaultLocation = locations.find(l => l.is_default) ?? locations[0] ?? null
-
-  const [selectedLocationId, setSelectedLocationId] = useState(defaultLocation?.id ?? '')
-  const [checked, setChecked]                       = useState<Set<string>>(new Set())
-  const [includeAltLang, setIncludeAltLang]         = useState(false)
-  const [reportData, setReportData]                 = useState<ReportData | null>(null)
-  const [isGenerating, setIsGenerating]             = useState(false)
-  const [error, setError]                           = useState<string | null>(null)
-
-  const selectedLocation = locations.find(l => l.id === selectedLocationId) ?? null
+  const [checked, setChecked]               = useState<Set<string>>(new Set())
+  const [includeAltLang, setIncludeAltLang] = useState(false)
+  const [includeLogo, setIncludeLogo]       = useState(true)
+  const [reportData, setReportData]         = useState<ReportData | null>(null)
+  const [isGenerating, setIsGenerating]     = useState(false)
+  const [error, setError]                   = useState<string | null>(null)
 
   const supabase = useMemo(() => createClient(), [])
 
@@ -1181,27 +1133,6 @@ export default function ReportsView({
             <p className="text-sm text-gray-500">{building.building_name}</p>
           </div>
 
-          {/* Presented by Location */}
-          {locations.length > 0 && (
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
-                Presented by Location
-              </label>
-              <select
-                value={selectedLocationId}
-                onChange={e => setSelectedLocationId(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-              >
-                <option value="">No location</option>
-                {locations.map(l => (
-                  <option key={l.id} value={l.id}>
-                    {l.location_name}{l.is_default ? ' (default)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           {/* Report selection */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -1240,14 +1171,22 @@ export default function ReportsView({
             ))}
           </div>
 
-          {/* Alternate language option */}
-          {anyScope && (
+          {/* Options */}
+          {(anyScope || companySettings?.logo_url) && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Options</p>
-              <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer">
-                <input type="checkbox" checked={includeAltLang} onChange={e => setIncludeAltLang(e.target.checked)} className="accent-brand-600" />
-                <span className="text-sm text-gray-700">Include alternate language column</span>
-              </label>
+              {anyScope && (
+                <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer">
+                  <input type="checkbox" checked={includeAltLang} onChange={e => setIncludeAltLang(e.target.checked)} className="accent-brand-600" />
+                  <span className="text-sm text-gray-700">Include alternate language column</span>
+                </label>
+              )}
+              {companySettings?.logo_url && (
+                <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer">
+                  <input type="checkbox" checked={includeLogo} onChange={e => setIncludeLogo(e.target.checked)} className="accent-brand-600" />
+                  <span className="text-sm text-gray-700">Include logo</span>
+                </label>
+              )}
             </div>
           )}
 
@@ -1313,32 +1252,32 @@ export default function ReportsView({
                 {checked.has('cover_page') && (
                   <div className="bg-white shadow-sm rounded-sm mx-auto print:shadow-none print:rounded-none" style={{ maxWidth: '816px' }}>
                     <div className="px-16 py-12">
-                      <CoverPage data={reportData} company={companySettings} location={selectedLocation} />
+                      <CoverPage data={reportData} company={companySettings} includeLogo={includeLogo} />
                     </div>
                   </div>
                 )}
 
                 {[
                   checked.has('pinpoint') && (
-                    <PinpointReport key="pinpoint" data={reportData} company={companySettings} location={selectedLocation} />
+                    <PinpointReport key="pinpoint" data={reportData} />
                   ),
                   checked.has('scope_no_codes') && (
-                    <ScopeOfWorkReport key="scope_no" data={reportData} withTaskCodes={false} includeAltLang={includeAltLang} company={companySettings} location={selectedLocation} />
+                    <ScopeOfWorkReport key="scope_no" data={reportData} withTaskCodes={false} includeAltLang={includeAltLang} />
                   ),
                   checked.has('scope_with_codes') && (
-                    <ScopeOfWorkReport key="scope_codes" data={reportData} withTaskCodes={true} includeAltLang={includeAltLang} company={companySettings} location={selectedLocation} />
+                    <ScopeOfWorkReport key="scope_codes" data={reportData} withTaskCodes={true} includeAltLang={includeAltLang} />
                   ),
                   checked.has('wl_summary') && (
-                    <WorkLoadSummaryReport key="wl_sum" data={reportData} company={companySettings} location={selectedLocation} />
+                    <WorkLoadSummaryReport key="wl_sum" data={reportData} />
                   ),
                   checked.has('wl_detail') && (
-                    <WorkLoadDetailReport key="wl_det" data={reportData} company={companySettings} location={selectedLocation} />
+                    <WorkLoadDetailReport key="wl_det" data={reportData} />
                   ),
                   checked.has('wl_by_position') && (
-                    <WorkLoadByPositionReport key="wl_pos" data={reportData} company={companySettings} location={selectedLocation} />
+                    <WorkLoadByPositionReport key="wl_pos" data={reportData} />
                   ),
                   checked.has('investment_recap') && (
-                    <InvestmentRecapReport key="inv" data={reportData} company={companySettings} location={selectedLocation} />
+                    <InvestmentRecapReport key="inv" data={reportData} />
                   ),
                 ].filter(Boolean).map((el, i) => (
                   <div key={i} className="bg-white shadow-sm rounded-sm mx-auto print:shadow-none print:rounded-none" style={{ maxWidth: '816px' }}>

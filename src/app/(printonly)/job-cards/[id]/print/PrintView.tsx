@@ -111,10 +111,10 @@ function PrintPage({ children, first = false }: {
 // ─── Print: Full route header (Pages 1 & 3) ───────────────────────────────────
 
 function PrintRouteHeader({
-  positionName, route, prospectName, buildingName, specialInstructions, revisedDate, lang = 'en',
+  positionName, route, prospectName, buildingName, specialInstructions, revisedDate, logoUrl, lang = 'en',
 }: {
   positionName: string; route: string; prospectName: string; buildingName: string
-  specialInstructions: string; revisedDate: string; lang?: 'en' | 'alt'
+  specialInstructions: string; revisedDate: string; logoUrl: string | null; lang?: 'en' | 'alt'
 }) {
   const siteLine = [prospectName, buildingName].filter(Boolean).join(' — ')
   return (
@@ -137,6 +137,10 @@ function PrintRouteHeader({
           maxWidth: '260px', paddingLeft: '20px', flexShrink: 0,
         }}>
           <div>
+            {logoUrl && (
+              <img src={logoUrl} alt="Company logo"
+                style={{ maxHeight: '48px', maxWidth: '160px', objectFit: 'contain', marginBottom: '6px', marginLeft: 'auto' }} />
+            )}
             {specialInstructions && (
               <div style={{ lineHeight: '1.5' }}>
                 <span style={{ fontWeight: '700' }}>
@@ -183,11 +187,11 @@ function PrintCompactHeader({
 // ─── Print: Route page (Pages 1 & 3) ─────────────────────────────────────────
 
 function PrintRoutePage({
-  positionName, route, prospectName, buildingName, specialInstructions, revisedDate, rows, notesEn, notesAlt, lang = 'en',
+  positionName, route, prospectName, buildingName, specialInstructions, revisedDate, rows, notesEn, notesAlt, logoUrl, lang = 'en',
 }: {
   positionName: string; route: string; prospectName: string; buildingName: string
   specialInstructions: string; revisedDate: string; rows: PrintRouteRow[]
-  notesEn: string | null; notesAlt: string | null; lang?: 'en' | 'alt'
+  notesEn: string | null; notesAlt: string | null; logoUrl: string | null; lang?: 'en' | 'alt'
 }) {
   const sortedRows = sortRouteRows(rows)
   const blanks = Math.max(8, 12 - rows.length)
@@ -198,6 +202,7 @@ function PrintRoutePage({
         positionName={positionName} route={route}
         prospectName={prospectName} buildingName={buildingName}
         specialInstructions={specialInstructions} revisedDate={revisedDate}
+        logoUrl={logoUrl}
         lang={lang}
       />
       <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
@@ -362,12 +367,14 @@ export default function PrintView({
   dailyTasks,
   coreDetails,
   detailTasks,
+  logoUrl,
 }: {
   jobCard: PrintJobCard
   routeRows: PrintRouteRow[]
   dailyTasks: PrintDailyTask[]
   coreDetails: PrintCoreRow[]
   detailTasks: PrintDetailTask[]
+  logoUrl: string | null
 }) {
   useEffect(() => {
     const t = setTimeout(() => window.print(), 300)
@@ -406,6 +413,7 @@ export default function PrintView({
           rows={routeRows}
           notesEn={jobCard.notes_page1 ?? null}
           notesAlt={jobCard.notes_page1_alt ?? null}
+          logoUrl={logoUrl}
         />
       </PrintPage>
 
@@ -442,6 +450,7 @@ export default function PrintView({
             lang="alt"
             notesEn={jobCard.notes_page1 ?? null}
             notesAlt={jobCard.notes_page1_alt ?? null}
+            logoUrl={logoUrl}
           />
         </PrintPage>
       )}

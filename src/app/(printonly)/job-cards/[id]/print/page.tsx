@@ -6,10 +6,14 @@ export const metadata = { title: ' ', robots: 'noindex' }
 
 export default async function JobCardPrintPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ logo?: string }>
 }) {
   const { id } = await params
+  const { logo } = await searchParams
+  const includeLogo = logo !== '0'
   const supabase = await createClient()
 
   const [
@@ -18,6 +22,7 @@ export default async function JobCardPrintPage({
     { data: dailyTasks },
     { data: coreDetails },
     { data: detailTasks },
+    { data: companySettings },
   ] = await Promise.all([
     supabase
       .from('job_cards')
@@ -28,6 +33,7 @@ export default async function JobCardPrintPage({
     supabase.from('job_card_daily_tasks').select('*').eq('job_card_id', id).order('sort_order'),
     supabase.from('job_card_detail_schedule').select('*').eq('job_card_id', id).order('sort_order'),
     supabase.from('job_card_when_detailing').select('*').eq('job_card_id', id).order('sort_order'),
+    supabase.from('company_settings').select('logo_url').maybeSingle(),
   ])
 
   if (!jobCard) notFound()
@@ -39,6 +45,7 @@ export default async function JobCardPrintPage({
       dailyTasks={dailyTasks ?? []}
       coreDetails={coreDetails ?? []}
       detailTasks={detailTasks ?? []}
+      logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null}
     />
   )
 }

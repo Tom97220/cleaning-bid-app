@@ -221,6 +221,7 @@ export default function JobCardEditor({
   initialDetailTasks,
   prospects,
   positions,
+  companyLogoUrl,
 }: {
   jobCard: JobCard
   initialRouteRows: DBRouteRow[]
@@ -229,6 +230,7 @@ export default function JobCardEditor({
   initialDetailTasks: DBWhenDetail[]
   prospects: Prospect[]
   positions: Position[]
+  companyLogoUrl: string | null
 }) {
   const router   = useRouter()
   const supabase = useMemo(() => createClient(), [])
@@ -285,6 +287,7 @@ export default function JobCardEditor({
   const [translating,     setTranslating]     = useState(false)
   const [translateError,  setTranslateError]  = useState<string | null>(null)
   const [isTranslated,    setIsTranslated]    = useState(jobCard.is_translated ?? false)
+  const [includeLogo,     setIncludeLogo]     = useState(false)
 
   // Cache: English text → Spanish translation (session-scoped)
   const translationCache = useRef<Map<string, string>>(new Map())
@@ -612,7 +615,7 @@ export default function JobCardEditor({
             {saving ? 'Saving…' : 'Save'}
           </button>
           <a
-            href={`/job-cards/${jobCard.id}/print`}
+            href={`/job-cards/${jobCard.id}/print${includeLogo ? '' : '?logo=0'}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 border border-gray-300 hover:border-gray-400 text-gray-700 bg-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
@@ -623,6 +626,17 @@ export default function JobCardEditor({
             </svg>
             Print {isTranslated ? '(4 pages)' : '(2 pages)'}
           </a>
+          {companyLogoUrl && (
+            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={includeLogo}
+                onChange={(e) => setIncludeLogo(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              />
+              Include logo
+            </label>
+          )}
           <button onClick={handleTranslate} disabled={translating}
             className="flex items-center gap-1.5 border border-gray-300 hover:border-gray-400 text-gray-700 bg-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50">
             {translating ? (

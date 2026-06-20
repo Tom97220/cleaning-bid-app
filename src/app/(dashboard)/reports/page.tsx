@@ -16,16 +16,10 @@ export default async function ReportsPage({
     const supabase = await createClient()
     const [
       { data: companySettings },
-      { data: locations },
       { data: prospect },
       { data: building },
     ] = await Promise.all([
       supabase.from('company_settings').select('*').maybeSingle(),
-      supabase
-        .from('company_locations')
-        .select('*')
-        .order('is_default', { ascending: false })
-        .order('location_name'),
       supabase.from('prospects').select('id, company_name').eq('id', prospectId).single(),
       supabase.from('buildings')
         .select('id, building_name, square_feet, address, address_2, city, state, zip, floors, notes, service_days')
@@ -46,7 +40,6 @@ export default async function ReportsPage({
               prospect={prospect}
               building={building}
               companySettings={companySettings ?? null}
-              locations={locations ?? []}
             />
           </div>
         </div>

@@ -22,6 +22,7 @@ export default async function JobCardPage({
     { data: detailTasks, error: wdtErr },
     { data: prospects },
     { data: positions },
+    { data: companySettings },
   ] = await Promise.all([
     supabase
       .from('job_cards')
@@ -34,6 +35,7 @@ export default async function JobCardPage({
     supabase.from('job_card_when_detailing').select('*').eq('job_card_id', id).order('sort_order'),
     supabase.from('prospects').select('id, company_name').order('company_name'),
     supabase.from('positions').select('id, position_name').order('position_name'),
+    supabase.from('company_settings').select('logo_url').maybeSingle(),
   ])
 
   if (rrErr)  console.error('[job-card page] job_card_route_rows error:', rrErr)
@@ -78,6 +80,7 @@ export default async function JobCardPage({
           initialDetailTasks={detailTasks ?? []}
           prospects={prospects ?? []}
           positions={positions ?? []}
+          companyLogoUrl={companySettings?.logo_url ?? null}
         />
       </div>
     </div>
