@@ -324,12 +324,12 @@ function ScopeOfWorkReport({
               </td>
             </tr>
           ) : (
-            printAreas.map(area => (
+            printAreas.map((area, ai) => (
               <>
                 <tr key={`area-${area.id}`}>
                   <td
                     colSpan={colCount}
-                    className="pt-5 pb-1 pl-0.5 text-sm font-bold italic text-gray-800"
+                    className={`pt-8 pb-2 pl-0.5 text-sm font-bold italic text-gray-800${ai > 0 ? ' border-t border-gray-200' : ''}`}
                   >
                     Area: {area.area_name}
                   </td>
@@ -338,26 +338,26 @@ function ScopeOfWorkReport({
                 {area.task_line_items.map(task => (
                   <tr key={task.id}>
                     {withTaskCodes && (
-                      <td className="py-1 pr-6 align-top whitespace-nowrap">
+                      <td className="py-2 pl-6 pr-6 align-top whitespace-nowrap">
                         <span className="font-mono text-xs text-gray-500">
                           {task.task_codes?.task_code ?? ''}
                         </span>
                       </td>
                     )}
-                    <td className="py-1 pr-6 align-top text-gray-800">
+                    <td className={`py-2 pr-6 align-top text-gray-800${withTaskCodes ? '' : ' pl-6'}`}>
                       {task.task_name ?? '—'}
                     </td>
-                    <td className="py-1 pr-8 align-top text-gray-700">
+                    <td className="py-2 pr-8 align-top text-gray-700">
                       {useAltDescription
                         ? (task.task_codes?.description_alt || task.task_codes?.description) ?? ''
                         : task.task_codes?.description ?? ''}
                     </td>
                     {includeAltLang && (
-                      <td className="py-1 pl-6 pr-8 align-top text-gray-500 italic">
+                      <td className="py-2 pl-6 pr-8 align-top text-gray-500 italic">
                         {task.task_codes?.description_alt ?? ''}
                       </td>
                     )}
-                    <td className="py-1 pl-8 text-right align-top whitespace-nowrap text-sm text-gray-600">
+                    <td className="py-2 pl-8 text-right align-top whitespace-nowrap text-sm text-gray-600">
                       {fmtFreq(task.frequency, useAltDescription)}
                     </td>
                   </tr>
@@ -1259,7 +1259,7 @@ export default function ReportsView({
               </div>
 
               {/* Pages */}
-              <div className="py-8 px-6 space-y-6 print:p-0 print:space-y-0">
+              <div className="py-8 px-6 space-y-6 print:p-0 print:space-y-0" style={{ fontFamily: 'Tahoma, Verdana, Geneva, sans-serif' }}>
 
                 {checked.has('cover_page') && (
                   <div className="bg-white shadow-sm rounded-sm mx-auto print:shadow-none print:rounded-none" style={{ maxWidth: '816px' }}>
