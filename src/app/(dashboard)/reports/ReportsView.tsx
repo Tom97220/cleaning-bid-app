@@ -85,6 +85,7 @@ const REPORT_OPTIONS = [
   { key: 'pinpoint',         label: 'Pinpoint',                            category: 'Document', isScope: false },
   { key: 'scope_no_codes',   label: 'Scope of Work (without task codes)',   category: 'Workload', isScope: true  },
   { key: 'scope_with_codes', label: 'Scope of Work (with task codes)',      category: 'Workload', isScope: true  },
+  { key: 'scope_no_codes_es', label: 'Scope of Work – Spanish Version (no task codes)', category: 'Workload', isScope: true  },
   { key: 'wl_summary',       label: 'Work Load Development Summary',        category: 'Workload', isScope: false },
   { key: 'wl_detail',        label: 'Work Load Development Detail',         category: 'Workload', isScope: false },
   { key: 'wl_by_position',   label: 'Work Load by Position',                category: 'Workload', isScope: false },
@@ -263,13 +264,15 @@ function PieChart({ segments }: { segments: PieSegment[] }) {
 // ─── Report 1 & 2: Scope of Work ─────────────────────────────────────────────
 
 function ScopeOfWorkReport({
-  data, withTaskCodes, includeAltLang, logoUrl = null,
+  data, withTaskCodes, includeAltLang, useAltDescription = false, logoUrl = null,
 }: {
-  data: ReportData; withTaskCodes: boolean; includeAltLang: boolean; logoUrl?: string | null
+  data: ReportData; withTaskCodes: boolean; includeAltLang: boolean; useAltDescription?: boolean; logoUrl?: string | null
 }) {
-  const title = withTaskCodes
-    ? 'Work Load Specifications / Scope of Work (with Task Codes)'
-    : 'Work Load Specifications / Scope of Work'
+  const title = useAltDescription
+    ? 'Work Load Specifications / Scope of Work (Spanish)'
+    : withTaskCodes
+      ? 'Work Load Specifications / Scope of Work (with Task Codes)'
+      : 'Work Load Specifications / Scope of Work'
 
   const printAreas = data.areas
     .map(area => ({ ...area, task_line_items: area.task_line_items.filter(t => t.print) }))
@@ -336,7 +339,9 @@ function ScopeOfWorkReport({
                       {task.task_name ?? '—'}
                     </td>
                     <td className="py-1 pr-8 align-top text-gray-700">
-                      {task.task_codes?.description ?? ''}
+                      {useAltDescription
+                        ? (task.task_codes?.description_alt || task.task_codes?.description) ?? ''
+                        : task.task_codes?.description ?? ''}
                     </td>
                     {includeAltLang && (
                       <td className="py-1 pl-6 pr-8 align-top text-gray-500 italic">
@@ -1264,6 +1269,9 @@ export default function ReportsView({
                   ),
                   checked.has('scope_with_codes') && (
                     <ScopeOfWorkReport key="scope_codes" data={reportData} withTaskCodes={true} includeAltLang={includeAltLang} logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
+                  ),
+                  checked.has('scope_no_codes_es') && (
+                    <ScopeOfWorkReport key="scope_es" data={reportData} withTaskCodes={false} includeAltLang={false} useAltDescription logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
                   ),
                   checked.has('wl_summary') && (
                     <WorkLoadSummaryReport key="wl_sum" data={reportData} />
