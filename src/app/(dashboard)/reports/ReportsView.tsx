@@ -292,7 +292,7 @@ function ScopeOfWorkReport({
   return (
     <div className="report-section">
       <ReportHeader title={title} prospect={data.prospect} building={data.building} logoUrl={logoUrl} />
-      <table className="w-full border-collapse text-sm">
+      <table className="w-full border-collapse text-[11px]">
         <thead>
           <tr>
             {withTaskCodes && (
@@ -329,7 +329,7 @@ function ScopeOfWorkReport({
                 <tr key={`area-${area.id}`}>
                   <td
                     colSpan={colCount}
-                    className={`pt-8 pb-2 pl-0.5 text-sm font-bold italic text-gray-800${ai > 0 ? ' border-t border-gray-200' : ''}`}
+                    className={`pt-8 pb-2 pl-0.5 text-[11px] font-bold italic text-gray-800${ai > 0 ? ' border-t border-gray-400' : ''}`}
                   >
                     Area: {area.area_name}
                   </td>
@@ -339,7 +339,7 @@ function ScopeOfWorkReport({
                   <tr key={task.id}>
                     {withTaskCodes && (
                       <td className="py-2 pl-6 pr-6 align-top whitespace-nowrap">
-                        <span className="font-mono text-xs text-gray-500">
+                        <span className="font-mono text-[11px] text-gray-500">
                           {task.task_codes?.task_code ?? ''}
                         </span>
                       </td>
@@ -357,7 +357,7 @@ function ScopeOfWorkReport({
                         {task.task_codes?.description_alt ?? ''}
                       </td>
                     )}
-                    <td className="py-2 pl-8 text-right align-top whitespace-nowrap text-sm text-gray-600">
+                    <td className="py-2 pl-8 text-right align-top whitespace-nowrap text-[11px] text-gray-600">
                       {fmtFreq(task.frequency, useAltDescription)}
                     </td>
                   </tr>
