@@ -33,6 +33,9 @@ const inputClass =
   'w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent'
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
 
+const ALLOWED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml']
+const MAX_LOGO_BYTES = 2 * 1024 * 1024 // 2 MB
+
 const emptyLocForm = {
   location_name: '',
   address_1: '',
@@ -60,11 +63,56 @@ export default function CompanySettingsForm({ settings, initialLocations }: Prop
   const [success, setSuccess] = useState(false)
   const [error,   setError]   = useState<string | null>(null)
 
+  const [uploading,   setUploading]   = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
   function set(field: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       setForm(prev => ({ ...prev, [field]: e.target.value }))
       setSuccess(false)
     }
+  }
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file after an error
+    if (!file) return
+
+    setUploadError(null)
+
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      setUploadError('Logo must be a PNG, JPG, or SVG file.')
+      return
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      setUploadError('Logo must be 2 MB or smaller.')
+      return
+    }
+
+    setUploading(true)
+    const ext  = file.name.split('.').pop()?.toLowerCase() || 'png'
+    const path = `company/logo-${Date.now()}.${ext}`
+
+    const { error: upErr } = await supabase.storage
+      .from('logos')
+      .upload(path, file, { cacheControl: '3600', upsert: false })
+
+    if (upErr) {
+      setUploadError(upErr.message)
+      setUploading(false)
+      return
+    }
+
+    const { data } = supabase.storage.from('logos').getPublicUrl(path)
+    setForm(prev => ({ ...prev, logo_url: data.publicUrl }))
+    setSuccess(false)
+    setUploading(false)
+  }
+
+  function removeLogo() {
+    setForm(prev => ({ ...prev, logo_url: '' }))
+    setUploadError(null)
+    setSuccess(false)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -224,19 +272,34 @@ export default function CompanySettingsForm({ settings, initialLocations }: Prop
 
         <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
           <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Logo</h3>
+
           <div>
             <label className={labelClass}>
-              Logo URL <span className="text-gray-400 font-normal">(optional — public image URL)</span>
+              Logo <span className="text-gray-400 font-normal">(optional — PNG, JPG, or SVG, max 2 MB)</span>
             </label>
-            <input type="url" value={form.logo_url} onChange={set('logo_url')}
-              placeholder="https://example.com/logo.png" className={inputClass} />
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/svg+xml"
+              onChange={handleLogoUpload}
+              disabled={uploading}
+              className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700 disabled:opacity-50"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              {uploading ? 'Uploading…' : 'Upload a file, then click Save Settings to apply.'}
+            </p>
+            {uploadError && <p className="text-sm text-red-600 mt-1">{uploadError}</p>}
           </div>
+
           {form.logo_url && (
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={form.logo_url} alt="Logo preview"
                 className="h-12 w-auto object-contain border border-gray-200 rounded p-1" />
-              <p className="text-xs text-gray-400">Logo preview</p>
+              <p className="text-xs text-gray-400">Current logo</p>
+              <button type="button" onClick={removeLogo}
+                className="text-sm text-red-500 hover:text-red-700 font-medium">
+                Remove
+              </button>
             </div>
           )}
         </div>
