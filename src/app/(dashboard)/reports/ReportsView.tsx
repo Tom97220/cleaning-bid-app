@@ -104,7 +104,7 @@ const fmt$ = (n: number | null | undefined) =>
 const fmtHrs = (n: number | null | undefined) =>
   n == null ? '—' : n.toFixed(2)
 
-const fmtFreq = (freq: number | null): string => {
+const fmtFreq = (freq: number | null, spanish = false): string => {
   if (!freq) return '—'
   const map: Record<number, string> = {
     365: 'Daily',          260: 'Daily',
@@ -114,6 +114,15 @@ const fmtFreq = (freq: number | null): string => {
     6:   'Every 2 months', 4:   'Quarterly',
     2:   'Semi-annually',  1:   'Annually',
   }
+  const mapEs: Record<number, string> = {
+    365: 'Diario',         260: 'Diario',
+    156: '3x/semana',      104: '2x/semana',
+    52:  'Semanal',        26:  'Quincenal',
+    24:  '2x/mes',         12:  'Mensual',
+    6:   'Bimestral',      4:   'Trimestral',
+    2:   'Semestral',      1:   'Anual',
+  }
+  if (spanish) return mapEs[freq] ?? `${freq}x/año`
   return map[freq] ?? `${freq}x/year`
 }
 
@@ -349,7 +358,7 @@ function ScopeOfWorkReport({
                       </td>
                     )}
                     <td className="py-1 pl-8 text-right align-top whitespace-nowrap text-sm text-gray-600">
-                      {fmtFreq(task.frequency)}
+                      {fmtFreq(task.frequency, useAltDescription)}
                     </td>
                   </tr>
                 ))}
