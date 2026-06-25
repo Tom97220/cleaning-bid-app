@@ -12,6 +12,7 @@ export type AreaPatch = Partial<Pick<Area,
   | 'area_name' | 'room_count' | 'carpet_sqft' | 'tile_vct_sqft'
   | 'other_sqft' | 'fixtures' | 'frequency' | 'print_order'
   | 'notes' | 'square_footage'
+  | 'sinks' | 'showers' | 'fountains' | 'common_sqft' | 'restroom_sqft' | 'stairwells'
 >>
 
 async function assertAuthenticated(): Promise<ActionState> {
@@ -133,6 +134,12 @@ export type InlineAreaData = {
   other_sqft:    number | null
   fixtures:      number | null
   frequency:     number | null
+  sinks:         number | null
+  showers:       number | null
+  fountains:     number | null
+  common_sqft:   number | null
+  restroom_sqft: number | null
+  stairwells:    number | null
 }
 
 export async function createAreaInline(
