@@ -329,7 +329,7 @@ function ScopeOfWorkReport({
                 <tr key={`area-${area.id}`}>
                   <td
                     colSpan={colCount}
-                    className={`pt-8 pb-2 pl-0.5 text-[11px] font-bold italic text-gray-800${ai > 0 ? ' border-t border-gray-400' : ''}`}
+                    className={`pt-3 pb-2 pl-0.5 text-[11px] font-bold italic text-gray-800${ai > 0 ? ' border-t border-gray-400' : ''}`}
                   >
                     Area: {area.area_name}
                   </td>
