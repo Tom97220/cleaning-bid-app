@@ -727,13 +727,6 @@ function SavedAreaRow({
         </td>
         <td className={TD}>
           <input type="number" min="0" step="1" placeholder="—"
-            value={sinks} onChange={e => setSinks(e.target.value)}
-            onFocus={() => { hasActiveFocusRef.current = true }}
-            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('sinks', e.target.value, true) }}
-            className={`${cellInput} tabular-nums text-right`} />
-        </td>
-        <td className={TD}>
-          <input type="number" min="0" step="1" placeholder="—"
             value={showers} onChange={e => setShowers(e.target.value)}
             onFocus={() => { hasActiveFocusRef.current = true }}
             onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('showers', e.target.value, true) }}
@@ -744,6 +737,13 @@ function SavedAreaRow({
             value={fountains} onChange={e => setFountains(e.target.value)}
             onFocus={() => { hasActiveFocusRef.current = true }}
             onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('fountains', e.target.value, true) }}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className={TD}>
+          <input type="number" min="0" step="1" placeholder="—"
+            value={sinks} onChange={e => setSinks(e.target.value)}
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('sinks', e.target.value, true) }}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
         <td className={TD}>
@@ -949,12 +949,6 @@ function InlineAreaRow({
         </td>
         <td className="px-1 py-1 w-16">
           <input type="number" min="0" step="1" placeholder="—"
-            value={sinks} onChange={e => setSinks(e.target.value)}
-            onFocus={handleFocus} onBlur={handleBlur}
-            className={`${cellInput} tabular-nums text-right`} />
-        </td>
-        <td className="px-1 py-1 w-16">
-          <input type="number" min="0" step="1" placeholder="—"
             value={showers} onChange={e => setShowers(e.target.value)}
             onFocus={handleFocus} onBlur={handleBlur}
             className={`${cellInput} tabular-nums text-right`} />
@@ -962,6 +956,12 @@ function InlineAreaRow({
         <td className="px-1 py-1 w-16">
           <input type="number" min="0" step="1" placeholder="—"
             value={fountains} onChange={e => setFountains(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
+        <td className="px-1 py-1 w-16">
+          <input type="number" min="0" step="1" placeholder="—"
+            value={sinks} onChange={e => setSinks(e.target.value)}
             onFocus={handleFocus} onBlur={handleBlur}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
@@ -1166,10 +1166,10 @@ export default function AreaSpreadsheet({
                   <th className={`${TH} w-24 text-gray-400`} title="Computed: Carpet + Tile/VCT + Other (does not include Common or RR Sq Ft)">Total Sq Ft</th>
                   <th className={`${TH} w-24 border-l border-gray-200`}>Common Sq Ft</th>
                   <th className={`${TH} w-24`}>RR Sq Ft</th>
-                  <th className={`${TH} w-16 border-l border-gray-200`} title="RR Fixtures: toilets + urinals + restroom sinks (combined)">Fix</th>
-                  <th className={`${TH} w-16`} title="Non-restroom sinks only"># Sinks</th>
+                  <th className={`${TH} w-16 border-l border-gray-200`} title="RR Fixtures: toilets + urinals + restroom sinks (combined)">RR Fix</th>
                   <th className={`${TH} w-16`}># Showers</th>
                   <th className={`${TH} w-16`}># Fountains</th>
+                  <th className={`${TH} w-16`} title="Non-restroom sinks only"># Sinks</th>
                   <th className={`${TH} w-16`}># Stairwells</th>
                   <th className={`${TH} w-16`}>Freq</th>
                   <th className={`${TH} w-12 text-center`}>Tasks</th>
@@ -1203,9 +1203,9 @@ export default function AreaSpreadsheet({
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700 border-l border-gray-200">{fmt(totals.common_sqft)}</td>
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.restroom_sqft)}</td>
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700 border-l border-gray-200">{fmt(totals.fixtures)}</td>
-                  <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.sinks)}</td>
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.showers)}</td>
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.fountains)}</td>
+                  <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.sinks)}</td>
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.stairwells)}</td>
                   <td />
                   <td className="px-2 py-2 text-center text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.tasks)}</td>
@@ -1214,7 +1214,7 @@ export default function AreaSpreadsheet({
             </table>
           </div>
           <div className="px-4 py-2.5 border-t border-gray-100 flex items-center gap-6 flex-wrap text-xs text-gray-400">
-            <span><span className="text-gray-500">Fix</span> = RR fixtures (toilets + urinals + restroom sinks) · <span className="text-gray-500"># Sinks</span> = non-restroom sinks only</span>
+            <span><span className="text-gray-500">RR Fix</span> = RR fixtures (toilets + urinals + restroom sinks) · <span className="text-gray-500"># Sinks</span> = non-restroom sinks only</span>
             {(buildingSqFt ?? 0) > 0 && (
               <span>Building Total: <span className="tabular-nums text-gray-500">{buildingSqFt!.toLocaleString()}</span></span>
             )}
