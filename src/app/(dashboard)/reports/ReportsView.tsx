@@ -273,9 +273,9 @@ function PieChart({ segments }: { segments: PieSegment[] }) {
 // ─── Report 1 & 2: Scope of Work ─────────────────────────────────────────────
 
 function ScopeOfWorkReport({
-  data, withTaskCodes, includeAltLang, useAltDescription = false, logoUrl = null,
+  data, withTaskCodes, useAltDescription = false, logoUrl = null,
 }: {
-  data: ReportData; withTaskCodes: boolean; includeAltLang: boolean; useAltDescription?: boolean; logoUrl?: string | null
+  data: ReportData; withTaskCodes: boolean; useAltDescription?: boolean; logoUrl?: string | null
 }) {
   const title = useAltDescription
     ? 'Work Load Specifications / Scope of Work (Spanish)'
@@ -287,86 +287,56 @@ function ScopeOfWorkReport({
     .map(area => ({ ...area, task_line_items: area.task_line_items.filter(t => t.print) }))
     .filter(area => area.task_line_items.length > 0)
 
-  const colCount = (withTaskCodes ? 4 : 3) + (includeAltLang ? 1 : 0)
-
   return (
-    <div className="report-section">
+    <div className="report-section text-[11px]">
       <ReportHeader title={title} prospect={data.prospect} building={data.building} logoUrl={logoUrl} />
-      <table className="w-full border-collapse text-[11px]">
-        <thead>
-          <tr>
-            {withTaskCodes && (
-              <th className="text-left font-bold text-gray-900 pb-2.5 pr-6 border-b-2 border-gray-800 w-24 whitespace-nowrap">
-                Task Code
-              </th>
-            )}
-            <th className="text-left font-bold text-gray-900 pb-2.5 pr-6 border-b-2 border-gray-800 w-40 whitespace-nowrap">
-              Task Name
-            </th>
-            <th className="text-left font-bold text-gray-900 pb-2.5 border-b-2 border-gray-800">
-              Description
-            </th>
-            {includeAltLang && (
-              <th className="text-left font-bold text-gray-900 pb-2.5 pl-6 border-b-2 border-gray-800 w-48">
-                Alternate Language
-              </th>
-            )}
-            <th className="text-right font-bold text-gray-900 pb-2.5 pl-8 border-b-2 border-gray-800 w-32 whitespace-nowrap">
-              Frequency
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {printAreas.length === 0 ? (
-            <tr>
-              <td colSpan={colCount} className="py-8 text-center text-gray-400 italic text-sm">
-                No printable tasks found for this building
-              </td>
-            </tr>
-          ) : (
-            printAreas.map((area, ai) => (
-              <>
-                <tr key={`area-${area.id}`}>
-                  <td
-                    colSpan={colCount}
-                    className={`pt-3 pb-2 pl-0.5 text-[11px] font-bold italic text-gray-800${ai > 0 ? ' border-t border-gray-400' : ''}`}
-                  >
-                    Area: {area.area_name}
-                  </td>
-                </tr>
 
+      {printAreas.length === 0 ? (
+        <p className="py-8 text-center text-gray-400 italic text-sm">
+          No printable tasks found for this building
+        </p>
+      ) : (
+        printAreas.map(area => (
+          <div key={area.id} className="break-inside-avoid mt-6 first:mt-0">
+            {/* thick opening rule */}
+            <div className="border-t-2 border-gray-800" />
+
+            {/* area heading: name on the left, Frequency label on the right */}
+            <div className="flex items-baseline justify-between pt-1.5 pb-1 border-b border-gray-300">
+              <span className="font-bold italic text-gray-800">Area: {area.area_name}</span>
+              <span className="font-bold text-gray-700">Frequency</span>
+            </div>
+
+            {/* scope lines */}
+            <table className="w-full border-collapse">
+              <tbody>
                 {area.task_line_items.map(task => (
                   <tr key={task.id}>
                     {withTaskCodes && (
-                      <td className="py-1 pl-6 pr-6 align-top whitespace-nowrap">
-                        <span className="font-mono text-[11px] text-gray-500">
+                      <td className="py-1 pl-[18px] pr-3 align-top whitespace-nowrap w-16">
+                        <span className="font-mono text-gray-500">
                           {task.task_codes?.task_code ?? ''}
                         </span>
                       </td>
                     )}
-                    <td className={`py-1 pr-6 align-top text-gray-800${withTaskCodes ? '' : ' pl-6'}`}>
-                      {task.task_name ?? '—'}
-                    </td>
-                    <td className="py-1 pr-8 align-top text-gray-700">
+                    <td className={`py-1 pr-8 align-top text-gray-700${withTaskCodes ? '' : ' pl-[18px]'}`}>
                       {useAltDescription
                         ? (task.task_codes?.description_alt || task.task_codes?.description) ?? ''
                         : task.task_codes?.description ?? ''}
                     </td>
-                    {includeAltLang && (
-                      <td className="py-1 pl-6 pr-8 align-top text-gray-500 italic">
-                        {task.task_codes?.description_alt ?? ''}
-                      </td>
-                    )}
-                    <td className="py-1 pl-8 text-right align-top whitespace-nowrap text-[11px] text-gray-600">
+                    <td className="py-1 text-right align-top whitespace-nowrap w-28 text-gray-600">
                       {fmtFreq(task.frequency, useAltDescription)}
                     </td>
                   </tr>
                 ))}
-              </>
-            ))
-          )}
-        </tbody>
-      </table>
+              </tbody>
+            </table>
+
+            {/* thin closing rule */}
+            <div className="border-t border-gray-300" />
+          </div>
+        ))
+      )}
     </div>
   )
 }
@@ -1039,7 +1009,6 @@ export default function ReportsView({
   companySettings: CompanySettings | null
 }) {
   const [checked, setChecked]               = useState<Set<string>>(new Set())
-  const [includeAltLang, setIncludeAltLang] = useState(false)
   const [includeLogo, setIncludeLogo]       = useState(true)
   const [reportData, setReportData]         = useState<ReportData | null>(null)
   const [isGenerating, setIsGenerating]     = useState(false)
@@ -1106,12 +1075,12 @@ export default function ReportsView({
   }
 
   const canGenerate = checked.size > 0
-  const anyScope    = checked.has('scope_no_codes') || checked.has('scope_with_codes')
   const hasContentReports = [...checked].some(k => k !== 'cover_page')
 
   return (
     <>
       <style>{`
+        .report-section { font-family: Tahoma, Verdana, Geneva, sans-serif; }
         @media print {
           .cover-page  { break-after: page; height: 100vh !important; min-height: unset !important; }
           .report-section { break-before: page; }
@@ -1184,15 +1153,9 @@ export default function ReportsView({
           </div>
 
           {/* Options */}
-          {(anyScope || companySettings?.logo_url) && (
+          {companySettings?.logo_url && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Options</p>
-              {anyScope && (
-                <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer">
-                  <input type="checkbox" checked={includeAltLang} onChange={e => setIncludeAltLang(e.target.checked)} className="accent-brand-600" />
-                  <span className="text-sm text-gray-700">Include alternate language column</span>
-                </label>
-              )}
               {companySettings?.logo_url && (
                 <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer">
                   <input type="checkbox" checked={includeLogo} onChange={e => setIncludeLogo(e.target.checked)} className="accent-brand-600" />
@@ -1274,13 +1237,13 @@ export default function ReportsView({
                     <PinpointReport key="pinpoint" data={reportData} logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
                   ),
                   checked.has('scope_no_codes') && (
-                    <ScopeOfWorkReport key="scope_no" data={reportData} withTaskCodes={false} includeAltLang={includeAltLang} logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
+                    <ScopeOfWorkReport key="scope_no" data={reportData} withTaskCodes={false} logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
                   ),
                   checked.has('scope_with_codes') && (
-                    <ScopeOfWorkReport key="scope_codes" data={reportData} withTaskCodes={true} includeAltLang={includeAltLang} logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
+                    <ScopeOfWorkReport key="scope_codes" data={reportData} withTaskCodes={true} logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
                   ),
                   checked.has('scope_no_codes_es') && (
-                    <ScopeOfWorkReport key="scope_es" data={reportData} withTaskCodes={false} includeAltLang={false} useAltDescription logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
+                    <ScopeOfWorkReport key="scope_es" data={reportData} withTaskCodes={false} useAltDescription logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
                   ),
                   checked.has('wl_summary') && (
                     <WorkLoadSummaryReport key="wl_sum" data={reportData} />
