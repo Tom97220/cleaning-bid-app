@@ -338,26 +338,26 @@ function ScopeOfWorkReport({
                 {area.task_line_items.map(task => (
                   <tr key={task.id}>
                     {withTaskCodes && (
-                      <td className="py-2 pl-6 pr-6 align-top whitespace-nowrap">
+                      <td className="py-1 pl-6 pr-6 align-top whitespace-nowrap">
                         <span className="font-mono text-[11px] text-gray-500">
                           {task.task_codes?.task_code ?? ''}
                         </span>
                       </td>
                     )}
-                    <td className={`py-2 pr-6 align-top text-gray-800${withTaskCodes ? '' : ' pl-6'}`}>
+                    <td className={`py-1 pr-6 align-top text-gray-800${withTaskCodes ? '' : ' pl-6'}`}>
                       {task.task_name ?? '—'}
                     </td>
-                    <td className="py-2 pr-8 align-top text-gray-700">
+                    <td className="py-1 pr-8 align-top text-gray-700">
                       {useAltDescription
                         ? (task.task_codes?.description_alt || task.task_codes?.description) ?? ''
                         : task.task_codes?.description ?? ''}
                     </td>
                     {includeAltLang && (
-                      <td className="py-2 pl-6 pr-8 align-top text-gray-500 italic">
+                      <td className="py-1 pl-6 pr-8 align-top text-gray-500 italic">
                         {task.task_codes?.description_alt ?? ''}
                       </td>
                     )}
-                    <td className="py-2 pl-8 text-right align-top whitespace-nowrap text-[11px] text-gray-600">
+                    <td className="py-1 pl-8 text-right align-top whitespace-nowrap text-[11px] text-gray-600">
                       {fmtFreq(task.frequency, useAltDescription)}
                     </td>
                   </tr>
