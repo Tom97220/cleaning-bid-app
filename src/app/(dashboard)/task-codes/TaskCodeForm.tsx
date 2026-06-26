@@ -27,6 +27,9 @@ export default function TaskCodeForm({
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(action, null)
 
   const [uom,            setUom]           = useState(taskCode?.unit_of_measure ?? '')
+  const [productionRate, setProductionRate] = useState(taskCode?.production_rate != null ? String(taskCode.production_rate) : '')
+  const [rateEach,       setRateEach]       = useState(taskCode?.rate_each       != null ? String(taskCode.rate_each)       : '')
+  const [defaultBasis,   setDefaultBasis]   = useState(taskCode?.default_basis ?? '')
   const [descriptionAlt, setDescriptionAlt] = useState(taskCode?.description_alt ?? '')
   const [translating,    setTranslating]    = useState(false)
   const [translateError, setTranslateError] = useState<string | null>(null)
@@ -165,7 +168,8 @@ export default function TaskCodeForm({
                   type="number"
                   min="0"
                   step="any"
-                  defaultValue={taskCode?.production_rate ?? ''}
+                  value={productionRate}
+                  onChange={(e) => setProductionRate(e.target.value)}
                   placeholder="e.g. 1500"
                   className={inputClass}
                 />
@@ -179,7 +183,8 @@ export default function TaskCodeForm({
                   type="number"
                   min="0"
                   step="any"
-                  defaultValue={taskCode?.rate_each ?? ''}
+                  value={rateEach}
+                  onChange={(e) => setRateEach(e.target.value)}
                   placeholder="e.g. 5"
                   className={inputClass}
                 />
@@ -190,7 +195,8 @@ export default function TaskCodeForm({
                 </label>
                 <select
                   name="default_basis"
-                  defaultValue={taskCode?.default_basis ?? ''}
+                  value={defaultBasis}
+                  onChange={(e) => setDefaultBasis(e.target.value)}
                   className={inputClass}
                 >
                   <option value="" disabled>Select basis...</option>
@@ -207,7 +213,8 @@ export default function TaskCodeForm({
                 type="number"
                 min="0"
                 step="any"
-                defaultValue={taskCode?.production_rate ?? ''}
+                value={productionRate}
+                onChange={(e) => setProductionRate(e.target.value)}
                 placeholder="e.g. 1500"
                 className={inputClass}
               />
