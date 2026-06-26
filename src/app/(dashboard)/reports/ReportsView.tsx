@@ -66,6 +66,12 @@ interface Area {
   other_sqft: number | null
   fixtures: number | null
   room_count: number | null
+  sinks: number | null
+  showers: number | null
+  fountains: number | null
+  common_sqft: number | null
+  restroom_sqft: number | null
+  stairwells: number | null
 }
 
 interface ReportData {
@@ -772,24 +778,24 @@ function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: 
   const agTdR = 'border border-gray-300 px-2 py-1   text-xs text-right tabular-nums text-gray-700'
 
   type GridRow = { label: string; getValue: (a: Area) => number | null | undefined; getTotal: () => number | null }
+  // sum a field across all areas; returns null when no area has a non-null value (so the Totals cell shows "—", not 0)
+  const sumCol = (get: (a: Area) => number | null | undefined): number | null => {
+    let sum = 0, any = false
+    for (const a of areas) { const v = get(a); if (v != null) { sum += v; any = true } }
+    return any ? sum : null
+  }
   const gridRows: GridRow[] = [
-    { label: '# Restrooms',    getValue: () => null,            getTotal: () => null },
-    { label: '# Urinals',      getValue: () => null,            getTotal: () => null },
-    { label: '# Toilets',      getValue: () => null,            getTotal: () => null },
-    { label: '# Sinks',        getValue: () => null,            getTotal: () => null },
-    { label: '# Fountains',    getValue: () => null,            getTotal: () => null },
-    { label: '# Showers',      getValue: () => null,            getTotal: () => null },
-    // v1: restroom sqft column not in schema yet. v2 candidate: add restroom_sqft to areas table; Page 1 value should sum across areas.
-    { label: 'Restroom Sqft',  getValue: () => null,            getTotal: () => null },
-    { label: 'Carpet Sqft',    getValue: a => a.carpet_sqft,    getTotal: () => totalCarpet },
-    { label: 'Tile Sqft',      getValue: a => a.tile_vct_sqft,  getTotal: () => totalTile   },
-    { label: 'Other Sqft',     getValue: a => a.other_sqft,     getTotal: () => totalOther  },
-    { label: 'Common Sqft',    getValue: () => null,            getTotal: () => null },
-    { label: '# Rooms',        getValue: a => a.room_count,     getTotal: () => areas.reduce((s, a) => s + (a.room_count     ?? 0), 0) },
-    { label: '# Stairwells',   getValue: () => null,            getTotal: () => null },
-    { label: '# Fixtures',     getValue: a => a.fixtures,       getTotal: () => areas.reduce((s, a) => s + (a.fixtures       ?? 0), 0) },
-    { label: 'Sqft',           getValue: a => a.square_footage, getTotal: () => areas.reduce((s, a) => s + (a.square_footage ?? 0), 0) },
-    { label: 'Cleanable Sqft', getValue: () => null,            getTotal: () => null },
+    { label: '# Rooms',      getValue: a => a.room_count,    getTotal: () => sumCol(a => a.room_count)    },
+    { label: 'RR Fix',       getValue: a => a.fixtures,      getTotal: () => sumCol(a => a.fixtures)      },
+    { label: '# Sinks',      getValue: a => a.sinks,         getTotal: () => sumCol(a => a.sinks)         },
+    { label: '# Showers',    getValue: a => a.showers,       getTotal: () => sumCol(a => a.showers)       },
+    { label: '# Fountains',  getValue: a => a.fountains,     getTotal: () => sumCol(a => a.fountains)     },
+    { label: 'Carpet Sqft',  getValue: a => a.carpet_sqft,   getTotal: () => sumCol(a => a.carpet_sqft)   },
+    { label: 'Tile Sqft',    getValue: a => a.tile_vct_sqft, getTotal: () => sumCol(a => a.tile_vct_sqft) },
+    { label: 'Common Sqft',  getValue: a => a.common_sqft,   getTotal: () => sumCol(a => a.common_sqft)   },
+    { label: 'RR Sqft',      getValue: a => a.restroom_sqft, getTotal: () => sumCol(a => a.restroom_sqft) },
+    { label: '# Stairwells', getValue: a => a.stairwells,    getTotal: () => sumCol(a => a.stairwells)    },
+    { label: 'Total Sqft',   getValue: a => a.square_footage,getTotal: () => sumCol(a => a.square_footage)},
   ]
 
   return (
