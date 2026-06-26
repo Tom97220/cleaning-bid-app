@@ -33,7 +33,6 @@ export interface Area {
   showers:        number | null
   fountains:      number | null
   common_sqft:    number | null
-  restroom_sqft:  number | null
   stairwells:     number | null
   created_at:     string
   updated_at:     string

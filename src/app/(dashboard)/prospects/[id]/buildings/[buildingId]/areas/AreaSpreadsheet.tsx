@@ -561,7 +561,6 @@ function SavedAreaRow({
   const [showers,      setShowers]      = useState(area.showers       != null ? String(area.showers)       : '')
   const [fountains,    setFountains]    = useState(area.fountains     != null ? String(area.fountains)     : '')
   const [commonSqft,   setCommonSqft]   = useState(area.common_sqft   != null ? String(area.common_sqft)   : '')
-  const [restroomSqft, setRestroomSqft] = useState(area.restroom_sqft != null ? String(area.restroom_sqft) : '')
   const [stairwells,   setStairwells]   = useState(area.stairwells    != null ? String(area.stairwells)    : '')
   const [frequency,   setFrequency]   = useState(area.frequency       != null ? String(area.frequency)      : '')
   const [saving,   setSaving]   = useState(false)
@@ -589,7 +588,6 @@ function SavedAreaRow({
     setShowers(area.showers           != null ? String(area.showers)       : '')
     setFountains(area.fountains       != null ? String(area.fountains)     : '')
     setCommonSqft(area.common_sqft    != null ? String(area.common_sqft)   : '')
-    setRestroomSqft(area.restroom_sqft != null ? String(area.restroom_sqft): '')
     setStairwells(area.stairwells     != null ? String(area.stairwells)    : '')
     setFrequency(area.frequency       != null ? String(area.frequency)     : '')
   }, [area])
@@ -711,13 +709,6 @@ function SavedAreaRow({
             onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('common_sqft', e.target.value, false) }}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
-        <td className={TD}>
-          <input type="number" min="0" step="any" placeholder="—"
-            value={restroomSqft} onChange={e => setRestroomSqft(e.target.value)}
-            onFocus={() => { hasActiveFocusRef.current = true }}
-            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('restroom_sqft', e.target.value, false) }}
-            className={`${cellInput} tabular-nums text-right`} />
-        </td>
         <td className={`${TD} border-l border-gray-200`}>
           <input type="number" min="0" step="1" placeholder="—"
             value={fixtures} onChange={e => setFixtures(e.target.value)}
@@ -786,7 +777,6 @@ function InlineAreaRow({
   const [showers,      setShowers]      = useState('')
   const [fountains,    setFountains]    = useState('')
   const [commonSqft,   setCommonSqft]   = useState('')
-  const [restroomSqft, setRestroomSqft] = useState('')
   const [stairwells,   setStairwells]   = useState('')
   const [frequency,   setFrequency]   = useState('')
   const [creating,    setCreating]    = useState(false)
@@ -795,8 +785,8 @@ function InlineAreaRow({
   const hasActiveFocusRef = useRef(false)
   const pendingCreateRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
   const mountedRef        = useRef(true)
-  const valuesRef         = useRef({ areaName, printOrder, roomCount, carpetSqft, tileVctSqft, otherSqft, fixtures, sinks, showers, fountains, commonSqft, restroomSqft, stairwells, frequency })
-  valuesRef.current = { areaName, printOrder, roomCount, carpetSqft, tileVctSqft, otherSqft, fixtures, sinks, showers, fountains, commonSqft, restroomSqft, stairwells, frequency }
+  const valuesRef         = useRef({ areaName, printOrder, roomCount, carpetSqft, tileVctSqft, otherSqft, fixtures, sinks, showers, fountains, commonSqft, stairwells, frequency })
+  valuesRef.current = { areaName, printOrder, roomCount, carpetSqft, tileVctSqft, otherSqft, fixtures, sinks, showers, fountains, commonSqft, stairwells, frequency }
 
   useEffect(() => {
     mountedRef.current = true
@@ -827,7 +817,6 @@ function InlineAreaRow({
       showers:       v.showers      ? parseInt(v.showers, 10)      : null,
       fountains:     v.fountains    ? parseInt(v.fountains, 10)    : null,
       common_sqft:   v.commonSqft   ? parseFloat(v.commonSqft)     : null,
-      restroom_sqft: v.restroomSqft ? parseFloat(v.restroomSqft)   : null,
       stairwells:    v.stairwells   ? parseInt(v.stairwells, 10)   : null,
     }
 
@@ -852,7 +841,6 @@ function InlineAreaRow({
       setShowers('')
       setFountains('')
       setCommonSqft('')
-      setRestroomSqft('')
       setStairwells('')
       setFrequency('')
     }
@@ -932,12 +920,6 @@ function InlineAreaRow({
         <td className="px-1 py-1 w-24 border-l border-gray-200">
           <input type="number" min="0" step="any" placeholder="—"
             value={commonSqft} onChange={e => setCommonSqft(e.target.value)}
-            onFocus={handleFocus} onBlur={handleBlur}
-            className={`${cellInput} tabular-nums text-right`} />
-        </td>
-        <td className="px-1 py-1 w-24">
-          <input type="number" min="0" step="any" placeholder="—"
-            value={restroomSqft} onChange={e => setRestroomSqft(e.target.value)}
             onFocus={handleFocus} onBlur={handleBlur}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
@@ -1066,7 +1048,6 @@ export default function AreaSpreadsheet({
     showers:       areas.reduce((s, a) => s + (a.showers       ?? 0), 0),
     fountains:     areas.reduce((s, a) => s + (a.fountains     ?? 0), 0),
     common_sqft:   areas.reduce((s, a) => s + (a.common_sqft   ?? 0), 0),
-    restroom_sqft: areas.reduce((s, a) => s + (a.restroom_sqft ?? 0), 0),
     stairwells:    areas.reduce((s, a) => s + (a.stairwells    ?? 0), 0),
     tasks:         Object.values(taskCounts).reduce((s, c) => s + c, 0),
   }
@@ -1163,9 +1144,8 @@ export default function AreaSpreadsheet({
                   <th className={`${TH} w-24`}>Carpet Sq Ft</th>
                   <th className={`${TH} w-28`}>Tile/VCT Sq Ft</th>
                   <th className={`${TH} w-24`}>Other Sq Ft</th>
-                  <th className={`${TH} w-24 text-gray-400`} title="Computed: Carpet + Tile/VCT + Other (does not include Common or RR Sq Ft)">Total Sq Ft</th>
+                  <th className={`${TH} w-24 text-gray-400`} title="Computed: Carpet + Tile/VCT + Other (does not include Common Sq Ft)">Total Sq Ft</th>
                   <th className={`${TH} w-24 border-l border-gray-200`}>Common Sq Ft</th>
-                  <th className={`${TH} w-24`}>RR Sq Ft</th>
                   <th className={`${TH} w-16 border-l border-gray-200`} title="RR Fixtures: toilets + urinals + restroom sinks (combined)">RR Fix</th>
                   <th className={`${TH} w-16`}># Showers</th>
                   <th className={`${TH} w-16`}># Fountains</th>
@@ -1201,7 +1181,6 @@ export default function AreaSpreadsheet({
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.other_sqft)}</td>
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700 pr-3">{fmt(totalSqft)}</td>
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700 border-l border-gray-200">{fmt(totals.common_sqft)}</td>
-                  <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.restroom_sqft)}</td>
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700 border-l border-gray-200">{fmt(totals.fixtures)}</td>
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.showers)}</td>
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.fountains)}</td>

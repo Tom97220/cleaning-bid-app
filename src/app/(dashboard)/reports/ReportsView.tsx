@@ -70,7 +70,6 @@ interface Area {
   showers: number | null
   fountains: number | null
   common_sqft: number | null
-  restroom_sqft: number | null
   stairwells: number | null
 }
 
@@ -793,7 +792,6 @@ function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: 
     { label: 'Carpet Sqft',  getValue: a => a.carpet_sqft,   getTotal: () => sumCol(a => a.carpet_sqft)   },
     { label: 'Tile Sqft',    getValue: a => a.tile_vct_sqft, getTotal: () => sumCol(a => a.tile_vct_sqft) },
     { label: 'Common Sqft',  getValue: a => a.common_sqft,   getTotal: () => sumCol(a => a.common_sqft)   },
-    { label: 'RR Sqft',      getValue: a => a.restroom_sqft, getTotal: () => sumCol(a => a.restroom_sqft) },
     { label: '# Stairwells', getValue: a => a.stairwells,    getTotal: () => sumCol(a => a.stairwells)    },
     { label: 'Total Sqft',   getValue: a => a.square_footage,getTotal: () => sumCol(a => a.square_footage)},
   ]
@@ -848,7 +846,6 @@ function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: 
                   <td className={pL}>Number of fixtures in RR&apos;s</td>
                   <td className={pV}>—</td>
                 </tr>
-                {/* v1: restroom sqft column not in schema yet. v2 candidate: add restroom_sqft to areas table; Page 1 value should sum across areas. */}
                 <tr className="bg-gray-50">
                   <td className={pL}>Restroom Sqft</td>
                   <td className={pV}>—</td>
