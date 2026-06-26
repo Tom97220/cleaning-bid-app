@@ -771,10 +771,10 @@ function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: 
   const pV = 'px-2 py-1.5 text-xs text-center text-gray-900 border-b border-gray-200'
 
   // compact cell classes for the area grid (many columns — use xs sizing)
-  const agTh  = 'border border-gray-300 px-2 py-1.5 text-left  text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
-  const agThR = 'border border-gray-300 px-2 py-1.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+  const agTh  = 'border border-gray-300 px-2 py-1.5 text-left   text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+  const agThC = 'border border-gray-300 px-2 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
   const agTd  = 'border border-gray-300 px-2 py-1   text-xs text-gray-700'
-  const agTdR = 'border border-gray-300 px-2 py-1   text-xs text-right tabular-nums text-gray-700'
+  const agTdC = 'border border-gray-300 px-2 py-1   text-xs text-center tabular-nums text-gray-700'
 
   type GridRow = { label: string; getValue: (a: Area) => number | null | undefined; getTotal: () => number | null }
   // sum a field across all areas; returns null when no area has a non-null value (so the Totals cell shows "—", not 0)
@@ -783,15 +783,16 @@ function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: 
     for (const a of areas) { const v = get(a); if (v != null) { sum += v; any = true } }
     return any ? sum : null
   }
-  const gridRows: GridRow[] = [
+  // measurement columns, left→right, matching the AreaSpreadsheet header order
+  const gridCols: GridRow[] = [
     { label: '# Rooms',      getValue: a => a.room_count,    getTotal: () => sumCol(a => a.room_count)    },
-    { label: 'RR Fix',       getValue: a => a.fixtures,      getTotal: () => sumCol(a => a.fixtures)      },
-    { label: '# Sinks',      getValue: a => a.sinks,         getTotal: () => sumCol(a => a.sinks)         },
-    { label: '# Showers',    getValue: a => a.showers,       getTotal: () => sumCol(a => a.showers)       },
-    { label: '# Fountains',  getValue: a => a.fountains,     getTotal: () => sumCol(a => a.fountains)     },
     { label: 'Carpet Sqft',  getValue: a => a.carpet_sqft,   getTotal: () => sumCol(a => a.carpet_sqft)   },
     { label: 'Tile Sqft',    getValue: a => a.tile_vct_sqft, getTotal: () => sumCol(a => a.tile_vct_sqft) },
     { label: 'Common Sqft',  getValue: a => a.common_sqft,   getTotal: () => sumCol(a => a.common_sqft)   },
+    { label: 'RR Fix',       getValue: a => a.fixtures,      getTotal: () => sumCol(a => a.fixtures)      },
+    { label: '# Showers',    getValue: a => a.showers,       getTotal: () => sumCol(a => a.showers)       },
+    { label: '# Fountains',  getValue: a => a.fountains,     getTotal: () => sumCol(a => a.fountains)     },
+    { label: '# Sinks',      getValue: a => a.sinks,         getTotal: () => sumCol(a => a.sinks)         },
     { label: '# Stairwells', getValue: a => a.stairwells,    getTotal: () => sumCol(a => a.stairwells)    },
     { label: 'Total Sqft',   getValue: a => a.square_footage,getTotal: () => sumCol(a => a.square_footage)},
   ]
@@ -933,26 +934,29 @@ function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: 
             <thead>
               <tr>
                 <th className={`${agTh} w-36`}>Area</th>
-                {areas.map(a => (
-                  <th key={a.id} className={`${agThR} whitespace-nowrap`}>{a.area_name}</th>
+                {gridCols.map(col => (
+                  <th key={col.label} className={`${agThC} whitespace-nowrap`}>{col.label}</th>
                 ))}
-                <th className={`${agThR} bg-gray-100 whitespace-nowrap`}>Totals</th>
               </tr>
             </thead>
             <tbody>
-              {gridRows.map(row => {
-                const total = row.getTotal()
-                return (
-                  <tr key={row.label}>
-                    <td className={agTd}>{row.label}</td>
-                    {areas.map(a => (
-                      <td key={a.id} className={agTdR}>{fmtN(row.getValue(a))}</td>
-                    ))}
-                    <td className={`${agTdR} bg-gray-50 font-semibold`}>{fmtN(total)}</td>
-                  </tr>
-                )
-              })}
+              {areas.map(a => (
+                <tr key={a.id}>
+                  <td className={agTd}>{a.area_name}</td>
+                  {gridCols.map(col => (
+                    <td key={col.label} className={agTdC}>{fmtN(col.getValue(a))}</td>
+                  ))}
+                </tr>
+              ))}
             </tbody>
+            <tfoot>
+              <tr>
+                <td className={`${agTd} bg-gray-50 font-semibold`}>Totals</td>
+                {gridCols.map(col => (
+                  <td key={col.label} className={`${agTdC} bg-gray-50 font-semibold`}>{fmtN(col.getTotal())}</td>
+                ))}
+              </tr>
+            </tfoot>
           </table>
         </div>
       </div>
