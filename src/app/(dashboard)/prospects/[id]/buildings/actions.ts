@@ -23,6 +23,8 @@ function extractBuildingData(formData: FormData) {
   const sqftStr   = (formData.get('square_feet') as string)?.trim()
   const floorsStr = (formData.get('floors') as string)?.trim()
   const sdStr     = (formData.get('service_days') as string)?.trim()
+  const commonStr = (formData.get('common_sqft') as string)?.trim()
+  const restStr   = (formData.get('num_restrooms') as string)?.trim()
   return {
     building_name:    (formData.get('building_name') as string).trim(),
     address:          (formData.get('address') as string)?.trim() || null,
@@ -33,6 +35,8 @@ function extractBuildingData(formData: FormData) {
     building_type_id: (formData.get('building_type_id') as string) || null,
     square_feet:      sqftStr   ? parseFloat(sqftStr)     : null,
     floors:           floorsStr ? parseInt(floorsStr, 10) : null,
+    common_sqft:      commonStr ? parseFloat(commonStr)   : null,
+    num_restrooms:    restStr   ? parseInt(restStr, 10)   : null,
     service_days:     sdStr ? parseInt(sdStr, 10) : 260,
     notes:            (formData.get('notes') as string)?.trim() || null,
     directions:       (formData.get('directions') as string)?.trim() || null,

@@ -17,6 +17,8 @@ export interface Building {
   building_type_id: string | null
   square_feet:      number | null
   floors:           number | null
+  common_sqft:      number | null
+  num_restrooms:    number | null
   service_days:     number
   notes:            string | null
   directions:       string | null

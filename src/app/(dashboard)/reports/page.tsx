@@ -22,7 +22,7 @@ export default async function ReportsPage({
       supabase.from('company_settings').select('*').maybeSingle(),
       supabase.from('prospects').select('id, company_name').eq('id', prospectId).single(),
       supabase.from('buildings')
-        .select('id, building_name, square_feet, address, address_2, city, state, zip, floors, notes, service_days')
+        .select('id, building_name, square_feet, address, address_2, city, state, zip, floors, common_sqft, num_restrooms, notes, service_days')
         .eq('id', buildingId).single(),
     ])
 

@@ -35,6 +35,8 @@ interface Building {
   state: string | null
   zip: string | null
   floors: number | null
+  common_sqft: number | null
+  num_restrooms: number | null
   notes: string | null
   service_days: number | null
 }
@@ -756,6 +758,12 @@ function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: 
   const totalFloor  = totalCarpet + totalTile + totalOther
   const pct = (n: number) => totalFloor > 0 ? `${((n / totalFloor) * 100).toFixed(1)}%` : '—'
 
+  // Page-1 Building Profile derived figures
+  const cleanableTenantSqft = totalFloor                            // sum of carpet + tile + other across areas
+  const commonAreaSqft      = building.common_sqft                  // manual building field
+  const totalBuildingSqft   = cleanableTenantSqft + (commonAreaSqft ?? 0)  // display-only; not the pricing sqft
+  const totalFixtures       = areas.reduce((s, a) => s + (a.fixtures ?? 0), 0)
+
   const serviceDays = building.service_days ?? 260
   const staffingRows = bidLaborLines.map(line => ({
     position: line.positions?.position_name ?? '—',
@@ -829,21 +837,21 @@ function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: 
                 </tr>
                 <tr className="bg-gray-100">
                   <td className={pL}>Total square footage</td>
-                  <td className={pV}>{fmtN(building.square_feet)}</td>
+                  <td className={pV}>{fmtN(totalBuildingSqft)}</td>
                   <td className={pL}>Number of floors</td>
                   <td className={pV}>{building.floors != null ? String(building.floors) : '—'}</td>
                 </tr>
                 <tr className="bg-gray-50">
                   <td className={pL}>Common area square footage</td>
-                  <td className={pV}>—</td>
+                  <td className={pV}>{fmtN(commonAreaSqft)}</td>
                   <td className={pL}>Number of restrooms</td>
-                  <td className={pV}>—</td>
+                  <td className={pV}>{fmtN(building.num_restrooms)}</td>
                 </tr>
                 <tr className="bg-gray-100">
                   <td className={pL}>Cleanable Tenant Sq. Footage</td>
-                  <td className={pV}>—</td>
+                  <td className={pV}>{fmtN(cleanableTenantSqft)}</td>
                   <td className={pL}>Number of fixtures in RR&apos;s</td>
-                  <td className={pV}>—</td>
+                  <td className={pV}>{fmtN(totalFixtures)}</td>
                 </tr>
                 <tr className="bg-gray-50">
                   <td className={pL}>Restroom Sqft</td>

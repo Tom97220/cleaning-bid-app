@@ -141,6 +141,32 @@ export default function BuildingForm({
             />
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Common Area Sq Ft</label>
+            <input
+              name="common_sqft"
+              type="number"
+              min="0"
+              step="any"
+              defaultValue={building?.common_sqft ?? ''}
+              placeholder="e.g. 4000"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Number of Restrooms</label>
+            <input
+              name="num_restrooms"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={building?.num_restrooms ?? ''}
+              placeholder="e.g. 6"
+              className={inputClass}
+            />
+          </div>
+        </div>
         <div>
           <label className={labelClass}>Service Days per Year</label>
           <input
