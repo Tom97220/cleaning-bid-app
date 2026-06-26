@@ -121,7 +121,7 @@ export default function TaskLineItemForm({
       taskCodes.map((tc) => ({
         value:      tc.id,
         label:      `${tc.task_code} – ${tc.task_name}`,
-        searchText: `${tc.task_code} ${tc.task_name} ${tc.description ?? ''}`,
+        searchText: `${tc.task_code} ${tc.task_name} ${tc.task_types?.type_name ?? ''} ${tc.description ?? ''}`,
       })),
     [taskCodes],
   )
