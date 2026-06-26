@@ -69,7 +69,6 @@ interface Area {
   sinks: number | null
   showers: number | null
   fountains: number | null
-  common_sqft: number | null
   stairwells: number | null
 }
 
@@ -788,7 +787,6 @@ function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: 
     { label: '# Rooms',      getValue: a => a.room_count,    getTotal: () => sumCol(a => a.room_count)    },
     { label: 'Carpet Sqft',  getValue: a => a.carpet_sqft,   getTotal: () => sumCol(a => a.carpet_sqft)   },
     { label: 'Tile Sqft',    getValue: a => a.tile_vct_sqft, getTotal: () => sumCol(a => a.tile_vct_sqft) },
-    { label: 'Common Sqft',  getValue: a => a.common_sqft,   getTotal: () => sumCol(a => a.common_sqft)   },
     { label: 'RR Fix',       getValue: a => a.fixtures,      getTotal: () => sumCol(a => a.fixtures)      },
     { label: '# Showers',    getValue: a => a.showers,       getTotal: () => sumCol(a => a.showers)       },
     { label: '# Fountains',  getValue: a => a.fountains,     getTotal: () => sumCol(a => a.fountains)     },
