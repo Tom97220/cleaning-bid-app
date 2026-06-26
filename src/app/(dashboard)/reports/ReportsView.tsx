@@ -24,7 +24,7 @@ export interface CompanySettings {
 }
 
 
-interface Prospect { id: string; company_name: string }
+interface Prospect { id: string; company_name: string; logo_url: string | null }
 interface Building {
   id: string
   building_name: string
@@ -152,17 +152,34 @@ function ReportHeader({
   prospect,
   building,
   logoUrl = null,
+  customerLogoUrl = null,
 }: {
   title: string
   prospect: Prospect
   building: Building
   logoUrl?: string | null
+  customerLogoUrl?: string | null
 }) {
   return (
     <div className="mb-8">
-      {logoUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl} alt="Company logo" className="h-12 w-auto object-contain mb-3" />
+      {(logoUrl || customerLogoUrl) && (
+        <div className="flex items-start justify-between gap-6 mb-3">
+          {/* Our logo — primary, left */}
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt="Company logo" className="h-12 w-auto object-contain" />
+          ) : (
+            <div />
+          )}
+          {/* Customer logo — right, under "Prepared for" (label is part of this block) */}
+          {customerLogoUrl && (
+            <div className="text-right">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Prepared for</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={customerLogoUrl} alt="Customer logo" className="h-10 w-auto object-contain ml-auto" />
+            </div>
+          )}
+        </div>
       )}
       <div className="border-t-2 border-gray-800 mb-0.5" />
       <div className="border-t border-gray-800 mb-7" />
@@ -189,11 +206,13 @@ function ReportHeader({
 function CoverPage({
   data,
   company,
-  includeLogo,
+  includeCompanyLogo,
+  includeCustomerLogo,
 }: {
   data: ReportData
   company: CompanySettings | null
-  includeLogo: boolean
+  includeCompanyLogo: boolean
+  includeCustomerLogo: boolean
 }) {
   return (
     <div
@@ -201,7 +220,7 @@ function CoverPage({
       style={{ minHeight: '1050px' }}
     >
       <div className="text-center pt-16 px-16">
-        {includeLogo && company?.logo_url && (
+        {includeCompanyLogo && company?.logo_url && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={company.logo_url}
@@ -224,6 +243,10 @@ function CoverPage({
         <h1 className="text-4xl font-bold text-gray-900 mb-2 leading-tight">
           {data.building.building_name}
         </h1>
+        {includeCustomerLogo && data.prospect.logo_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={data.prospect.logo_url} alt="Customer logo" className="h-14 w-auto object-contain mx-auto mb-3" />
+        )}
         <p className="text-lg text-gray-600 mb-10">{data.prospect.company_name}</p>
 
         <div className="w-full border-t border-gray-800 mb-0.5" />
@@ -281,9 +304,9 @@ function PieChart({ segments }: { segments: PieSegment[] }) {
 // ─── Report 1 & 2: Scope of Work ─────────────────────────────────────────────
 
 function ScopeOfWorkReport({
-  data, withTaskCodes, useAltDescription = false, logoUrl = null,
+  data, withTaskCodes, useAltDescription = false, logoUrl = null, customerLogoUrl = null,
 }: {
-  data: ReportData; withTaskCodes: boolean; useAltDescription?: boolean; logoUrl?: string | null
+  data: ReportData; withTaskCodes: boolean; useAltDescription?: boolean; logoUrl?: string | null; customerLogoUrl?: string | null
 }) {
   const title = useAltDescription
     ? 'Work Load Specifications / Scope of Work (Spanish)'
@@ -297,7 +320,7 @@ function ScopeOfWorkReport({
 
   return (
     <div className="report-section text-[11px]">
-      <ReportHeader title={title} prospect={data.prospect} building={data.building} logoUrl={logoUrl} />
+      <ReportHeader title={title} prospect={data.prospect} building={data.building} logoUrl={logoUrl} customerLogoUrl={customerLogoUrl} />
 
       {printAreas.length === 0 ? (
         <p className="py-8 text-center text-gray-400 italic text-sm">
@@ -741,7 +764,7 @@ function InvestmentRecapReport({ data }: { data: ReportData }) {
 
 // ─── Report 7: Pinpoint ───────────────────────────────────────────────────────
 
-function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: string | null }) {
+function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data: ReportData; logoUrl?: string | null; customerLogoUrl?: string | null }) {
   const { building, prospect, areas, bidLaborLines } = data
 
   const ppTh  = 'border border-gray-300 px-3 py-2 text-left   text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
@@ -810,7 +833,7 @@ function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: 
     <>
       {/* ── Page 1: Building Profile ──────────────────────────────────────── */}
       <div className="report-section">
-        <ReportHeader title="Building Profile" prospect={prospect} building={building} logoUrl={logoUrl} />
+        <ReportHeader title="Building Profile" prospect={prospect} building={building} logoUrl={logoUrl} customerLogoUrl={customerLogoUrl} />
 
         <div className="flex gap-4 items-start">
 
@@ -1001,7 +1024,8 @@ export default function ReportsView({
   companySettings: CompanySettings | null
 }) {
   const [checked, setChecked]               = useState<Set<string>>(new Set())
-  const [includeLogo, setIncludeLogo]       = useState(true)
+  const [includeCompanyLogo,  setIncludeCompanyLogo]  = useState(true)
+  const [includeCustomerLogo, setIncludeCustomerLogo] = useState(false)
   const [reportData, setReportData]         = useState<ReportData | null>(null)
   const [isGenerating, setIsGenerating]     = useState(false)
   const [error, setError]                   = useState<string | null>(null)
@@ -1068,6 +1092,9 @@ export default function ReportsView({
 
   const canGenerate = checked.size > 0
   const hasContentReports = [...checked].some(k => k !== 'cover_page')
+
+  const companyLogoUrl  = includeCompanyLogo  ? (companySettings?.logo_url ?? null) : null
+  const customerLogoUrl = includeCustomerLogo ? (prospect.logo_url ?? null) : null
 
   return (
     <>
@@ -1145,13 +1172,19 @@ export default function ReportsView({
           </div>
 
           {/* Options */}
-          {companySettings?.logo_url && (
+          {(companySettings?.logo_url || prospect.logo_url) && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">Options</p>
               {companySettings?.logo_url && (
                 <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer">
-                  <input type="checkbox" checked={includeLogo} onChange={e => setIncludeLogo(e.target.checked)} className="accent-brand-600" />
-                  <span className="text-sm text-gray-700">Include logo</span>
+                  <input type="checkbox" checked={includeCompanyLogo} onChange={e => setIncludeCompanyLogo(e.target.checked)} className="accent-brand-600" />
+                  <span className="text-sm text-gray-700">Include my logo</span>
+                </label>
+              )}
+              {prospect.logo_url && (
+                <label className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer">
+                  <input type="checkbox" checked={includeCustomerLogo} onChange={e => setIncludeCustomerLogo(e.target.checked)} className="accent-brand-600" />
+                  <span className="text-sm text-gray-700">Include customer logo</span>
                 </label>
               )}
             </div>
@@ -1219,23 +1252,23 @@ export default function ReportsView({
                 {checked.has('cover_page') && (
                   <div className="bg-white shadow-sm rounded-sm mx-auto print:shadow-none print:rounded-none" style={{ maxWidth: '816px' }}>
                     <div className="px-16 py-12">
-                      <CoverPage data={reportData} company={companySettings} includeLogo={includeLogo} />
+                      <CoverPage data={reportData} company={companySettings} includeCompanyLogo={includeCompanyLogo} includeCustomerLogo={includeCustomerLogo} />
                     </div>
                   </div>
                 )}
 
                 {[
                   checked.has('pinpoint') && (
-                    <PinpointReport key="pinpoint" data={reportData} logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
+                    <PinpointReport key="pinpoint" data={reportData} logoUrl={companyLogoUrl} customerLogoUrl={customerLogoUrl} />
                   ),
                   checked.has('scope_no_codes') && (
-                    <ScopeOfWorkReport key="scope_no" data={reportData} withTaskCodes={false} logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
+                    <ScopeOfWorkReport key="scope_no" data={reportData} withTaskCodes={false} logoUrl={companyLogoUrl} customerLogoUrl={customerLogoUrl} />
                   ),
                   checked.has('scope_with_codes') && (
-                    <ScopeOfWorkReport key="scope_codes" data={reportData} withTaskCodes={true} logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
+                    <ScopeOfWorkReport key="scope_codes" data={reportData} withTaskCodes={true} logoUrl={companyLogoUrl} customerLogoUrl={customerLogoUrl} />
                   ),
                   checked.has('scope_no_codes_es') && (
-                    <ScopeOfWorkReport key="scope_es" data={reportData} withTaskCodes={false} useAltDescription logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null} />
+                    <ScopeOfWorkReport key="scope_es" data={reportData} withTaskCodes={false} useAltDescription logoUrl={companyLogoUrl} customerLogoUrl={customerLogoUrl} />
                   ),
                   checked.has('wl_summary') && (
                     <WorkLoadSummaryReport key="wl_sum" data={reportData} />
