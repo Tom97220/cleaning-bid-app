@@ -1,9 +1,10 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import Link from 'next/link'
 import { createProspect, updateProspect, type ActionState } from './actions'
 import type { Prospect } from '@/types/prospect'
+import { createClient } from '@/lib/supabase/client'
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
@@ -18,6 +19,9 @@ const inputClass =
 
 const labelClass = 'block text-sm font-medium text-gray-700 mb-1'
 
+const ALLOWED_LOGO_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml']
+const MAX_LOGO_BYTES = 2 * 1024 * 1024 // 2 MB
+
 interface Props {
   prospect?: Prospect
 }
@@ -29,8 +33,48 @@ export default function ProspectForm({ prospect }: Props) {
 
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(action, null)
 
+  const supabase = createClient()
+  const [logoUrl,     setLogoUrl]     = useState(prospect?.logo_url ?? '')
+  const [uploading,   setUploading]   = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file after an error
+    if (!file) return
+    setUploadError(null)
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      setUploadError('Logo must be a PNG, JPG, or SVG file.')
+      return
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      setUploadError('Logo must be 2 MB or smaller.')
+      return
+    }
+    setUploading(true)
+    const ext  = file.name.split('.').pop()?.toLowerCase() || 'png'
+    const path = `customer/${crypto.randomUUID()}.${ext}`
+    const { error: upErr } = await supabase.storage
+      .from('logos')
+      .upload(path, file, { cacheControl: '3600', upsert: false })
+    if (upErr) {
+      setUploadError(upErr.message)
+      setUploading(false)
+      return
+    }
+    const { data } = supabase.storage.from('logos').getPublicUrl(path)
+    setLogoUrl(data.publicUrl)
+    setUploading(false)
+  }
+
+  function removeLogo() {
+    setLogoUrl('')
+    setUploadError(null)
+  }
+
   return (
     <form action={formAction} className="space-y-6">
+      <input type="hidden" name="logo_url" value={logoUrl} />
       {state?.error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
           {state.error}
@@ -183,6 +227,36 @@ export default function ProspectForm({ prospect }: Props) {
           placeholder="Any additional notes about this prospect..."
           className={inputClass}
         />
+      </section>
+
+      {/* Customer Logo */}
+      <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+        <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer Logo</h2>
+        <div>
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/svg+xml"
+            onChange={handleLogoUpload}
+            disabled={uploading}
+            className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700 disabled:opacity-50"
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            {uploading ? 'Uploading…' : 'PNG, JPG, or SVG up to 2 MB. Saved when you submit the form.'}
+          </p>
+          {uploadError && <p className="text-sm text-red-600 mt-1">{uploadError}</p>}
+        </div>
+        {logoUrl && (
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoUrl} alt="Customer logo preview"
+              className="h-12 w-auto object-contain border border-gray-200 rounded p-1" />
+            <p className="text-xs text-gray-400">Current logo</p>
+            <button type="button" onClick={removeLogo}
+              className="text-sm text-red-500 hover:text-red-700 font-medium">
+              Remove
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Form Actions */}

@@ -21,6 +21,7 @@ function extractProspectData(formData: FormData) {
     prospect_type: (formData.get('prospect_type')  as string) || null,
     status:        (formData.get('status')         as string) || 'active',
     notes:         (formData.get('notes')          as string)?.trim() || null,
+    logo_url:      (formData.get('logo_url')        as string)?.trim() || null,
   }
 }
 

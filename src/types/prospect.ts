@@ -19,6 +19,7 @@ export interface Prospect {
   prospect_type: ProspectType | null
   status: ProspectStatus
   notes: string | null
+  logo_url: string | null
   created_at: string
   updated_at: string
 }
