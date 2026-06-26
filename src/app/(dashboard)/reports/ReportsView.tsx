@@ -846,25 +846,21 @@ function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: 
                 </tr>
                 <tr className="bg-gray-50">
                   <td className={pL}>Total square footage</td>
-                  <td className={pV} colSpan={3}>{fmtN(totalBuildingSqft)}</td>
-                </tr>
-                <tr className="bg-gray-100">
+                  <td className={pV}>{fmtN(totalBuildingSqft)}</td>
                   <td className={pL}>Number of floors</td>
                   <td className={pV}>{building.floors != null ? String(building.floors) : '—'}</td>
-                  <td className={pL}>Number of restrooms</td>
-                  <td className={pV}>{fmtN(building.num_restrooms)}</td>
-                </tr>
-                <tr className="bg-gray-50">
-                  <td className={pL}>Number of fixtures in RR&apos;s</td>
-                  <td className={pV}>{fmtN(totalFixtures)}</td>
-                  <td className={pL}>Number of showers</td>
-                  <td className={pV}>{fmtN(totalShowers)}</td>
                 </tr>
                 <tr className="bg-gray-100">
-                  <td className={pL}>Number of stairwells</td>
-                  <td className={pV}>{fmtN(building.num_stairwells)}</td>
-                  <td className={pL}>Number of elevators</td>
-                  <td className={pV}>{fmtN(building.num_elevators)}</td>
+                  <td className={pL}>Number of restrooms</td>
+                  <td className={pV}>{fmtN(building.num_restrooms)}</td>
+                  <td className={pL}>Number of fixtures in RR&apos;s</td>
+                  <td className={pV}>{fmtN(totalFixtures)}</td>
+                </tr>
+                <tr className="bg-gray-50">
+                  <td className={pL}>Number of showers</td>
+                  <td className={pV}>{fmtN(totalShowers)}</td>
+                  <td className={pL}>Stairwells&ensp;/&ensp;Elevators</td>
+                  <td className={pV}>{`${fmtN(building.num_stairwells)} / ${fmtN(building.num_elevators)}`}</td>
                 </tr>
               </tbody>
             </table>
