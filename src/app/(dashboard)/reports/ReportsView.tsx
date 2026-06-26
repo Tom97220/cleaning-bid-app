@@ -37,6 +37,8 @@ interface Building {
   floors: number | null
   common_sqft: number | null
   num_restrooms: number | null
+  num_elevators: number | null
+  num_stairwells: number | null
   notes: string | null
   service_days: number | null
 }
@@ -763,6 +765,7 @@ function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: 
   const commonAreaSqft      = building.common_sqft                  // manual building field
   const totalBuildingSqft   = cleanableTenantSqft + (commonAreaSqft ?? 0)  // display-only; not the pricing sqft
   const totalFixtures       = areas.reduce((s, a) => s + (a.fixtures ?? 0), 0)
+  const totalShowers        = areas.reduce((s, a) => s + (a.showers  ?? 0), 0)
 
   const serviceDays = building.service_days ?? 260
   const staffingRows = bidLaborLines.map(line => ({
@@ -836,52 +839,32 @@ function PinpointReport({ data, logoUrl = null }: { data: ReportData; logoUrl?: 
                   <td className={pV}>{[building.state, building.zip].filter(Boolean).join('  ') || '—'}</td>
                 </tr>
                 <tr className="bg-gray-100">
-                  <td className={pL}>Total square footage</td>
-                  <td className={pV}>{fmtN(totalBuildingSqft)}</td>
-                  <td className={pL}>Number of floors</td>
-                  <td className={pV}>{building.floors != null ? String(building.floors) : '—'}</td>
-                </tr>
-                <tr className="bg-gray-50">
+                  <td className={pL}>Cleanable Tenant Sq. Footage</td>
+                  <td className={pV}>{fmtN(cleanableTenantSqft)}</td>
                   <td className={pL}>Common area square footage</td>
                   <td className={pV}>{fmtN(commonAreaSqft)}</td>
+                </tr>
+                <tr className="bg-gray-50">
+                  <td className={pL}>Total square footage</td>
+                  <td className={pV} colSpan={3}>{fmtN(totalBuildingSqft)}</td>
+                </tr>
+                <tr className="bg-gray-100">
+                  <td className={pL}>Number of floors</td>
+                  <td className={pV}>{building.floors != null ? String(building.floors) : '—'}</td>
                   <td className={pL}>Number of restrooms</td>
                   <td className={pV}>{fmtN(building.num_restrooms)}</td>
                 </tr>
-                <tr className="bg-gray-100">
-                  <td className={pL}>Cleanable Tenant Sq. Footage</td>
-                  <td className={pV}>{fmtN(cleanableTenantSqft)}</td>
+                <tr className="bg-gray-50">
                   <td className={pL}>Number of fixtures in RR&apos;s</td>
                   <td className={pV}>{fmtN(totalFixtures)}</td>
-                </tr>
-                <tr className="bg-gray-50">
-                  <td className={pL}>Restroom Sqft</td>
-                  <td className={pV}>—</td>
-                  <td className={pL}>Number of toilets</td>
-                  <td className={pV}>—</td>
+                  <td className={pL}>Number of showers</td>
+                  <td className={pV}>{fmtN(totalShowers)}</td>
                 </tr>
                 <tr className="bg-gray-100">
                   <td className={pL}>Number of stairwells</td>
-                  <td className={pV}>—</td>
-                  <td className={pL}>Number of urinals</td>
-                  <td className={pV}>—</td>
-                </tr>
-                <tr className="bg-gray-50">
-                  <td className={pL}>Stair width / Stair length</td>
-                  <td className={pV}>— / —</td>
-                  <td className={pL}>Number of sinks</td>
-                  <td className={pV}>—</td>
-                </tr>
-                <tr className="bg-gray-100">
-                  <td className={pL}>Stair square feet or #</td>
-                  <td className={pV}>—</td>
-                  <td className={pL}>Number of fountains</td>
-                  <td className={pV}>—</td>
-                </tr>
-                <tr className="bg-gray-50">
+                  <td className={pV}>{fmtN(building.num_stairwells)}</td>
                   <td className={pL}>Number of elevators</td>
-                  <td className={pV}>—</td>
-                  <td className={pL}>Elevator sq. footage</td>
-                  <td className={pV}>—</td>
+                  <td className={pV}>{fmtN(building.num_elevators)}</td>
                 </tr>
               </tbody>
             </table>

@@ -167,6 +167,32 @@ export default function BuildingForm({
             />
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Number of Stairwells</label>
+            <input
+              name="num_stairwells"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={building?.num_stairwells ?? ''}
+              placeholder="e.g. 2"
+              className={inputClass}
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Number of Elevators</label>
+            <input
+              name="num_elevators"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={building?.num_elevators ?? ''}
+              placeholder="e.g. 1"
+              className={inputClass}
+            />
+          </div>
+        </div>
         <div>
           <label className={labelClass}>Service Days per Year</label>
           <input

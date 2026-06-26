@@ -19,6 +19,8 @@ export interface Building {
   floors:           number | null
   common_sqft:      number | null
   num_restrooms:    number | null
+  num_elevators:    number | null
+  num_stairwells:   number | null
   service_days:     number
   notes:            string | null
   directions:       string | null
