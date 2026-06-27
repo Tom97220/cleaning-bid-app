@@ -1,6 +1,6 @@
 interface HeaderProps {
   title: string
-  description?: string
+  description?: React.ReactNode
   actions?: React.ReactNode
 }
 
