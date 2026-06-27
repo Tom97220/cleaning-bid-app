@@ -9,11 +9,12 @@ export default async function JobCardPrintPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ logo?: string }>
+  searchParams: Promise<{ logo?: string; clogo?: string }>
 }) {
   const { id } = await params
-  const { logo } = await searchParams
-  const includeLogo = logo !== '0'
+  const { logo, clogo } = await searchParams
+  const includeLogo         = logo  !== '0'
+  const includeCustomerLogo = clogo !== '0'
   const supabase = await createClient()
 
   const [
@@ -26,7 +27,7 @@ export default async function JobCardPrintPage({
   ] = await Promise.all([
     supabase
       .from('job_cards')
-      .select('*, prospects(company_name), buildings(building_name), positions(position_name)')
+      .select('*, prospects(company_name, logo_url), buildings(building_name), positions(position_name)')
       .eq('id', id)
       .single(),
     supabase.from('job_card_route_rows').select('*').eq('job_card_id', id).order('sort_order'),
@@ -46,6 +47,7 @@ export default async function JobCardPrintPage({
       coreDetails={coreDetails ?? []}
       detailTasks={detailTasks ?? []}
       logoUrl={includeLogo ? (companySettings?.logo_url ?? null) : null}
+      customerLogoUrl={includeCustomerLogo ? ((jobCard as { prospects?: { logo_url?: string | null } | null }).prospects?.logo_url ?? null) : null}
     />
   )
 }

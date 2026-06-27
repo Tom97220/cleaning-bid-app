@@ -19,7 +19,7 @@ export interface PrintJobCard {
   service_days: string[]
   schedule_assignments: unknown
   is_translated: boolean
-  prospects: { company_name: string } | null
+  prospects: { company_name: string; logo_url: string | null } | null
   buildings: { building_name: string } | null
   positions: { position_name: string } | null
 }
@@ -111,14 +111,37 @@ function PrintPage({ children, first = false }: {
 // ─── Print: Full route header (Pages 1 & 3) ───────────────────────────────────
 
 function PrintRouteHeader({
-  positionName, route, prospectName, buildingName, specialInstructions, revisedDate, logoUrl, lang = 'en',
+  positionName, route, prospectName, buildingName, specialInstructions, revisedDate, logoUrl, customerLogoUrl, lang = 'en',
 }: {
   positionName: string; route: string; prospectName: string; buildingName: string
-  specialInstructions: string; revisedDate: string; logoUrl: string | null; lang?: 'en' | 'alt'
+  specialInstructions: string; revisedDate: string
+  logoUrl: string | null; customerLogoUrl: string | null; lang?: 'en' | 'alt'
 }) {
   const siteLine = [prospectName, buildingName].filter(Boolean).join(' — ')
   return (
     <>
+      {/* Logo band — our logo left, customer logo right under "Prepared for".
+          Whole band hidden when neither logo is shown. */}
+      {(logoUrl || customerLogoUrl) && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '24px', marginBottom: '12px' }}>
+          {logoUrl ? (
+            <img src={logoUrl} alt="Company logo"
+              style={{ height: '48px', width: 'auto', maxWidth: '200px', objectFit: 'contain' }} />
+          ) : (
+            <div />
+          )}
+          {customerLogoUrl && (
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '9px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.12em', color: '#9ca3af', marginBottom: '4px' }}>
+                Prepared for
+              </div>
+              <img src={customerLogoUrl} alt="Customer logo"
+                style={{ height: '40px', width: 'auto', maxWidth: '180px', objectFit: 'contain', marginLeft: 'auto' }} />
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', marginBottom: '10px' }}>
         <div>
           <div style={{ fontSize: '24px', fontWeight: '900', lineHeight: '1.2', color: '#111827' }}>
@@ -136,19 +159,15 @@ function PrintRouteHeader({
           textAlign: 'right', fontSize: '11px', color: '#374151',
           maxWidth: '260px', paddingLeft: '20px', flexShrink: 0,
         }}>
-          <div>
-            {logoUrl && (
-              <img src={logoUrl} alt="Company logo"
-                style={{ maxHeight: '48px', maxWidth: '160px', objectFit: 'contain', marginBottom: '6px', marginLeft: 'auto' }} />
-            )}
-            {specialInstructions && (
-              <div style={{ lineHeight: '1.5' }}>
-                <span style={{ fontWeight: '700' }}>
-                  {lang === 'alt' ? 'Instrucciones especiales:' : 'Special Instructions:'}
-                </span>{' '}{specialInstructions}
-              </div>
-            )}
-          </div>
+          {specialInstructions ? (
+            <div style={{ lineHeight: '1.5' }}>
+              <span style={{ fontWeight: '700' }}>
+                {lang === 'alt' ? 'Instrucciones especiales:' : 'Special Instructions:'}
+              </span>{' '}{specialInstructions}
+            </div>
+          ) : (
+            <div />
+          )}
           <div style={{ color: '#9ca3af' }}>Revised: {fmtDate(revisedDate)}</div>
         </div>
       </div>
@@ -187,11 +206,12 @@ function PrintCompactHeader({
 // ─── Print: Route page (Pages 1 & 3) ─────────────────────────────────────────
 
 function PrintRoutePage({
-  positionName, route, prospectName, buildingName, specialInstructions, revisedDate, rows, notesEn, notesAlt, logoUrl, lang = 'en',
+  positionName, route, prospectName, buildingName, specialInstructions, revisedDate, rows, notesEn, notesAlt, logoUrl, customerLogoUrl, lang = 'en',
 }: {
   positionName: string; route: string; prospectName: string; buildingName: string
   specialInstructions: string; revisedDate: string; rows: PrintRouteRow[]
-  notesEn: string | null; notesAlt: string | null; logoUrl: string | null; lang?: 'en' | 'alt'
+  notesEn: string | null; notesAlt: string | null
+  logoUrl: string | null; customerLogoUrl: string | null; lang?: 'en' | 'alt'
 }) {
   const sortedRows = sortRouteRows(rows)
   const blanks = Math.max(8, 12 - rows.length)
@@ -203,6 +223,7 @@ function PrintRoutePage({
         prospectName={prospectName} buildingName={buildingName}
         specialInstructions={specialInstructions} revisedDate={revisedDate}
         logoUrl={logoUrl}
+        customerLogoUrl={customerLogoUrl}
         lang={lang}
       />
       <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
@@ -368,6 +389,7 @@ export default function PrintView({
   coreDetails,
   detailTasks,
   logoUrl,
+  customerLogoUrl,
 }: {
   jobCard: PrintJobCard
   routeRows: PrintRouteRow[]
@@ -375,6 +397,7 @@ export default function PrintView({
   coreDetails: PrintCoreRow[]
   detailTasks: PrintDetailTask[]
   logoUrl: string | null
+  customerLogoUrl: string | null
 }) {
   useEffect(() => {
     const t = setTimeout(() => window.print(), 300)
@@ -414,6 +437,7 @@ export default function PrintView({
           notesEn={jobCard.notes_page1 ?? null}
           notesAlt={jobCard.notes_page1_alt ?? null}
           logoUrl={logoUrl}
+          customerLogoUrl={customerLogoUrl}
         />
       </PrintPage>
 
@@ -451,6 +475,7 @@ export default function PrintView({
             notesEn={jobCard.notes_page1 ?? null}
             notesAlt={jobCard.notes_page1_alt ?? null}
             logoUrl={logoUrl}
+            customerLogoUrl={customerLogoUrl}
           />
         </PrintPage>
       )}

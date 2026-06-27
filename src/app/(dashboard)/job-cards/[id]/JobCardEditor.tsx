@@ -52,7 +52,7 @@ interface DBRouteRow   { id: string; row_type: string; time: string | null; area
 interface DBDailyTask  { id: string; description_en: string; description_alt: string | null }
 interface DBDetailRow  { id: string; day_period: string; zone_area: string | null; zone_area_alt: string | null }
 interface DBWhenDetail { id: string; description_en: string; description_alt: string | null }
-interface Prospect     { id: string; company_name: string }
+interface Prospect     { id: string; company_name: string; logo_url: string | null }
 interface Position     { id: string; position_name: string }
 interface Building     { id: string; building_name: string }
 
@@ -288,6 +288,22 @@ export default function JobCardEditor({
   const [translateError,  setTranslateError]  = useState<string | null>(null)
   const [isTranslated,    setIsTranslated]    = useState(jobCard.is_translated ?? false)
   const [includeLogo,     setIncludeLogo]     = useState(false)
+  const [includeCustomerLogo, setIncludeCustomerLogo] = useState(false)
+
+  // Customer logo belongs to the currently-selected prospect; reacts to the dropdown.
+  const customerLogoUrl = useMemo(
+    () => prospects.find(p => p.id === hdr.prospect_id)?.logo_url ?? null,
+    [prospects, hdr.prospect_id]
+  )
+
+  // Both logos default OFF, so the link suppresses by default (mirrors ?logo=0).
+  const printQuery = (() => {
+    const p = new URLSearchParams()
+    if (!includeLogo)         p.set('logo', '0')
+    if (!includeCustomerLogo) p.set('clogo', '0')
+    const qs = p.toString()
+    return qs ? `?${qs}` : ''
+  })()
 
   // Cache: English text → Spanish translation (session-scoped)
   const translationCache = useRef<Map<string, string>>(new Map())
@@ -615,7 +631,7 @@ export default function JobCardEditor({
             {saving ? 'Saving…' : 'Save'}
           </button>
           <a
-            href={`/job-cards/${jobCard.id}/print${includeLogo ? '' : '?logo=0'}`}
+            href={`/job-cards/${jobCard.id}/print${printQuery}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 border border-gray-300 hover:border-gray-400 text-gray-700 bg-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
@@ -634,7 +650,18 @@ export default function JobCardEditor({
                 onChange={(e) => setIncludeLogo(e.target.checked)}
                 className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
               />
-              Include logo
+              Include my logo
+            </label>
+          )}
+          {customerLogoUrl && (
+            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={includeCustomerLogo}
+                onChange={(e) => setIncludeCustomerLogo(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              />
+              Include customer logo
             </label>
           )}
           <button onClick={handleTranslate} disabled={translating}
