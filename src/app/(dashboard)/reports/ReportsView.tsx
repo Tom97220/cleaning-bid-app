@@ -1307,6 +1307,13 @@ export default function ReportsView({
 type BuildingReport   = { building: Building; data: ReportData }
 type ExcludedBuilding = { building: Building; reason: 'no_bid' | 'no_sqft' }
 
+// Human-readable wording for why a selected building was left out — shared by the
+// FYI banner (some excluded) and the empty state (all excluded) so they stay in sync.
+const EXCLUSION_REASON: Record<ExcludedBuilding['reason'], string> = {
+  no_sqft: 'no square footage entered',
+  no_bid:  'no bid data',
+}
+
 function groupByBuilding<T extends { building_id: string }>(rows: T[] | null): Map<string, T[]> {
   const m = new Map<string, T[]>()
   for (const r of rows ?? []) {
@@ -1516,9 +1523,19 @@ export function ConsolidatedReportsView({
               <p className="text-sm text-gray-400">Select buildings then click Generate</p>
             </div>
           ) : result.included.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 gap-3 print:hidden">
-              <p className="font-medium text-gray-500">No bid data for the selected buildings</p>
-              <p className="text-sm text-gray-400">Selected buildings have no bid or no square footage.</p>
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 gap-4 print:hidden">
+              <div>
+                <p className="font-medium text-gray-500">No recap could be generated</p>
+                <p className="text-sm text-gray-400">Every selected building was excluded. Fix the items below, then generate again.</p>
+              </div>
+              <ul className="text-left text-sm text-gray-600 bg-white border border-gray-200 rounded-lg px-4 py-3 space-y-1">
+                {result.excluded.map(ex => (
+                  <li key={ex.building.id}>
+                    <span className="font-medium text-gray-800">{ex.building.building_name}</span>
+                    {' — '}{EXCLUSION_REASON[ex.reason]}
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : (
             <>
@@ -1543,6 +1560,27 @@ export function ConsolidatedReportsView({
 
               {/* Pages — one existing InvestmentRecapReport per included building */}
               <div className="py-8 px-6 space-y-6 print:p-0 print:space-y-0" style={{ fontFamily: 'Tahoma, Verdana, Geneva, sans-serif' }}>
+                {/* FYI: which selected buildings were left out, and why (screen only — not printed) */}
+                {result.excluded.length > 0 && (
+                  <div className="mx-auto print:hidden" style={{ maxWidth: '816px' }}>
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                      <p className="text-sm font-medium text-amber-800">
+                        {result.excluded.length} building{result.excluded.length !== 1 ? 's were' : ' was'} excluded from this consolidated recap:
+                      </p>
+                      <ul className="mt-1.5 space-y-0.5 text-sm text-amber-700">
+                        {result.excluded.map(ex => (
+                          <li key={ex.building.id} className="flex gap-1.5">
+                            <span className="text-amber-400">&bull;</span>
+                            <span>
+                              <span className="font-medium">{ex.building.building_name}</span>
+                              {' — '}{EXCLUSION_REASON[ex.reason]}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
                 {result.included.map(br => (
                   <div key={br.building.id} className="bg-white shadow-sm rounded-sm mx-auto print:shadow-none print:rounded-none" style={{ maxWidth: '816px' }}>
                     <div className="px-12 py-10">
