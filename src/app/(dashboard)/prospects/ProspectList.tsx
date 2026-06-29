@@ -1,14 +1,14 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import BuildingSearch, { type SearchRow } from '@/components/BuildingSearch'
+import ProspectSearch, { type ProspectRow } from '@/components/ProspectSearch'
 
 export default function ProspectList() {
   const router = useRouter()
 
-  function handleSelect(row: SearchRow) {
-    router.push(`/prospects/${row.prospect_id}/buildings/${row.building_id}`)
+  function handleSelect(row: ProspectRow) {
+    router.push(`/prospects/${row.prospect_id}`)
   }
 
-  return <BuildingSearch onSelect={handleSelect} />
+  return <ProspectSearch onSelect={handleSelect} />
 }
