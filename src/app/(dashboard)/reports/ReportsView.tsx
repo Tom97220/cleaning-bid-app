@@ -1297,3 +1297,264 @@ export default function ReportsView({
     </>
   )
 }
+
+// ─── Consolidated Investment Recap (multi-building) ─────────────────────────────
+//
+// Stage 1: prospect-level view. User picks a subset of the prospect's buildings,
+// each included building renders the EXISTING single-building InvestmentRecapReport.
+// The consolidated total itself is Stage 3.
+
+type BuildingReport   = { building: Building; data: ReportData }
+type ExcludedBuilding = { building: Building; reason: 'no_bid' | 'no_sqft' }
+
+function groupByBuilding<T extends { building_id: string }>(rows: T[] | null): Map<string, T[]> {
+  const m = new Map<string, T[]>()
+  for (const r of rows ?? []) {
+    const arr = m.get(r.building_id)
+    if (arr) arr.push(r)
+    else m.set(r.building_id, [r])
+  }
+  return m
+}
+
+export function ConsolidatedReportsView({
+  prospect,
+  buildings,
+}: {
+  prospect: Prospect
+  buildings: Building[]
+  companySettings: CompanySettings | null
+}) {
+  const supabase = useMemo(() => createClient(), [])
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [result, setResult] = useState<{ included: BuildingReport[]; excluded: ExcludedBuilding[] } | null>(null)
+
+  function toggleBuilding(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function handleGenerate() {
+    if (selectedIds.size === 0) return
+    setIsGenerating(true)
+    setError(null)
+
+    try {
+      const ids = [...selectedIds]
+      const [
+        { data: areas, error: areasErr },
+        { data: bidSummaries },
+        { data: bidLaborLines },
+        { data: bidLaborCosts },
+        { data: bidOtherCosts },
+      ] = await Promise.all([
+        supabase
+          .from('areas')
+          .select('*, task_line_items(*, task_codes(task_code, task_name, description, description_alt), positions(position_name))')
+          .in('building_id', ids)
+          .order('print_order', { nullsFirst: false })
+          .order('created_at'),
+        supabase.from('bid_summary').select('*').in('building_id', ids),
+        supabase.from('bid_labor_lines').select('*, positions(position_name)').in('building_id', ids).order('sort_order', { nullsFirst: false }).order('created_at'),
+        supabase.from('bid_labor_costs').select('*').in('building_id', ids).order('sort_order', { nullsFirst: false }).order('created_at'),
+        supabase.from('bid_other_costs').select('*').in('building_id', ids).order('sort_order', { nullsFirst: false }).order('created_at'),
+      ])
+
+      if (areasErr) throw areasErr
+
+      const areasByB      = groupByBuilding((areas ?? []) as unknown as (Area & { building_id: string })[])
+      const laborLinesByB = groupByBuilding((bidLaborLines ?? []) as ReportData['bidLaborLines'])
+      const laborCostsByB = groupByBuilding((bidLaborCosts ?? []) as BidLaborCost[])
+      const otherCostsByB = groupByBuilding((bidOtherCosts ?? []) as BidOtherCost[])
+      const summaryByB    = new Map<string, BidSummary>()
+      for (const s of (bidSummaries ?? []) as BidSummary[]) summaryByB.set(s.building_id, s)
+
+      const included: BuildingReport[]   = []
+      const excluded: ExcludedBuilding[] = []
+
+      // Iterate the prospect's buildings in building_name order (the prop is already
+      // ordered), keeping only the selected ones — this fixes included-building order.
+      for (const building of buildings) {
+        if (!selectedIds.has(building.id)) continue
+
+        const bidSummary = summaryByB.get(building.id) ?? null
+        if (!bidSummary) { excluded.push({ building, reason: 'no_bid' }); continue }
+        if (building.square_feet == null || building.square_feet <= 0) {
+          excluded.push({ building, reason: 'no_sqft' }); continue
+        }
+
+        const rawAreas = (areasByB.get(building.id) ?? []) as unknown as Area[]
+        const sortedAreas: Area[] = rawAreas.map(a => ({
+          ...a,
+          task_line_items: [...a.task_line_items].sort((x, y) =>
+            new Date(x.created_at).getTime() - new Date(y.created_at).getTime()
+          ),
+        }))
+
+        included.push({
+          building,
+          data: {
+            prospect,
+            building,
+            areas: sortedAreas,
+            bidSummary,
+            bidLaborLines: (laborLinesByB.get(building.id) ?? []) as ReportData['bidLaborLines'],
+            bidLaborCosts: (laborCostsByB.get(building.id) ?? []) as BidLaborCost[],
+            bidOtherCosts: (otherCostsByB.get(building.id) ?? []) as BidOtherCost[],
+          },
+        })
+      }
+
+      setResult({ included, excluded })
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to generate. Please try again.')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  return (
+    <>
+      <style>{`
+        .report-section { font-family: Tahoma, Verdana, Geneva, sans-serif; }
+        @media print {
+          .cover-page  { break-after: page; height: 100vh !important; min-height: unset !important; }
+          .report-section { break-before: page; }
+          .report-section:first-child { break-before: auto; }
+          .pinpoint-landscape { page: pinpoint-landscape; }
+        }
+        @page pinpoint-landscape {
+          size: landscape;
+        }
+      `}</style>
+
+      <div className="flex h-full overflow-hidden">
+
+        {/* ── Controls sidebar ──────────────────────────────── */}
+        <div className="w-72 flex-shrink-0 border-r border-gray-200 bg-gray-50 overflow-y-auto flex flex-col gap-5 p-5 print:hidden">
+
+          <Link
+            href={`/prospects/${prospect.id}`}
+            className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium -mb-1"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Prospect
+          </Link>
+
+          <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 space-y-1">
+            <p className="text-sm font-semibold text-gray-900">{prospect.company_name}</p>
+            <p className="text-sm text-gray-500">Consolidated Investment Recap</p>
+          </div>
+
+          {/* Building checklist */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">Buildings</span>
+              <div className="flex gap-2 text-xs">
+                <button onClick={() => setSelectedIds(new Set(buildings.map(b => b.id)))}
+                  className="text-brand-600 hover:text-brand-800">All</button>
+                <span className="text-gray-300">|</span>
+                <button onClick={() => setSelectedIds(new Set())}
+                  className="text-gray-500 hover:text-gray-700">None</button>
+              </div>
+            </div>
+
+            {buildings.length === 0 ? (
+              <p className="text-sm text-gray-400 italic px-2 py-1.5">No buildings for this prospect.</p>
+            ) : (
+              buildings.map(b => {
+                const noSqft = b.square_feet == null || b.square_feet <= 0
+                return (
+                  <label key={b.id} className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-white cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(b.id)}
+                      onChange={() => toggleBuilding(b.id)}
+                      className="mt-0.5 accent-brand-600"
+                    />
+                    <span className="text-sm text-gray-700 leading-snug">
+                      {b.building_name}
+                      {noSqft && <span className="block text-xs text-amber-600">no sq ft</span>}
+                    </span>
+                  </label>
+                )
+              })
+            )}
+          </div>
+
+          {/* Generate */}
+          <div className="mt-auto pt-4 border-t border-gray-200 space-y-2">
+            {error && <p className="text-xs text-red-600">{error}</p>}
+            <button
+              onClick={handleGenerate}
+              disabled={selectedIds.size === 0 || isGenerating}
+              className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors"
+            >
+              {isGenerating ? 'Generating…' : 'Generate'}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Report output ─────────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto bg-gray-100 print:bg-white">
+          {!result ? (
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 gap-3 print:hidden">
+              <svg className="w-16 h-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <p className="font-medium text-gray-500">No report generated yet</p>
+              <p className="text-sm text-gray-400">Select buildings then click Generate</p>
+            </div>
+          ) : result.included.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 gap-3 print:hidden">
+              <p className="font-medium text-gray-500">No bid data for the selected buildings</p>
+              <p className="text-sm text-gray-400">Selected buildings have no bid or no square footage.</p>
+            </div>
+          ) : (
+            <>
+              {/* Toolbar */}
+              <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200 shadow-sm print:hidden">
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium text-gray-900">{prospect.company_name}</span>
+                  <span className="mx-2 text-gray-300">·</span>
+                  {result.included.length} building{result.included.length !== 1 ? 's' : ''}
+                </p>
+                <button
+                  onClick={() => window.print()}
+                  className="flex items-center gap-1.5 border border-gray-300 hover:border-gray-400 text-gray-700 bg-white text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Print
+                </button>
+              </div>
+
+              {/* Pages — one existing InvestmentRecapReport per included building */}
+              <div className="py-8 px-6 space-y-6 print:p-0 print:space-y-0" style={{ fontFamily: 'Tahoma, Verdana, Geneva, sans-serif' }}>
+                {result.included.map(br => (
+                  <div key={br.building.id} className="bg-white shadow-sm rounded-sm mx-auto print:shadow-none print:rounded-none" style={{ maxWidth: '816px' }}>
+                    <div className="px-12 py-10">
+                      <InvestmentRecapReport data={br.data} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  )
+}
