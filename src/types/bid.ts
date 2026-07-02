@@ -148,3 +148,63 @@ export function calcBidTotals(
     sqftMonthly: sqft ? pricePerMonth / sqft : null,
   }
 }
+
+export type BidTotals = ReturnType<typeof calcBidTotals>
+
+// Consolidated (multi-building) recap totals. Dollar/hour figures are summed
+// directly across buildings; ratios (labor rate, margin, $/sqft) are RE-BLENDED
+// from the summed numerator over the summed denominator — never the average of
+// per-building ratios. Each item pairs a building's BidTotals with the manual
+// square_feet used for that building's pricing sqft.
+export function calcConsolidatedTotals(
+  items: { totals: BidTotals; square_feet: number | null }[],
+) {
+  const sum = (get: (t: BidTotals) => number) =>
+    items.reduce((s, it) => s + get(it.totals), 0)
+
+  const totalPositionHours = sum(t => t.totalPositionHours)
+  const totalPositionCost  = sum(t => t.totalPositionCost)
+  const vacationHours      = sum(t => t.vacationHours)
+  const vacationCost       = sum(t => t.vacationCost)
+  const sickHours          = sum(t => t.sickHours)
+  const sickCost           = sum(t => t.sickCost)
+  const totalHours         = sum(t => t.totalHours)
+  const totalLabor         = sum(t => t.totalLabor)
+  const totalLaborRelated  = sum(t => t.totalLaborRelated)
+  const totalOtherDirect   = sum(t => t.totalOtherDirect)
+  const totalCost          = sum(t => t.totalCost)
+  const sellingPrice       = sum(t => t.sellingPrice)
+  const pricePerMonth      = sum(t => t.pricePerMonth)
+  const profit             = sellingPrice - totalCost
+
+  const totalSqft = items.reduce((s, it) => s + (it.square_feet ?? 0), 0)
+
+  // Blended ratios — Σ numerator / Σ denominator.
+  // Labor rate is the pure wage rate: Σ position cost / Σ position hours (excludes
+  // vacation/sick, matching calcBidTotals' totalPositionCost / totalPositionHours).
+  const blendedLaborRate = totalPositionHours > 0 ? totalPositionCost / totalPositionHours : null
+  const blendedMargin    = sellingPrice > 0 ? profit / sellingPrice : null
+
+  return {
+    buildingCount: items.length,
+    totalPositionHours,
+    totalPositionCost,
+    vacationHours,
+    vacationCost,
+    sickHours,
+    sickCost,
+    totalHours,
+    totalLabor,
+    totalLaborRelated,
+    totalOtherDirect,
+    totalCost,
+    sellingPrice,
+    pricePerMonth,
+    profit,
+    totalSqft:        totalSqft > 0 ? totalSqft : null,
+    blendedLaborRate,
+    blendedMargin,
+    sqftAnnual:       totalSqft > 0 ? sellingPrice  / totalSqft : null,
+    sqftMonthly:      totalSqft > 0 ? pricePerMonth / totalSqft : null,
+  }
+}

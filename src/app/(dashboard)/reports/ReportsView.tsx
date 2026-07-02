@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   calcBidTotals,
+  calcConsolidatedTotals,
   calcCostLine,
   calcPositionCost,
   type BidLaborLine,
@@ -145,18 +146,27 @@ const tdR = 'border border-gray-300 px-3 py-1.5 text-sm text-right tabular-nums 
 const tfootTd = 'border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-900 bg-gray-100'
 const tfootTdR = 'border border-gray-300 px-3 py-2 text-sm font-semibold text-right tabular-nums text-gray-900 bg-gray-100'
 
+// Section heading shared by the Investment Recap and Consolidated Recap.
+const sectionHeader = (label: string) => (
+  <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3 mt-8 first:mt-0">
+    {label}
+  </h3>
+)
+
 // ─── Report Header ────────────────────────────────────────────────────────────
 
 function ReportHeader({
   title,
   prospect,
   building,
+  subtitle,
   logoUrl = null,
   customerLogoUrl = null,
 }: {
   title: string
   prospect: Prospect
-  building: Building
+  building?: Building
+  subtitle?: string
   logoUrl?: string | null
   customerLogoUrl?: string | null
 }) {
@@ -190,9 +200,9 @@ function ReportHeader({
         </h2>
         <p className="mt-2 text-sm text-gray-600">
           <span className="font-medium">{prospect.company_name}</span>
-          {building.building_name && (
-            <> &mdash; {building.building_name}</>
-          )}
+          {subtitle
+            ? <> &mdash; {subtitle}</>
+            : building?.building_name && <> &mdash; {building.building_name}</>}
         </p>
       </div>
 
@@ -543,6 +553,107 @@ function WorkLoadByPositionReport({ data }: { data: ReportData }) {
   )
 }
 
+// ─── Pricing Summary sub-block (shared: single + consolidated recaps) ──────────
+
+// Cost-breakdown pie legend + pricing table. Fed anything BidTotals-shaped, so the
+// same block renders both a single building's totals and the consolidated totals.
+interface PricingFields {
+  totalLabor:        number
+  totalLaborRelated: number
+  totalOtherDirect:  number
+  totalCost:         number
+  sellingPrice:      number
+  pricePerMonth:     number
+  sqftAnnual:        number | null
+  sqftMonthly:       number | null
+}
+
+function PricingSummarySection({
+  totals, marginLabel, showSqft,
+}: {
+  totals: PricingFields
+  marginLabel: string
+  showSqft: boolean
+}) {
+  const profit = totals.sellingPrice - totals.totalCost
+  const pieSegments: PieSegment[] = [
+    { label: 'Total Labor',         value: totals.totalLabor,        color: '#2563eb' },
+    { label: 'Labor Related Costs', value: totals.totalLaborRelated, color: '#16a34a' },
+    { label: 'Other Direct Costs',  value: totals.totalOtherDirect,  color: '#ea580c' },
+    { label: 'Profit',              value: Math.max(0, profit),      color: '#7c3aed' },
+  ]
+    .filter(s => s.value > 0)
+    .map(s => ({
+      ...s,
+      pct: totals.sellingPrice > 0
+        ? `${((s.value / totals.sellingPrice) * 100).toFixed(1)}%`
+        : '0%',
+    }))
+
+  return (
+    <div className="grid grid-cols-2 gap-8 items-start">
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Cost Breakdown</p>
+        <table className="w-full text-xs">
+          <tbody className="divide-y divide-gray-100">
+            {pieSegments.map(seg => (
+              <tr key={seg.label}>
+                <td className="py-1.5 pr-4 text-gray-600 flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
+                  {seg.label}
+                </td>
+                <td className="py-1.5 text-right tabular-nums font-medium text-gray-800">{fmt$(seg.value)}</td>
+                <td className="py-1.5 pl-3 text-right tabular-nums text-gray-500">{seg.pct}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Pricing Summary</p>
+        <table className="w-full text-xs">
+          <tbody className="divide-y divide-gray-100">
+            <tr>
+              <td className="py-1.5 pr-4 text-gray-600">Total Cost</td>
+              <td className="py-1.5 text-right tabular-nums font-medium">{fmt$(totals.totalCost)}</td>
+            </tr>
+            <tr>
+              <td className="py-1.5 pr-4 text-gray-600">{marginLabel}</td>
+              <td className="py-1.5 text-right tabular-nums font-medium">{fmt$(profit)}</td>
+            </tr>
+            <tr className="border-t-2 border-gray-800 font-bold text-gray-900">
+              <td className="py-2 pr-4">Selling Price / Year</td>
+              <td className="py-2 text-right tabular-nums text-sm">{fmt$(totals.sellingPrice)}</td>
+            </tr>
+            <tr>
+              <td className="py-1.5 pr-4 text-gray-600">Price / Month</td>
+              <td className="py-1.5 text-right tabular-nums font-medium">{fmt$(totals.pricePerMonth)}</td>
+            </tr>
+            {showSqft && (
+              <>
+                <tr>
+                  <td className="py-1.5 pr-4 text-gray-600">$/Sq Ft (Annual)</td>
+                  <td className="py-1.5 text-right tabular-nums font-medium">
+                    {totals.sqftAnnual != null ? `$${totals.sqftAnnual.toFixed(4)}` : '—'}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-1.5 pr-4 text-gray-600">$/Sq Ft (Monthly)</td>
+                  <td className="py-1.5 text-right tabular-nums font-medium">
+                    {totals.sqftMonthly != null ? `$${totals.sqftMonthly.toFixed(4)}` : '—'}
+                  </td>
+                </tr>
+              </>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
 // ─── Report 6: Investment Recap ───────────────────────────────────────────────
 
 function InvestmentRecapReport({ data }: { data: ReportData }) {
@@ -565,31 +676,10 @@ function InvestmentRecapReport({ data }: { data: ReportData }) {
     bidSummary.sick_hours_override, bidSummary.vacation_rate, bidSummary.sick_rate,
   )
 
-  const profit = totals.sellingPrice - totals.totalCost
-  const pieSegments: PieSegment[] = [
-    { label: 'Total Labor',         value: totals.totalLabor,        color: '#2563eb' },
-    { label: 'Labor Related Costs', value: totals.totalLaborRelated, color: '#16a34a' },
-    { label: 'Other Direct Costs',  value: totals.totalOtherDirect,  color: '#ea580c' },
-    { label: 'Profit',              value: Math.max(0, profit),      color: '#7c3aed' },
-  ]
-    .filter(s => s.value > 0)
-    .map(s => ({
-      ...s,
-      pct: totals.sellingPrice > 0
-        ? `${((s.value / totals.sellingPrice) * 100).toFixed(1)}%`
-        : '0%',
-    }))
-
   const costTypeLabel = (type: string) =>
     type === 'percent_markup' ? '% of Labor' : type === 'per_hour' ? '$/hr' : '$/yr'
   const factorDisplay = (type: string, factor: number | null) =>
     factor == null ? '—' : type === 'percent_markup' ? `${factor}%` : fmt$(factor)
-
-  const sectionHeader = (label: string) => (
-    <h3 className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3 mt-8 first:mt-0">
-      {label}
-    </h3>
-  )
 
   return (
     <div className="report-section">
@@ -694,70 +784,13 @@ function InvestmentRecapReport({ data }: { data: ReportData }) {
       </table>
 
       {sectionHeader('Pricing Summary')}
-      <div className="grid grid-cols-2 gap-8 items-start">
-
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Cost Breakdown</p>
-          <table className="w-full text-xs">
-            <tbody className="divide-y divide-gray-100">
-              {pieSegments.map(seg => (
-                <tr key={seg.label}>
-                  <td className="py-1.5 pr-4 text-gray-600 flex items-center gap-1.5">
-                    <span className="inline-block w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
-                    {seg.label}
-                  </td>
-                  <td className="py-1.5 text-right tabular-nums font-medium text-gray-800">{fmt$(pieSegments.find(s => s.label === seg.label)?.value ?? 0)}</td>
-                  <td className="py-1.5 pl-3 text-right tabular-nums text-gray-500">{seg.pct}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-3">Pricing Summary</p>
-          <table className="w-full text-xs">
-            <tbody className="divide-y divide-gray-100">
-              <tr>
-                <td className="py-1.5 pr-4 text-gray-600">Total Cost</td>
-                <td className="py-1.5 text-right tabular-nums font-medium">{fmt$(totals.totalCost)}</td>
-              </tr>
-              <tr>
-                <td className="py-1.5 pr-4 text-gray-600">
-                  {bidSummary.margin_type === 'percent'
-                    ? `Gross Margin (${bidSummary.margin_value}%)`
-                    : 'Fixed Fee'}
-                </td>
-                <td className="py-1.5 text-right tabular-nums font-medium">{fmt$(profit)}</td>
-              </tr>
-              <tr className="border-t-2 border-gray-800 font-bold text-gray-900">
-                <td className="py-2 pr-4">Selling Price / Year</td>
-                <td className="py-2 text-right tabular-nums text-sm">{fmt$(totals.sellingPrice)}</td>
-              </tr>
-              <tr>
-                <td className="py-1.5 pr-4 text-gray-600">Price / Month</td>
-                <td className="py-1.5 text-right tabular-nums font-medium">{fmt$(totals.pricePerMonth)}</td>
-              </tr>
-              {building.square_feet != null && (
-                <>
-                  <tr>
-                    <td className="py-1.5 pr-4 text-gray-600">$/Sq Ft (Annual)</td>
-                    <td className="py-1.5 text-right tabular-nums font-medium">
-                      {totals.sqftAnnual != null ? `$${totals.sqftAnnual.toFixed(4)}` : '—'}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-1.5 pr-4 text-gray-600">$/Sq Ft (Monthly)</td>
-                    <td className="py-1.5 text-right tabular-nums font-medium">
-                      {totals.sqftMonthly != null ? `$${totals.sqftMonthly.toFixed(4)}` : '—'}
-                    </td>
-                  </tr>
-                </>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <PricingSummarySection
+        totals={totals}
+        marginLabel={bidSummary.margin_type === 'percent'
+          ? `Gross Margin (${bidSummary.margin_value}%)`
+          : 'Fixed Fee'}
+        showSqft={building.square_feet != null}
+      />
     </div>
   )
 }
@@ -1324,6 +1357,243 @@ function groupByBuilding<T extends { building_id: string }>(rows: T[] | null): M
   return m
 }
 
+// Stage 3: the consolidated total. Renders a FULL Investment Recap in the same
+// format as the per-building recaps, fed the summed figures — every building's
+// labor lines listed as-is, labor-related / other-direct costs summed by category
+// name, one blended pricing summary, and a page-2 square-footage summary.
+function ConsolidatedRecap({
+  prospect,
+  included,
+}: {
+  prospect: Prospect
+  included: BuildingReport[]
+}) {
+  // included buildings are guaranteed to have a bidSummary (the generator excludes
+  // any without one), but narrow defensively so the type stays honest.
+  const perBuilding = included.flatMap(br => {
+    const { bidSummary, bidLaborLines, bidLaborCosts, bidOtherCosts, building, areas } = br.data
+    if (!bidSummary) return []
+    const totals = calcBidTotals(
+      bidLaborLines, bidLaborCosts, bidOtherCosts,
+      bidSummary.margin_type, bidSummary.margin_value,
+      building.square_feet,
+      bidSummary.vacation_pct, bidSummary.vacation_hours_override,
+      bidSummary.sick_hours_override, bidSummary.vacation_rate, bidSummary.sick_rate,
+    )
+    return [{ building, areas, bidLaborLines, bidLaborCosts, bidOtherCosts, totals }]
+  })
+
+  const consolidated = calcConsolidatedTotals(
+    perBuilding.map(pb => ({ totals: pb.totals, square_feet: pb.building.square_feet })),
+  )
+
+  // Labor lines merged across buildings by position name + rate: lines sharing
+  // BOTH the same position AND the same rate collapse into one row (hours + cost
+  // summed); the same position at a different rate stays a separate row. Insertion
+  // order follows building order, then each building's sort order.
+  const mergedLaborLines = (() => {
+    const m = new Map<string, { name: string; rate: number | null; hours: number; cost: number }>()
+    for (const line of perBuilding.flatMap(pb => pb.bidLaborLines)) {
+      const name = line.positions?.position_name ?? '—'
+      const rate = line.rate
+      const key  = `${name}||${rate ?? ''}`
+      const row  = m.get(key) ?? { name, rate, hours: 0, cost: 0 }
+      row.hours += line.annual_hours ?? 0
+      row.cost  += calcPositionCost(line.annual_hours, line.rate)
+      m.set(key, row)
+    }
+    return [...m.values()]
+  })()
+
+  // Sum labor-related / other-direct costs by category NAME across buildings.
+  // Each line's dollar amount is resolved against ITS OWN building's labor/hours
+  // (percent-markup and per-hour factors are building-specific), then accumulated
+  // by name. Insertion order follows building order, then each building's sort order.
+  const sumByName = (pick: (pb: typeof perBuilding[number]) => (BidLaborCost | BidOtherCost)[]) => {
+    const m = new Map<string, number>()
+    for (const pb of perBuilding) {
+      for (const c of pick(pb)) {
+        const name = c.description ?? '—'
+        const amt  = calcCostLine(c.type, c.factor, pb.totals.totalLabor, pb.totals.totalHours)
+        m.set(name, (m.get(name) ?? 0) + amt)
+      }
+    }
+    return [...m.entries()]
+  }
+  const laborRelatedByName = sumByName(pb => pb.bidLaborCosts)
+  const otherDirectByName  = sumByName(pb => pb.bidOtherCosts)
+
+  const marginLabel = consolidated.blendedMargin != null
+    ? `Gross Margin (blended ${(consolidated.blendedMargin * 100).toFixed(1)}%)`
+    : 'Gross Margin'
+
+  // Blended non-worked rates for the summed vacation / sick rows (Σ cost ÷ Σ hours).
+  const vacationRate = consolidated.vacationHours > 0 ? consolidated.vacationCost / consolidated.vacationHours : null
+  const sickRate     = consolidated.sickHours     > 0 ? consolidated.sickCost     / consolidated.sickHours     : null
+  const totalLaborHours = consolidated.totalPositionHours + consolidated.vacationHours + consolidated.sickHours
+
+  // Page 2: daily hours = SUM of each building's daily hours, where a building's
+  // daily hours = its BID position hours (bid_labor_lines annual_hours — the hours
+  // the user actually bid, NOT task-line-item benchmark hours, NOT vacation/sick)
+  // ÷ its own service frequency (days/yr). Summed, never averaged. Production rate
+  // spreads the summed manual sqft over those summed daily hours.
+  const dailyHours = perBuilding.reduce((s, pb) => {
+    const days = pb.building.service_days ?? 260
+    const positionHours = pb.bidLaborLines.reduce((h, l) => h + (l.annual_hours ?? 0), 0)
+    return s + (days > 0 ? positionHours / days : 0)
+  }, 0)
+  const totalSqft      = consolidated.totalSqft
+  const productionRate = totalSqft != null && dailyHours > 0 ? totalSqft / dailyHours : null
+
+  const fmtInt  = (n: number | null) => n == null ? '—' : n.toLocaleString('en-US', { maximumFractionDigits: 0 })
+  const fmtSqft = (v: number | null) => v == null ? '—' : `$${v.toFixed(4)}`
+
+  const subLabel = 'py-3 pr-8 text-gray-600'
+  const subValue = 'py-3 text-right font-semibold tabular-nums text-gray-900'
+
+  return (
+    <>
+      {/* ── Page 1: Consolidated Investment Recap ─────────────────────────── */}
+      <div className="report-section">
+        <ReportHeader title="Investment Recap" prospect={prospect} subtitle="Consolidated Totals" />
+
+        {sectionHeader('Section 1 — Labor Costs')}
+        <table className="w-full text-sm border-collapse mb-2">
+          <thead>
+            <tr>
+              <th className={th}>Position</th>
+              <th className={thR}>Annual Hours</th>
+              <th className={thR}>Rate ($/hr)</th>
+              <th className={thR}>Annual Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {mergedLaborLines.map(row => (
+              <tr key={`${row.name}||${row.rate ?? ''}`}>
+                <td className={td}>{row.name}</td>
+                <td className={tdR}>{fmtHrs(row.hours)}</td>
+                <td className={tdR}>{fmt$(row.rate)}</td>
+                <td className={tdR}>{fmt$(row.cost)}</td>
+              </tr>
+            ))}
+            <tr className="bg-gray-50">
+              <td className={`${td} pl-8 text-gray-500`}>Vacation</td>
+              <td className={`${tdR} text-gray-500`}>{consolidated.vacationHours.toFixed(1)}</td>
+              <td className={`${tdR} text-gray-500`}>{vacationRate != null ? fmt$(vacationRate) : '—'}</td>
+              <td className={`${tdR} text-gray-500`}>{fmt$(consolidated.vacationCost)}</td>
+            </tr>
+            <tr className="bg-gray-50">
+              <td className={`${td} pl-8 text-gray-500`}>Sick Time</td>
+              <td className={`${tdR} text-gray-500`}>{consolidated.sickHours.toFixed(1)}</td>
+              <td className={`${tdR} text-gray-500`}>{sickRate != null ? fmt$(sickRate) : '—'}</td>
+              <td className={`${tdR} text-gray-500`}>{fmt$(consolidated.sickCost)}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td className={tfootTd}>Total Labor Costs</td>
+              <td className={tfootTdR}>{fmtHrs(totalLaborHours)}</td>
+              <td className={tfootTdR}>{consolidated.blendedLaborRate != null ? fmt$(consolidated.blendedLaborRate) : '—'}</td>
+              <td className={tfootTdR}>{fmt$(consolidated.totalLabor)}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        {sectionHeader('Section 2 — Labor Related Costs')}
+        <table className="w-full text-sm border-collapse mb-2">
+          <thead>
+            <tr>
+              <th className={th}>Description</th>
+              <th className={thR}>Annual Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {laborRelatedByName.map(([name, amt]) => (
+              <tr key={name}>
+                <td className={td}>{name}</td>
+                <td className={tdR}>{fmt$(amt)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td className={tfootTd}>Total Labor Related Costs</td>
+              <td className={tfootTdR}>{fmt$(consolidated.totalLaborRelated)}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        {sectionHeader('Section 3 — Other Direct Costs')}
+        <table className="w-full text-sm border-collapse mb-2">
+          <thead>
+            <tr>
+              <th className={th}>Description</th>
+              <th className={thR}>Annual Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            {otherDirectByName.map(([name, amt]) => (
+              <tr key={name}>
+                <td className={td}>{name}</td>
+                <td className={tdR}>{fmt$(amt)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td className={tfootTd}>Total Other Direct Costs</td>
+              <td className={tfootTdR}>{fmt$(consolidated.totalOtherDirect)}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        {sectionHeader('Pricing Summary')}
+        <PricingSummarySection
+          totals={consolidated}
+          marginLabel={marginLabel}
+          showSqft={false}
+        />
+      </div>
+
+      {/* ── Page 2: Square Footage & Production Summary ───────────────────── */}
+      <div className="report-section">
+        <ReportHeader title="Investment Recap" prospect={prospect} subtitle="Consolidated Totals — Square Footage Summary" />
+        {sectionHeader('Square Footage & Production Summary')}
+        <div className="max-w-sm">
+          <table className="w-full text-sm">
+            <tbody className="divide-y divide-gray-100">
+              <tr>
+                <td className={subLabel}>Total Square Footage</td>
+                <td className={subValue}>{fmtInt(totalSqft)}</td>
+              </tr>
+              <tr>
+                <td className={subLabel}>Daily Hours</td>
+                <td className={subValue}>{fmtHrs(dailyHours)}</td>
+              </tr>
+              <tr>
+                <td className={subLabel}>Production Rate</td>
+                <td className={subValue}>{productionRate != null ? `${fmtInt(productionRate)} sq ft/hr` : '—'}</td>
+              </tr>
+              <tr>
+                <td className={subLabel}>$/Sq Ft (Annual)</td>
+                <td className={subValue}>{fmtSqft(consolidated.sqftAnnual)}</td>
+              </tr>
+              <tr>
+                <td className={subLabel}>$/Sq Ft (Monthly)</td>
+                <td className={subValue}>{fmtSqft(consolidated.sqftMonthly)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-gray-400 mt-3">
+          Daily hours are summed across buildings (each building&rsquo;s annual task hours ÷ its own service days).
+          Production rate and $/sq ft both use the summed manual building square footage.
+        </p>
+      </div>
+    </>
+  )
+}
+
 export function ConsolidatedReportsView({
   prospect,
   buildings,
@@ -1588,6 +1858,13 @@ export function ConsolidatedReportsView({
                     </div>
                   </div>
                 ))}
+
+                {/* Consolidated total — the blended figure across every included building */}
+                <div className="bg-white shadow-sm rounded-sm mx-auto print:shadow-none print:rounded-none" style={{ maxWidth: '816px' }}>
+                  <div className="px-12 py-10">
+                    <ConsolidatedRecap prospect={prospect} included={result.included} />
+                  </div>
+                </div>
               </div>
             </>
           )}
