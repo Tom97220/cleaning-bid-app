@@ -14,5 +14,18 @@ export default function ReportsSearchView() {
     router.push(`/reports?${params.toString()}`)
   }
 
-  return <BuildingSearch onSelect={handleSelect} />
+  // Consolidated recap: prospectId only → reports/page.tsx renders
+  // ConsolidatedReportsView (its own building checklist handles selection).
+  function handleSelectProspect(prospectId: string) {
+    const params = new URLSearchParams({ prospectId })
+    router.push(`/reports?${params.toString()}`)
+  }
+
+  return (
+    <BuildingSearch
+      groupByProspect
+      onSelect={handleSelect}
+      onSelectProspect={handleSelectProspect}
+    />
+  )
 }
