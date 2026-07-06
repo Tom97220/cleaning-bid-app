@@ -104,3 +104,20 @@ export function resolveTaskEffectiveFrequency(
   }
   return resolveAreaEffectiveFrequency(area, buildingServiceDays)
 }
+
+// The single rule for the inherit/override marker, shared by every create/edit
+// path (area + task, grid + form): a row is 'override' only when a concrete
+// frequency was supplied AND it differs from what the row would inherit (its
+// parent's effective value). A null/blank frequency, or one equal to the
+// parent, is 'inherited'. parentEffectiveFrequency is always a number (the
+// resolvers guarantee it), so nulls only appear on the `frequency` side and
+// normalize to 'inherited' — a blank area frequency stays inherited, not
+// "differs".
+export function deriveFrequencySource(
+  frequency: number | null,
+  parentEffectiveFrequency: number,
+): 'inherited' | 'override' {
+  return frequency != null && frequency !== parentEffectiveFrequency
+    ? 'override'
+    : 'inherited'
+}

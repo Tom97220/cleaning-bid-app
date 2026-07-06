@@ -5,15 +5,31 @@ import { getUserRole } from '@/lib/supabase/auth'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import type { Area } from '@/types/area'
+import { deriveFrequencySource } from '@/types/task-line-item'
 
 export type ActionState = { error: string } | null
 
 export type AreaPatch = Partial<Pick<Area,
   | 'area_name' | 'room_count' | 'carpet_sqft' | 'tile_vct_sqft'
-  | 'other_sqft' | 'fixtures' | 'frequency' | 'print_order'
+  | 'other_sqft' | 'fixtures' | 'frequency' | 'frequency_source' | 'print_order'
   | 'notes' | 'square_footage'
   | 'sinks' | 'showers' | 'fountains' | 'stairwells'
 >>
+
+// An area's parent is the building; its effective inheritance value is just
+// the building's service_days. Fetch it so create/edit can mark the row
+// 'override' only when the entered frequency differs from service_days.
+async function buildingServiceDays(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  buildingId: string,
+): Promise<number> {
+  const { data } = await supabase
+    .from('buildings')
+    .select('service_days')
+    .eq('id', buildingId)
+    .single()
+  return data?.service_days ?? 260
+}
 
 async function assertAuthenticated(): Promise<ActionState> {
   const role = await getUserRole()
@@ -67,7 +83,8 @@ export async function createArea(
   if (!data.area_name) return { error: 'Area name is required.' }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('areas').insert({ ...data, building_id: buildingId })
+  const frequency_source = deriveFrequencySource(data.frequency, await buildingServiceDays(supabase, buildingId))
+  const { error } = await supabase.from('areas').insert({ ...data, building_id: buildingId, frequency_source })
   if (error) return { error: error.message }
 
   revalidatePath(buildingPath(prospectId, buildingId))
@@ -88,7 +105,8 @@ export async function updateArea(
   if (!data.area_name) return { error: 'Area name is required.' }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('areas').update(data).eq('id', id)
+  const frequency_source = deriveFrequencySource(data.frequency, await buildingServiceDays(supabase, buildingId))
+  const { error } = await supabase.from('areas').update({ ...data, frequency_source }).eq('id', id)
   if (error) return { error: error.message }
 
   revalidatePath(buildingPath(prospectId, buildingId))
@@ -134,6 +152,7 @@ export type InlineAreaData = {
   other_sqft:    number | null
   fixtures:      number | null
   frequency:     number | null
+  frequency_source: 'inherited' | 'override'
   sinks:         number | null
   showers:       number | null
   fountains:     number | null

@@ -4,9 +4,30 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/supabase/auth'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { calculateHours, type TaskLineItem, type TaskLineItemRow } from '@/types/task-line-item'
+import { calculateHours, resolveAreaEffectiveFrequency, deriveFrequencySource, type TaskLineItem, type TaskLineItemRow } from '@/types/task-line-item'
 
 export type ActionState = { error: string } | null
+
+// A task's parent is its area; the area's effective frequency (area override,
+// else the building's service_days) is what the task inherits. Fetch both so
+// create/edit can mark the task 'override' only when the entered frequency
+// differs from that value.
+async function areaEffectiveFrequency(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  areaId: string,
+  buildingId: string,
+): Promise<number> {
+  const [{ data: building }, { data: area }] = await Promise.all([
+    supabase.from('buildings').select('service_days').eq('id', buildingId).single(),
+    supabase.from('areas').select('frequency, frequency_source').eq('id', areaId).single(),
+  ])
+  const serviceDays = building?.service_days ?? 260
+  if (!area) return serviceDays
+  return resolveAreaEffectiveFrequency(
+    { frequency: area.frequency, frequency_source: area.frequency_source as 'inherited' | 'override' },
+    serviceDays,
+  )
+}
 
 async function assertAuthenticated(): Promise<ActionState> {
   const role = await getUserRole()
@@ -67,7 +88,8 @@ export async function createTaskLineItem(
   if (!data.task_name) return { error: 'Task name is required.' }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('task_line_items').insert({ ...data, area_id: areaId })
+  const frequency_source = deriveFrequencySource(data.frequency, await areaEffectiveFrequency(supabase, areaId, buildingId))
+  const { error } = await supabase.from('task_line_items').insert({ ...data, area_id: areaId, frequency_source })
   if (error) return { error: error.message }
 
   revalidatePath(areaPath(prospectId, buildingId, areaId))
@@ -89,7 +111,8 @@ export async function updateTaskLineItem(
   if (!data.task_name) return { error: 'Task name is required.' }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('task_line_items').update(data).eq('id', id)
+  const frequency_source = deriveFrequencySource(data.frequency, await areaEffectiveFrequency(supabase, areaId, buildingId))
+  const { error } = await supabase.from('task_line_items').update({ ...data, frequency_source }).eq('id', id)
   if (error) return { error: error.message }
 
   revalidatePath(areaPath(prospectId, buildingId, areaId))
@@ -118,6 +141,7 @@ export type InlineTaskData = {
   task_name:    string
   position_id:  string | null
   frequency:    number | null
+  frequency_source: 'inherited' | 'override'
   percent:      number
   quantity:     number | null
   minutes:      number | null
@@ -150,7 +174,7 @@ export async function createTaskLineItemInline(
 
 export type TaskLineItemPatch = Partial<Pick<TaskLineItem,
   | 'task_code_id' | 'task_name' | 'position_id'
-  | 'frequency' | 'percent' | 'quantity' | 'minutes' | 'measure'
+  | 'frequency' | 'frequency_source' | 'percent' | 'quantity' | 'minutes' | 'measure'
 >>
 
 export async function updateTaskLineItemField(
