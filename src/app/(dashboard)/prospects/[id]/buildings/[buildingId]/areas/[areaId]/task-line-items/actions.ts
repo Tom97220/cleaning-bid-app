@@ -138,7 +138,7 @@ export async function createTaskLineItemInline(
   const { data: inserted, error } = await supabase
     .from('task_line_items')
     .insert({ ...data, area_id: areaId, ...hours })
-    .select('*, task_codes(task_code), positions(position_name)')
+    .select('*, task_codes(task_code, description), positions(position_name)')
     .single()
 
   if (error) {
@@ -190,7 +190,7 @@ export async function updateTaskLineItemField(
     .from('task_line_items')
     .update(updateData)
     .eq('id', id)
-    .select('*, task_codes(task_code), positions(position_name)')
+    .select('*, task_codes(task_code, description), positions(position_name)')
     .single()
 
   if (error) {

@@ -38,6 +38,7 @@ function InlineTaskRow({
 }) {
   const [taskCodeId, setTaskCodeId]   = useState('')
   const [taskName, setTaskName]       = useState('')
+  const [description, setDescription] = useState('')
   const [frequency, setFrequency]     = useState(defaultFrequency != null ? String(defaultFrequency) : '')
   const [percent, setPercent]         = useState('100')
   const [quantity, setQuantity]       = useState(defaultQuantity != null ? String(defaultQuantity) : '')
@@ -113,6 +114,7 @@ function InlineTaskRow({
       setCreateError(result.error)
       setTaskCodeId('')
       setTaskName('')
+      setDescription('')
       setMinutes('')
       setMeasure(null)
       setPositionId('')
@@ -126,6 +128,7 @@ function InlineTaskRow({
       onCreated(result.row)
       setTaskCodeId('')
       setTaskName('')
+      setDescription('')
       setFrequency(defaultFrequency != null ? String(defaultFrequency) : '')
       setPercent('100')
       setQuantity(defaultQuantity != null ? String(defaultQuantity) : '')
@@ -178,6 +181,7 @@ function InlineTaskRow({
       const tc = taskCodes.find(t => t.id === value)
       if (tc) {
         setTaskName(tc.task_name)
+        setDescription(tc.description ?? '')
         setPositionId(tc.position_id ?? '')
         if (tc.unit_of_measure === 'both') {
           const rates = { sqft: tc.production_rate, each: tc.rate_each }
@@ -205,6 +209,7 @@ function InlineTaskRow({
         }
       }, 160)
     } else {
+      setDescription('')
       setMeasure(null)
       setPositionId('')
       setIsBothCode(false)
@@ -216,7 +221,7 @@ function InlineTaskRow({
   if (creating) {
     return (
       <tr className="border-t border-dashed border-gray-200">
-        <td colSpan={11} className="px-4 py-2 text-center text-xs text-gray-400 italic">Saving…</td>
+        <td colSpan={12} className="px-4 py-2 text-center text-xs text-gray-400 italic">Saving…</td>
       </tr>
     )
   }
@@ -239,14 +244,14 @@ function InlineTaskRow({
     <>
       {createError && (
         <tr>
-          <td colSpan={11} className="px-3 py-1">
+          <td colSpan={12} className="px-3 py-1">
             <span className="text-xs text-red-600">{createError}</span>
           </td>
         </tr>
       )}
       {isBothCode && (
         <tr className="border-t border-dashed border-gray-200 bg-blue-50/30">
-          <td colSpan={11} className="px-3 py-1.5">
+          <td colSpan={12} className="px-3 py-1.5">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-gray-500">Basis:</span>
               <select
@@ -280,6 +285,9 @@ function InlineTaskRow({
             value={taskName} readOnly
             onFocus={handleFocus} onBlur={handleBlur}
             className={`${cellInput} bg-gray-50 cursor-default focus:ring-0`} />
+        </td>
+        <td className="px-2 py-2 align-top text-sm text-gray-600 whitespace-normal max-w-[16rem] min-w-[12rem]">
+          {description || '—'}
         </td>
         <td className="px-1 py-1 w-16">
           <input ref={frequencyRef} type="number" min="1" step="1" placeholder="—"
@@ -451,7 +459,7 @@ function SavedTaskRow({
     <>
       {rowError && (
         <tr>
-          <td colSpan={11} className="px-3 py-1">
+          <td colSpan={12} className="px-3 py-1">
             <span className="text-xs text-red-600">{rowError}</span>
           </td>
         </tr>
@@ -484,6 +492,9 @@ function SavedTaskRow({
         </td>
         <td className="px-2 py-2 text-sm font-medium text-gray-900 whitespace-nowrap">
           {taskName || '—'}
+        </td>
+        <td className="px-2 py-2 align-top text-sm text-gray-600 whitespace-normal max-w-[16rem] min-w-[12rem]">
+          {task.task_codes?.description || '—'}
         </td>
         <td className="px-1 py-1 w-16">
           <input type="number" min="1" step="1" placeholder="—"
@@ -1003,7 +1014,7 @@ export default function AreaSpreadsheet({
     const supabase = createClient()
     const { data } = await supabase
       .from('task_line_items')
-      .select('*, task_codes(task_code), positions(position_name)')
+      .select('*, task_codes(task_code, description), positions(position_name)')
       .eq('area_id', id)
       .order('created_at')
     setTasks((data ?? []) as unknown as TaskLineItemRow[])
@@ -1208,7 +1219,7 @@ export default function AreaSpreadsheet({
               <table className="min-w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {['Code', 'Task Name', 'Freq', 'Position', '%', 'Qty', 'Min/unit', 'Daily Hrs', 'Weekly Hrs', 'Monthly Hrs', 'Yearly Hrs'].map((h) => (
+                    {['Code', 'Task Name', 'Description', 'Freq', 'Position', '%', 'Qty', 'Min/unit', 'Daily Hrs', 'Weekly Hrs', 'Monthly Hrs', 'Yearly Hrs'].map((h) => (
                       <th key={h} className={TH}>{h}</th>
                     ))}
                   </tr>
@@ -1216,7 +1227,7 @@ export default function AreaSpreadsheet({
                 <tbody className="divide-y divide-gray-100">
                   {visibleTasks.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="px-4 py-6 text-center text-sm text-gray-400">
+                      <td colSpan={12} className="px-4 py-6 text-center text-sm text-gray-400">
                         No tasks for this area.
                       </td>
                     </tr>

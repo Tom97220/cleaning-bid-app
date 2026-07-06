@@ -20,7 +20,7 @@ export interface TaskLineItem {
 }
 
 export interface TaskLineItemRow extends TaskLineItem {
-  task_codes: { task_code: string } | null
+  task_codes: { task_code: string; description: string | null } | null
   positions:  { position_name: string } | null
 }
 
