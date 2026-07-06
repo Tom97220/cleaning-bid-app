@@ -22,6 +22,7 @@ export interface Area {
   area_name:      string
   square_footage: number | null
   frequency:      number | null
+  frequency_source: 'inherited' | 'override'
   print_order:    number | null
   notes:          string | null
   room_count:     number | null

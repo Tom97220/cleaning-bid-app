@@ -5,6 +5,7 @@ export interface TaskLineItem {
   task_name:    string
   position_id:  string | null
   frequency:    number | null
+  frequency_source: 'inherited' | 'override'
   percent:      number
   quantity:     number | null
   minutes:      number | null
