@@ -281,6 +281,12 @@ function InlineTaskRow({
             onFocus={handleFocus} onBlur={handleBlur}
             className={`${cellInput} bg-gray-50 cursor-default focus:ring-0`} />
         </td>
+        <td className="px-1 py-1 w-16">
+          <input ref={frequencyRef} type="number" min="1" step="1" placeholder="—"
+            value={frequency} onChange={(e) => setFrequency(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
         <td className="px-1 py-1 min-w-[8rem]">
           <div onFocus={handleFocus} onBlur={handleBlur}>
             <SearchableSelect
@@ -292,12 +298,6 @@ function InlineTaskRow({
               onSelect={setPositionId}
             />
           </div>
-        </td>
-        <td className="px-1 py-1 w-16">
-          <input ref={frequencyRef} type="number" min="1" step="1" placeholder="—"
-            value={frequency} onChange={(e) => setFrequency(e.target.value)}
-            onFocus={handleFocus} onBlur={handleBlur}
-            className={`${cellInput} tabular-nums text-right`} />
         </td>
         <td className="px-1 py-1 w-14">
           <input type="number" min="0" max="100" step="1"
@@ -485,6 +485,13 @@ function SavedTaskRow({
         <td className="px-2 py-2 text-sm font-medium text-gray-900 whitespace-nowrap">
           {taskName || '—'}
         </td>
+        <td className="px-1 py-1 w-16">
+          <input type="number" min="1" step="1" placeholder="—"
+            value={frequency} onChange={e => setFrequency(e.target.value)}
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('frequency', e.target.value, true) }}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
         <td className="px-1 py-1 min-w-[8rem]">
           <div
             onFocus={() => { hasActiveFocusRef.current = true }}
@@ -499,13 +506,6 @@ function SavedTaskRow({
               onSelect={handlePositionSelect}
             />
           </div>
-        </td>
-        <td className="px-1 py-1 w-16">
-          <input type="number" min="1" step="1" placeholder="—"
-            value={frequency} onChange={e => setFrequency(e.target.value)}
-            onFocus={() => { hasActiveFocusRef.current = true }}
-            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('frequency', e.target.value, true) }}
-            className={`${cellInput} tabular-nums text-right`} />
         </td>
         <td className="px-1 py-1 w-14">
           <input type="number" min="0" max="100" step="1"
@@ -1208,7 +1208,7 @@ export default function AreaSpreadsheet({
               <table className="min-w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {['Code', 'Task Name', 'Position', 'Freq', '%', 'Qty', 'Min/unit', 'Daily Hrs', 'Weekly Hrs', 'Monthly Hrs', 'Yearly Hrs'].map((h) => (
+                    {['Code', 'Task Name', 'Freq', 'Position', '%', 'Qty', 'Min/unit', 'Daily Hrs', 'Weekly Hrs', 'Monthly Hrs', 'Yearly Hrs'].map((h) => (
                       <th key={h} className={TH}>{h}</th>
                     ))}
                   </tr>
