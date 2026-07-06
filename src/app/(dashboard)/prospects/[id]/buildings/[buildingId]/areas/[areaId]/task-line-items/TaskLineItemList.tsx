@@ -64,7 +64,7 @@ export default function TaskLineItemList({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              {['Prt', 'Code', 'Task Name', 'Position', 'Freq', 'Qty', 'Rate', 'Yearly Hrs', 'Actions'].map((h) => (
+              {['Prt', 'Code', 'Task Name', 'Description', 'Freq', 'Position', 'Qty', 'Rate', 'Yearly Hrs', 'Actions'].map((h) => (
                 <th key={h} className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                   {h}
                 </th>
@@ -74,7 +74,7 @@ export default function TaskLineItemList({
           <tbody className="divide-y divide-gray-100">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-12 text-center">
+                <td colSpan={10} className="px-4 py-12 text-center">
                   <p className="text-sm font-medium text-gray-400">
                     {items.length === 0
                       ? 'No tasks added yet — click "+ Add Task" to get started.'
@@ -96,11 +96,14 @@ export default function TaskLineItemList({
                   <td className="px-3 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">
                     {item.task_name}
                   </td>
-                  <td className="px-3 py-3 text-sm text-gray-500 whitespace-nowrap">
-                    {item.positions?.position_name ?? '—'}
+                  <td className="px-3 py-3 align-top text-sm text-gray-600 whitespace-normal max-w-[16rem] min-w-[12rem]">
+                    {item.task_codes?.description || '—'}
                   </td>
                   <td className="px-3 py-3 text-sm text-gray-700 tabular-nums whitespace-nowrap">
                     {item.frequency ?? '—'}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-gray-500 whitespace-nowrap">
+                    {item.positions?.position_name ?? '—'}
                   </td>
                   <td className="px-3 py-3 text-sm text-gray-700 tabular-nums whitespace-nowrap">
                     {item.quantity != null ? item.quantity.toLocaleString() : '—'}

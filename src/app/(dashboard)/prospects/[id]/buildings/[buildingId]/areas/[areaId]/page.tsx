@@ -36,7 +36,7 @@ export default async function AreaDetailPage({
       .single(),
     supabase
       .from('task_line_items')
-      .select('*, task_codes(task_code), positions(position_name)')
+      .select('*, task_codes(task_code, description), positions(position_name)')
       .eq('area_id', areaId)
       .order('created_at'),
   ])
