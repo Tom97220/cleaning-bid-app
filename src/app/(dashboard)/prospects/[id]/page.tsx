@@ -64,12 +64,6 @@ export default async function ProspectDetailPage({
               {prospect.status === 'active' ? 'Active' : 'Inactive'}
             </span>
             <Link
-              href={`/reports?prospectId=${id}`}
-              className="bg-white border border-gray-300 hover:border-gray-400 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-            >
-              Consolidated Recap
-            </Link>
-            <Link
               href={`/prospects/${id}/edit`}
               className="bg-white border border-gray-300 hover:border-gray-400 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
             >
