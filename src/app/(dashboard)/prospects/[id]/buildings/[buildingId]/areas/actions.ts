@@ -21,12 +21,6 @@ async function assertAuthenticated(): Promise<ActionState> {
   return null
 }
 
-async function assertAdmin(): Promise<ActionState> {
-  const role = await getUserRole()
-  if (role !== 'admin') return { error: 'Only admins can delete areas.' }
-  return null
-}
-
 function extractAreaData(formData: FormData) {
   const sqftStr     = (formData.get('square_footage') as string)?.trim()
   const freqStr     = (formData.get('frequency') as string)?.trim()
@@ -129,8 +123,8 @@ export async function deleteArea(
   buildingId: string,
   prospectId: string
 ): Promise<ActionState> {
-  const authError = await assertAdmin()
-  if (authError) return authError
+  const role = await getUserRole()
+  if (!role) return { error: 'You must be signed in.' }
 
   const supabase = await createClient()
   const { error } = await supabase.from('areas').delete().eq('id', id)
