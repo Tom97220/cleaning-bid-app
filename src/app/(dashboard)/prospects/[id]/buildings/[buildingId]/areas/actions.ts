@@ -54,6 +54,26 @@ function buildingPath(prospectId: string, buildingId: string) {
   return `/prospects/${prospectId}/buildings/${buildingId}`
 }
 
+// When an area's frequency changes, cascade by value-match to that area's OWN
+// tasks only: task_line_items in this one area whose frequency equals the area's
+// old value move to the new value; tasks at any other value are untouched.
+// Guarded: a blanked (null) new frequency never wipes tasks, and a null old
+// value matches nothing, so both are no-ops.
+async function cascadeAreaFrequency(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  areaId: string,
+  oldFreq: number | null,
+  newFreq: number | null,
+): Promise<string | null> {
+  if (oldFreq == null || newFreq == null || oldFreq === newFreq) return null
+  const { error } = await supabase
+    .from('task_line_items')
+    .update({ frequency: newFreq })
+    .eq('area_id', areaId)
+    .eq('frequency', oldFreq)
+  return error ? error.message : null
+}
+
 export async function createArea(
   buildingId: string,
   prospectId: string,
@@ -88,8 +108,17 @@ export async function updateArea(
   if (!data.area_name) return { error: 'Area name is required.' }
 
   const supabase = await createClient()
+
+  const { data: existing } = await supabase
+    .from('areas').select('frequency').eq('id', id).single()
+
   const { error } = await supabase.from('areas').update(data).eq('id', id)
   if (error) return { error: error.message }
+
+  const cascadeError = await cascadeAreaFrequency(
+    supabase, id, existing?.frequency ?? null, data.frequency,
+  )
+  if (cascadeError) return { error: cascadeError }
 
   revalidatePath(buildingPath(prospectId, buildingId))
   redirect(buildingPath(prospectId, buildingId))
@@ -119,8 +148,22 @@ export async function updateAreaField(
   if (authError) return authError
 
   const supabase = await createClient()
+
+  const cascadeFreq = 'frequency' in patch
+  let oldFreq: number | null = null
+  if (cascadeFreq) {
+    const { data: existing } = await supabase
+      .from('areas').select('frequency').eq('id', id).single()
+    oldFreq = existing?.frequency ?? null
+  }
+
   const { error } = await supabase.from('areas').update(patch).eq('id', id)
   if (error) return { error: error.message }
+
+  if (cascadeFreq) {
+    const cascadeError = await cascadeAreaFrequency(supabase, id, oldFreq, patch.frequency ?? null)
+    if (cascadeError) return { error: cascadeError }
+  }
 
   return null
 }

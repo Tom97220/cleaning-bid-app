@@ -1008,18 +1008,22 @@ export default function AreaSpreadsheet({
       })
   }, [initialAreas])
 
+  async function loadTasks(areaId: string) {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from('task_line_items')
+      .select('*, task_codes(task_code, description), positions(position_name)')
+      .eq('area_id', areaId)
+      .order('created_at')
+    setTasks((data ?? []) as unknown as TaskLineItemRow[])
+  }
+
   async function selectArea(id: string) {
     if (selectedId === id) return
     setSelectedId(id)
     setTasks([])
     setLoadingTasks(true)
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('task_line_items')
-      .select('*, task_codes(task_code, description), positions(position_name)')
-      .eq('area_id', id)
-      .order('created_at')
-    setTasks((data ?? []) as unknown as TaskLineItemRow[])
+    await loadTasks(id)
     setLoadingTasks(false)
   }
 
@@ -1031,6 +1035,12 @@ export default function AreaSpreadsheet({
   // patch-merge because updateAreaField returns ActionState, not the updated row
   function handleAreaUpdated(id: string, patch: AreaPatch) {
     setAreas(prev => prev.map(a => a.id === id ? { ...a, ...patch } : a))
+    // A frequency edit cascades to this area's tasks server-side (value-match);
+    // the await in the row's save() means that's already committed here, so
+    // refetch the visible task rows to show the moved frequencies without reload.
+    if ('frequency' in patch && id === selectedId) {
+      void loadTasks(id)
+    }
   }
 
   const totals = {
