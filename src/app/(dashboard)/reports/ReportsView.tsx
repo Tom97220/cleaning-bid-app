@@ -837,10 +837,10 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
   const pV = 'px-2 py-1.5 text-xs text-center text-gray-900 border-r border-b border-gray-200'
 
   // compact cell classes for the area grid (many columns — use xs sizing)
-  const agTh  = 'border border-gray-300 px-2 py-1.5 text-left   text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
-  const agThC = 'border border-gray-300 px-2 py-1.5 text-right  text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
-  const agTd  = 'border border-gray-300 px-2 py-1   text-xs text-gray-700'
-  const agTdC = 'border border-gray-300 px-2 py-1   text-xs text-right tabular-nums text-gray-700'
+  const agTh  = 'border border-gray-300 px-2 py-1.5 text-left   text-[10px] font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+  const agThC = 'border border-gray-300 px-2 py-1.5 text-right  text-[10px] font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+  const agTd  = 'border border-gray-300 px-2 py-1   text-[10px] text-gray-700'
+  const agTdC = 'border border-gray-300 px-2 py-1   text-[10px] text-right tabular-nums text-gray-700'
 
   type GridRow = { label: string; getValue: (a: Area) => number | null | undefined; getTotal: () => number | null }
   // sum a field across all areas; returns null when no area has a non-null value (so the Totals cell shows "—", not 0)
@@ -971,12 +971,18 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
       <div className="report-section pinpoint-landscape">
         <ReportHeader title="Pinpoint — Area Grid" prospect={prospect} building={building} />
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse table-fixed">
+            <colgroup>
+              <col style={{ width: '14.5%' }} />
+              {gridCols.map(col => (
+                <col key={col.label} style={{ width: '9.5%' }} />
+              ))}
+            </colgroup>
             <thead>
               <tr>
-                <th className={`${agTh} w-36`}>Area</th>
+                <th className={agTh}>Area</th>
                 {gridCols.map(col => (
-                  <th key={col.label} className={`${agThC} whitespace-nowrap`}>{col.label}</th>
+                  <th key={col.label} className={agThC}>{col.label}</th>
                 ))}
               </tr>
             </thead>
@@ -1141,6 +1147,7 @@ export default function ReportsView({
         }
         @page pinpoint-landscape {
           size: landscape;
+          margin: 0.4in;
         }
       `}</style>
 
@@ -1709,6 +1716,7 @@ export function ConsolidatedReportsView({
         }
         @page pinpoint-landscape {
           size: landscape;
+          margin: 0.4in;
         }
       `}</style>
 
