@@ -81,8 +81,13 @@ export default function BuildingList({
             ) : (
               filtered.map((b) => (
                 <tr key={b.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">
-                    {b.building_name}
+                  <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">
+                    <Link
+                      href={`/prospects/${prospectId}/buildings/${b.id}`}
+                      className="text-brand-600 hover:text-brand-800"
+                    >
+                      {b.building_name}
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                     {b.building_types?.type_name ?? '—'}
