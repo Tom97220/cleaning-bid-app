@@ -696,6 +696,13 @@ function SavedAreaRow({
             </button>
           </div>
         </td>
+        <td className={`${TD} min-w-[5rem]`}>
+          <input type="number" min="1" step="1" placeholder="—"
+            value={frequency} onChange={e => setFrequency(e.target.value)}
+            onFocus={() => { hasActiveFocusRef.current = true }}
+            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('frequency', e.target.value, true) }}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
         <td className={TD}>
           <input type="number" min="0" step="1" placeholder="—"
             value={roomCount} onChange={e => setRoomCount(e.target.value)}
@@ -760,13 +767,6 @@ function SavedAreaRow({
             value={stairwells} onChange={e => setStairwells(e.target.value)}
             onFocus={() => { hasActiveFocusRef.current = true }}
             onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('stairwells', e.target.value, true) }}
-            className={`${cellInput} tabular-nums text-right`} />
-        </td>
-        <td className={`${TD} min-w-[5rem]`}>
-          <input type="number" min="1" step="1" placeholder="—"
-            value={frequency} onChange={e => setFrequency(e.target.value)}
-            onFocus={() => { hasActiveFocusRef.current = true }}
-            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('frequency', e.target.value, true) }}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
         <td className="px-2 py-1 text-center">
@@ -907,6 +907,12 @@ function InlineAreaRow({
             onFocus={handleFocus} onBlur={handleBlur}
             className={cellInput} />
         </td>
+        <td className="px-1 py-1 min-w-[5rem]">
+          <input type="number" min="1" step="1" placeholder="—"
+            value={frequency} onChange={e => setFrequency(e.target.value)}
+            onFocus={handleFocus} onBlur={handleBlur}
+            className={`${cellInput} tabular-nums text-right`} />
+        </td>
         <td className="px-1 py-1 w-16">
           <input type="number" min="0" step="1" placeholder="—"
             value={roomCount} onChange={e => setRoomCount(e.target.value)}
@@ -959,12 +965,6 @@ function InlineAreaRow({
         <td className="px-1 py-1 w-16">
           <input type="number" min="0" step="1" placeholder="—"
             value={stairwells} onChange={e => setStairwells(e.target.value)}
-            onFocus={handleFocus} onBlur={handleBlur}
-            className={`${cellInput} tabular-nums text-right`} />
-        </td>
-        <td className="px-1 py-1 min-w-[5rem]">
-          <input type="number" min="1" step="1" placeholder="—"
-            value={frequency} onChange={e => setFrequency(e.target.value)}
             onFocus={handleFocus} onBlur={handleBlur}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
@@ -1172,6 +1172,7 @@ export default function AreaSpreadsheet({
                 <tr>
                   <th className={`${TH} w-14`}>Order</th>
                   <th className={`${TH} min-w-[10rem]`}>Area Name</th>
+                  <th className={`${TH} min-w-[5rem]`}>Freq</th>
                   <th className={`${TH} w-16`}>Rooms</th>
                   <th className={`${TH} w-24`}>Carpet Sq Ft</th>
                   <th className={`${TH} w-28`}>Tile/VCT Sq Ft</th>
@@ -1182,7 +1183,6 @@ export default function AreaSpreadsheet({
                   <th className={`${TH} w-16`}># Fountains</th>
                   <th className={`${TH} w-16`} title="Non-restroom sinks only"># Sinks</th>
                   <th className={`${TH} w-16`}># Stairwells</th>
-                  <th className={`${TH} min-w-[5rem]`}>Freq</th>
                   <th className={`${TH} w-12 text-center`}>Tasks</th>
                 </tr>
               </thead>
