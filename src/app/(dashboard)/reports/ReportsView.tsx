@@ -801,11 +801,11 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
   const { building, prospect, areas, bidLaborLines } = data
 
   const ppTh  = 'border border-gray-300 px-3 py-2 text-left   text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
-  const ppThR = 'border border-gray-300 px-3 py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+  const ppThR = 'border border-gray-300 px-3 py-2 text-right  text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
   const ppTd  = 'border border-gray-300 px-3 py-1 text-xs text-gray-700'
-  const ppTdR = 'border border-gray-300 px-3 py-1 text-xs text-center tabular-nums text-gray-700'
+  const ppTdR = 'border border-gray-300 px-3 py-1 text-xs text-right tabular-nums text-gray-700'
   const ppFt  = 'border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-900 bg-gray-100'
-  const ppFtR = 'border border-gray-300 px-3 py-2 text-xs font-semibold text-center tabular-nums text-gray-900 bg-gray-100'
+  const ppFtR = 'border border-gray-300 px-3 py-2 text-xs font-semibold text-right tabular-nums text-gray-900 bg-gray-100'
 
   const fmtN = (n: number | null | undefined) =>
     n == null ? '—' : n.toLocaleString('en-US', { maximumFractionDigits: 0 })
