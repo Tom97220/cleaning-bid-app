@@ -838,9 +838,9 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
 
   // compact cell classes for the area grid (many columns — use xs sizing)
   const agTh  = 'border border-gray-300 px-2 py-1.5 text-left   text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
-  const agThC = 'border border-gray-300 px-2 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+  const agThC = 'border border-gray-300 px-2 py-1.5 text-right  text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
   const agTd  = 'border border-gray-300 px-2 py-1   text-xs text-gray-700'
-  const agTdC = 'border border-gray-300 px-2 py-1   text-xs text-center tabular-nums text-gray-700'
+  const agTdC = 'border border-gray-300 px-2 py-1   text-xs text-right tabular-nums text-gray-700'
 
   type GridRow = { label: string; getValue: (a: Area) => number | null | undefined; getTotal: () => number | null }
   // sum a field across all areas; returns null when no area has a non-null value (so the Totals cell shows "—", not 0)
