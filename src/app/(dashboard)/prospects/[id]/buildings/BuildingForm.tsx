@@ -1,8 +1,8 @@
 'use client'
 
-import { useActionState, useState, useTransition } from 'react'
+import { useActionState } from 'react'
 import Link from 'next/link'
-import { createBuilding, updateBuilding, countTasksAtFrequency, updateBuildingAndTaskFrequency, type ActionState } from './actions'
+import { createBuilding, updateBuilding, type ActionState } from './actions'
 import type { Building } from '@/types/building'
 import SearchableSelect from '@/components/ui/SearchableSelect'
 
@@ -35,51 +35,8 @@ export default function BuildingForm({
 
   const buildingTypeOptions = buildingTypes.map((t) => ({ value: t.id, label: t.type_name }))
 
-  const [dialog, setDialog] = useState<{
-    oldDays: number; newDays: number; count: number; formData: FormData
-  } | null>(null)
-  const [checking,    setChecking]    = useState(false)
-  const [submitting,  setSubmitting]  = useState(false)
-  const [dialogError, setDialogError] = useState<string | null>(null)
-  const [, startTransition] = useTransition()
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const fd = new FormData(e.currentTarget)
-    const newDays = parseInt(fd.get('service_days') as string, 10) || 260
-    if (building && newDays !== building.service_days) {
-      setChecking(true)
-      const count = await countTasksAtFrequency(building.id, building.service_days)
-      setChecking(false)
-      if (count > 0) {
-        setDialog({ oldDays: building.service_days, newDays, count, formData: fd })
-        return
-      }
-    }
-    startTransition(() => formAction(fd))
-  }
-
-  async function handleDialogYes() {
-    if (!dialog || !building) return
-    setSubmitting(true)
-    setDialogError(null)
-    const result = await updateBuildingAndTaskFrequency(
-      building.id, prospectId, dialog.oldDays, dialog.newDays, dialog.formData
-    )
-    setSubmitting(false)
-    if (result?.error) setDialogError(result.error)
-  }
-
-  function handleDialogNo() {
-    if (!dialog) return
-    const fd = dialog.formData
-    setDialog(null)
-    startTransition(() => formAction(fd))
-  }
-
   return (
-    <>
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form action={formAction} className="space-y-6">
       {state?.error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
           {state.error}
@@ -298,10 +255,10 @@ export default function BuildingForm({
       <div className="flex items-center gap-3 pb-6">
         <button
           type="submit"
-          disabled={isPending || checking}
+          disabled={isPending}
           className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-6 py-2 rounded-lg transition-colors disabled:opacity-60"
         >
-          {checking ? 'Checking…' : isPending ? 'Saving…' : building ? 'Save Changes' : 'Add Building'}
+          {isPending ? 'Saving…' : building ? 'Save Changes' : 'Add Building'}
         </button>
         <Link
           href={`/prospects/${prospectId}`}
@@ -311,62 +268,5 @@ export default function BuildingForm({
         </Link>
       </div>
     </form>
-
-    {dialog && (
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-        onClick={() => { if (!submitting) { setDialog(null); setDialogError(null) } }}
-      >
-        <div
-          className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4"
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="flex items-start justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-900">Update task frequencies?</h2>
-            <button
-              type="button"
-              onClick={() => { if (!submitting) { setDialog(null); setDialogError(null) } }}
-              className="text-gray-400 hover:text-gray-600 text-xl leading-none"
-            >
-              ✕
-            </button>
-          </div>
-          <p className="text-sm text-gray-600 mb-4">
-            You&apos;re changing Service Days from <strong>{dialog.oldDays}</strong> to{' '}
-            <strong>{dialog.newDays}</strong>. There {dialog.count === 1 ? 'is' : 'are'}{' '}
-            <strong>{dialog.count}</strong> task line item{dialog.count === 1 ? '' : 's'} currently
-            set to frequency {dialog.oldDays} across all areas of this building.
-          </p>
-          <p className="text-sm text-gray-600 mb-6">
-            Update {dialog.count === 1 ? 'that task' : `those ${dialog.count} tasks`} to
-            frequency {dialog.newDays} too?
-          </p>
-          {dialogError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 mb-4">
-              {dialogError}
-            </div>
-          )}
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={handleDialogYes}
-              disabled={submitting}
-              className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-60"
-            >
-              {submitting ? 'Saving…' : 'Yes, update them'}
-            </button>
-            <button
-              type="button"
-              onClick={handleDialogNo}
-              disabled={submitting}
-              className="bg-white border border-gray-300 hover:border-gray-400 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-60"
-            >
-              No, leave them as-is
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-    </>
   )
 }

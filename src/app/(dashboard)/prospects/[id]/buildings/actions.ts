@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/supabase/auth'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { resolveAreaEffectiveFrequency } from '@/types/task-line-item'
 
 export type ActionState = { error: string } | null
 
@@ -81,58 +82,56 @@ export async function updateBuilding(
   if (!data.building_name) return { error: 'Building name is required.' }
 
   const supabase = await createClient()
-  const { error } = await supabase.from('buildings').update(data).eq('id', id)
-  if (error) return { error: error.message }
 
-  revalidatePath(`/prospects/${prospectId}`)
-  redirect(`/prospects/${prospectId}`)
-}
-
-export async function countTasksAtFrequency(buildingId: string, frequency: number): Promise<number> {
-  const supabase = await createClient()
-  const { data: areas } = await supabase.from('areas').select('id').eq('building_id', buildingId)
-  const areaIds = (areas ?? []).map((a) => a.id)
-  if (areaIds.length === 0) return 0
-  const { count } = await supabase
-    .from('task_line_items')
-    .select('*', { count: 'exact', head: true })
-    .eq('frequency', frequency)
-    .in('area_id', areaIds)
-  return count ?? 0
-}
-
-export async function updateBuildingAndTaskFrequency(
-  id: string,
-  prospectId: string,
-  oldFrequency: number,
-  newFrequency: number,
-  formData: FormData
-): Promise<ActionState> {
-  const authError = await assertAuthenticated()
-  if (authError) return authError
-
-  const data = extractBuildingData(formData)
-  if (!data.building_name) return { error: 'Building name is required.' }
-
-  const supabase = await createClient()
+  const { data: existing } = await supabase
+    .from('buildings').select('service_days').eq('id', id).single()
 
   const { error } = await supabase.from('buildings').update(data).eq('id', id)
   if (error) return { error: error.message }
 
-  const { data: areas } = await supabase.from('areas').select('id').eq('building_id', id)
-  const areaIds = (areas ?? []).map((a) => a.id)
-
-  if (areaIds.length > 0) {
-    const { error: taskError } = await supabase
-      .from('task_line_items')
-      .update({ frequency: newFrequency })
-      .eq('frequency', oldFrequency)
-      .in('area_id', areaIds)
-    if (taskError) return { error: taskError.message }
+  if (existing && existing.service_days !== data.service_days) {
+    const cascadeError = await cascadeServiceDays(supabase, id, data.service_days)
+    if (cascadeError) return { error: cascadeError }
   }
 
   revalidatePath(`/prospects/${prospectId}`)
   redirect(`/prospects/${prospectId}`)
+}
+
+// When a building's service_days changes, cascade the new value down the
+// inherit/override chain, driven entirely off frequency_source markers (never
+// value-matching, never flipping a marker):
+//   (a) inherited areas follow the building's new service_days;
+//   (b) inherited tasks follow their area's effective frequency — the area's
+//       own value for an override area, else the new service_days.
+// Override rows at either level are left untouched.
+async function cascadeServiceDays(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  buildingId: string,
+  newServiceDays: number,
+): Promise<string | null> {
+  const { data: areas } = await supabase
+    .from('areas')
+    .select('id, frequency, frequency_source')
+    .eq('building_id', buildingId)
+
+  const { error: areaError } = await supabase
+    .from('areas')
+    .update({ frequency: newServiceDays })
+    .eq('building_id', buildingId)
+    .eq('frequency_source', 'inherited')
+  if (areaError) return areaError.message
+
+  for (const area of areas ?? []) {
+    const effective = resolveAreaEffectiveFrequency(area, newServiceDays)
+    const { error: taskError } = await supabase
+      .from('task_line_items')
+      .update({ frequency: effective })
+      .eq('area_id', area.id)
+      .eq('frequency_source', 'inherited')
+    if (taskError) return taskError.message
+  }
+  return null
 }
 
 export async function deleteBuilding(
