@@ -834,7 +834,7 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
 
   // form cell classes for Page 1 building profile grid
   const pL = 'px-2 py-1.5 text-xs text-gray-600 align-top border-r border-b border-gray-200'
-  const pV = 'px-2 py-1.5 text-xs text-center text-gray-900 border-b border-gray-200'
+  const pV = 'px-2 py-1.5 text-xs text-center text-gray-900 border-r border-b border-gray-200'
 
   // compact cell classes for the area grid (many columns — use xs sizing)
   const agTh  = 'border border-gray-300 px-2 py-1.5 text-left   text-xs font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
