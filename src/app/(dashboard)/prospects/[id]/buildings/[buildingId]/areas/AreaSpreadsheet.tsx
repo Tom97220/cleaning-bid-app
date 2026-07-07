@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { updateAreaField, createAreaInline, type AreaPatch, type InlineAreaData } from './actions'
 import { createTaskLineItemInline, type InlineTaskData, updateTaskLineItemField, type TaskLineItemPatch, deleteTaskLineItem } from './[areaId]/task-line-items/actions'
 import type { Area } from '@/types/area'
-import { calculateHours, resolveAreaEffectiveFrequency, deriveFrequencySource } from '@/types/task-line-item'
+import { calculateHours } from '@/types/task-line-item'
 import type { TaskCodeForForm, TaskLineItemRow } from '@/types/task-line-item'
 import type { Position } from '@/types/position'
 import SearchableSelect, { type SelectOption } from '@/components/ui/SearchableSelect'
@@ -25,7 +25,6 @@ function InlineTaskRow({
   areaId,
   taskCodes,
   defaultFrequency,
-  inheritedFrequency,
   defaultQuantity,
   onCreated,
   positions,
@@ -33,9 +32,6 @@ function InlineTaskRow({
   areaId:           string
   taskCodes:        TaskCodeForForm[]
   defaultFrequency: number | null
-  // The area's effective frequency (what a new task inherits); a created task
-  // is 'override' only if its entered frequency differs from this.
-  inheritedFrequency: number
   defaultQuantity:  number | null
   onCreated:        (row: TaskLineItemRow) => void
   positions:        Pick<Position, 'id' | 'position_name'>[]
@@ -103,7 +99,6 @@ function InlineTaskRow({
       task_name:    v.taskName.trim(),
       position_id:  v.positionId     || null,
       frequency:    frq,
-      frequency_source: deriveFrequencySource(frq, inheritedFrequency),
       percent:      pct,
       quantity:     qty,
       minutes:      min,
@@ -341,18 +336,12 @@ function InlineTaskRow({
 
 function SavedTaskRow({
   task,
-  area,
-  buildingServiceDays,
   taskCodes,
   positions,
   onUpdated,
   onDelete,
 }: {
   task:      TaskLineItemRow
-  // Parent context for the inherit/override marker: a frequency edit is an
-  // 'override' only when it differs from the area's effective frequency.
-  area:      Pick<Area, 'frequency' | 'frequency_source'>
-  buildingServiceDays: number
   taskCodes: TaskCodeForForm[]
   positions: Pick<Position, 'id' | 'position_name'>[]
   onUpdated: (row: TaskLineItemRow) => void
@@ -464,9 +453,6 @@ function SavedTaskRow({
     const value: number | null = trimmed === '' ? null : isInt ? parseInt(trimmed, 10) : parseFloat(trimmed)
     if (value !== null && Number.isNaN(value)) return
     const patch = { [field]: value } as TaskLineItemPatch
-    if (field === 'frequency') {
-      patch.frequency_source = deriveFrequencySource(value, resolveAreaEffectiveFrequency(area, buildingServiceDays))
-    }
     await save(patch)
   }
 
@@ -565,16 +551,12 @@ function SavedTaskRow({
 
 function SavedAreaRow({
   area,
-  buildingServiceDays,
   taskCount,
   isSelected,
   onSelect,
   onUpdated,
 }: {
   area:       Area
-  // An area's parent-effective frequency is the building's service_days; a
-  // frequency edit is an 'override' only when it differs from that.
-  buildingServiceDays: number
   taskCount:  number
   isSelected: boolean
   onSelect:   (id: string) => void
@@ -659,9 +641,6 @@ function SavedAreaRow({
       : isInt ? parseInt(trimmed, 10) : parseFloat(trimmed)
     if (value !== null && Number.isNaN(value)) return
     const patch = { [field]: value } as AreaPatch
-    if (field === 'frequency') {
-      patch.frequency_source = deriveFrequencySource(value, buildingServiceDays)
-    }
     await save(patch)
   }
 
@@ -786,13 +765,9 @@ function SavedAreaRow({
 
 function InlineAreaRow({
   buildingId,
-  buildingServiceDays,
   onCreated,
 }: {
   buildingId: string
-  // An area inherits the building's service_days; a created area is 'override'
-  // only if its entered frequency differs from that.
-  buildingServiceDays: number
   onCreated:  (area: Area) => void
 }) {
   const [areaName,    setAreaName]    = useState('')
@@ -841,7 +816,6 @@ function InlineAreaRow({
       other_sqft:    v.otherSqft    ? parseFloat(v.otherSqft)    : null,
       fixtures:      v.fixtures     ? parseInt(v.fixtures, 10)   : null,
       frequency:     v.frequency    ? parseInt(v.frequency, 10)  : null,
-      frequency_source: deriveFrequencySource(v.frequency ? parseInt(v.frequency, 10) : null, buildingServiceDays),
       sinks:         v.sinks        ? parseInt(v.sinks, 10)        : null,
       showers:       v.showers      ? parseInt(v.showers, 10)      : null,
       fountains:     v.fountains    ? parseInt(v.fountains, 10)    : null,
@@ -1179,7 +1153,6 @@ export default function AreaSpreadsheet({
                   <SavedAreaRow
                     key={area.id}
                     area={area}
-                    buildingServiceDays={buildingServiceDays}
                     taskCount={taskCounts[area.id] ?? 0}
                     isSelected={selectedId === area.id}
                     onSelect={selectArea}
@@ -1188,7 +1161,6 @@ export default function AreaSpreadsheet({
                 ))}
                 <InlineAreaRow
                   buildingId={buildingId}
-                  buildingServiceDays={buildingServiceDays}
                   onCreated={handleAreaCreated}
                 />
               </tbody>
@@ -1266,8 +1238,6 @@ export default function AreaSpreadsheet({
                       <SavedTaskRow
                         key={task.id}
                         task={task}
-                        area={selectedArea!}
-                        buildingServiceDays={buildingServiceDays}
                         taskCodes={taskCodes}
                         positions={positions}
                         onUpdated={handleTaskUpdated}
@@ -1281,7 +1251,6 @@ export default function AreaSpreadsheet({
                     taskCodes={taskCodes}
                     positions={positions}
                     defaultFrequency={selectedArea?.frequency ?? buildingServiceDays}
-                    inheritedFrequency={selectedArea ? resolveAreaEffectiveFrequency(selectedArea, buildingServiceDays) : buildingServiceDays}
                     defaultQuantity={defaultQuantity}
                     onCreated={handleTaskCreated}
                   />

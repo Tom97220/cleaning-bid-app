@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 import { getUserRole } from '@/lib/supabase/auth'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { resolveAreaEffectiveFrequency } from '@/types/task-line-item'
 
 export type ActionState = { error: string } | null
 
@@ -90,7 +89,9 @@ export async function updateBuilding(
   if (error) return { error: error.message }
 
   if (existing && existing.service_days !== data.service_days) {
-    const cascadeError = await cascadeServiceDays(supabase, id, data.service_days)
+    const cascadeError = await cascadeServiceDays(
+      supabase, id, existing.service_days, data.service_days,
+    )
     if (cascadeError) return { error: cascadeError }
   }
 
@@ -98,37 +99,39 @@ export async function updateBuilding(
   redirect(`/prospects/${prospectId}`)
 }
 
-// When a building's service_days changes, cascade the new value down the
-// inherit/override chain, driven entirely off frequency_source markers (never
-// value-matching, never flipping a marker):
-//   (a) inherited areas follow the building's new service_days;
-//   (b) inherited tasks follow their area's effective frequency — the area's
-//       own value for an override area, else the new service_days.
-// Override rows at either level are left untouched.
+// When a building's service_days changes, cascade by value-match — two hops,
+// each comparing against the OLD value at the moment of the change:
+//   Hop 1: areas of this building whose frequency equals the old service_days
+//          move to the new value; areas at any other value are left untouched.
+//   Hop 2: task_line_items whose frequency equals the old service_days move to
+//          the new value, scoped to this building's area ids so no other
+//          building is touched; tasks at any other value are left untouched.
+// Caller only invokes this when oldServiceDays !== newServiceDays.
 async function cascadeServiceDays(
   supabase: Awaited<ReturnType<typeof createClient>>,
   buildingId: string,
+  oldServiceDays: number,
   newServiceDays: number,
 ): Promise<string | null> {
-  const { data: areas } = await supabase
-    .from('areas')
-    .select('id, frequency, frequency_source')
-    .eq('building_id', buildingId)
-
   const { error: areaError } = await supabase
     .from('areas')
     .update({ frequency: newServiceDays })
     .eq('building_id', buildingId)
-    .eq('frequency_source', 'inherited')
+    .eq('frequency', oldServiceDays)
   if (areaError) return areaError.message
 
-  for (const area of areas ?? []) {
-    const effective = resolveAreaEffectiveFrequency(area, newServiceDays)
+  const { data: areas } = await supabase
+    .from('areas')
+    .select('id')
+    .eq('building_id', buildingId)
+  const areaIds = (areas ?? []).map((a) => a.id)
+
+  if (areaIds.length > 0) {
     const { error: taskError } = await supabase
       .from('task_line_items')
-      .update({ frequency: effective })
-      .eq('area_id', area.id)
-      .eq('frequency_source', 'inherited')
+      .update({ frequency: newServiceDays })
+      .in('area_id', areaIds)
+      .eq('frequency', oldServiceDays)
     if (taskError) return taskError.message
   }
   return null

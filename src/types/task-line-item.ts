@@ -1,5 +1,3 @@
-import type { Area } from './area'
-
 export interface TaskLineItem {
   id:           string
   area_id:      string
@@ -7,7 +5,6 @@ export interface TaskLineItem {
   task_name:    string
   position_id:  string | null
   frequency:    number | null
-  frequency_source: 'inherited' | 'override'
   percent:      number
   quantity:     number | null
   minutes:      number | null
@@ -66,58 +63,4 @@ export function calculateHours(
     daily_hrs:   r(yHrs / frequency),
     monthly_hrs: r(yHrs / 12),
   }
-}
-
-// ── Effective-frequency resolvers ───────────────────────────────────────────
-// Walk the three-level inherit/override chain
-//   building.service_days → area.frequency → task_line_item.frequency
-// so every consumer (cascade, defaults, display) resolves the same way instead
-// of ad-hoc value fallbacks. Both always return a usable number.
-//
-// Null-override fall-through: if a row's source is 'override' but its stored
-// frequency is null (a blank/corrupt override), we fall through to the parent's
-// effective value rather than returning null — so a bad override degrades to
-// inheritance instead of leaking a null frequency downstream.
-
-// An inherited area follows the building's service_days, regardless of whatever
-// integer happens to sit in area.frequency.
-export function resolveAreaEffectiveFrequency(
-  area: Pick<Area, 'frequency' | 'frequency_source'>,
-  buildingServiceDays: number,
-): number {
-  if (area.frequency_source === 'override' && area.frequency != null) {
-    return area.frequency
-  }
-  return buildingServiceDays
-}
-
-// An inherited task follows its area's effective frequency, which itself
-// resolves through the area's marker to either the area override or the
-// building's service_days.
-export function resolveTaskEffectiveFrequency(
-  task: Pick<TaskLineItem, 'frequency' | 'frequency_source'>,
-  area: Pick<Area, 'frequency' | 'frequency_source'>,
-  buildingServiceDays: number,
-): number {
-  if (task.frequency_source === 'override' && task.frequency != null) {
-    return task.frequency
-  }
-  return resolveAreaEffectiveFrequency(area, buildingServiceDays)
-}
-
-// The single rule for the inherit/override marker, shared by every create/edit
-// path (area + task, grid + form): a row is 'override' only when a concrete
-// frequency was supplied AND it differs from what the row would inherit (its
-// parent's effective value). A null/blank frequency, or one equal to the
-// parent, is 'inherited'. parentEffectiveFrequency is always a number (the
-// resolvers guarantee it), so nulls only appear on the `frequency` side and
-// normalize to 'inherited' — a blank area frequency stays inherited, not
-// "differs".
-export function deriveFrequencySource(
-  frequency: number | null,
-  parentEffectiveFrequency: number,
-): 'inherited' | 'override' {
-  return frequency != null && frequency !== parentEffectiveFrequency
-    ? 'override'
-    : 'inherited'
 }
