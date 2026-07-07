@@ -851,14 +851,14 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
   }
   // measurement columns, left→right, matching the AreaSpreadsheet header order
   const gridCols: GridRow[] = [
-    { label: '# Rooms',      getValue: a => a.room_count,    getTotal: () => sumCol(a => a.room_count)    },
+    { label: 'Rooms',        getValue: a => a.room_count,    getTotal: () => sumCol(a => a.room_count)    },
     { label: 'Carpet Sqft',  getValue: a => a.carpet_sqft,   getTotal: () => sumCol(a => a.carpet_sqft)   },
     { label: 'Tile Sqft',    getValue: a => a.tile_vct_sqft, getTotal: () => sumCol(a => a.tile_vct_sqft) },
     { label: 'RR Fix',       getValue: a => a.fixtures,      getTotal: () => sumCol(a => a.fixtures)      },
-    { label: '# Showers',    getValue: a => a.showers,       getTotal: () => sumCol(a => a.showers)       },
-    { label: '# Fountains',  getValue: a => a.fountains,     getTotal: () => sumCol(a => a.fountains)     },
-    { label: '# Sinks',      getValue: a => a.sinks,         getTotal: () => sumCol(a => a.sinks)         },
-    { label: '# Stairwells', getValue: a => a.stairwells,    getTotal: () => sumCol(a => a.stairwells)    },
+    { label: 'Showers',      getValue: a => a.showers,       getTotal: () => sumCol(a => a.showers)       },
+    { label: 'Fountains',    getValue: a => a.fountains,     getTotal: () => sumCol(a => a.fountains)     },
+    { label: 'Sinks',        getValue: a => a.sinks,         getTotal: () => sumCol(a => a.sinks)         },
+    { label: 'Stairwells',   getValue: a => a.stairwells,    getTotal: () => sumCol(a => a.stairwells)    },
     { label: 'Total Sqft',   getValue: a => a.square_footage,getTotal: () => sumCol(a => a.square_footage)},
   ]
 
