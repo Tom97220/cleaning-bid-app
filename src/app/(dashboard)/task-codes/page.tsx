@@ -12,10 +12,19 @@ export default async function TaskCodesPage() {
     getUserRole(),
   ])
 
-  const { data: taskCodes, error } = await supabase
-    .from('task_codes')
-    .select('*, task_types(type_name), positions(position_name)')
-    .order('task_code')
+  const [{ data: taskCodes, error }, { data: usedRows }] = await Promise.all([
+    supabase
+      .from('task_codes')
+      .select('*, task_types(type_name), positions(position_name)')
+      .order('task_code'),
+    supabase.from('task_line_items').select('task_code_id'),
+  ])
+
+  // Distinct set of codes referenced by at least one line item — the row-level
+  // Delete control is shown only for codes NOT in this set (safe hard delete).
+  const usedCodeIds = Array.from(
+    new Set((usedRows ?? []).map((r) => r.task_code_id).filter(Boolean))
+  ) as string[]
 
   const isAdmin = role === 'admin'
 
@@ -41,7 +50,7 @@ export default async function TaskCodesPage() {
             Failed to load task codes: {error.message}
           </div>
         ) : (
-          <TaskCodeList taskCodes={taskCodes ?? []} isAdmin={isAdmin} />
+          <TaskCodeList taskCodes={taskCodes ?? []} isAdmin={isAdmin} usedCodeIds={usedCodeIds} />
         )}
       </div>
     </div>

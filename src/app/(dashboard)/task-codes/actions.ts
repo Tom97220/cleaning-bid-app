@@ -95,11 +95,34 @@ export async function updateTaskCode(
   redirect('/task-codes')
 }
 
+export async function setTaskCodeActive(id: string, active: boolean): Promise<ActionState> {
+  const authError = await assertAdmin()
+  if (authError) return authError
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('task_codes').update({ is_active: active }).eq('id', id)
+  if (error) return { error: error.message }
+
+  revalidatePath('/task-codes')
+  return null
+}
+
 export async function deleteTaskCode(id: string): Promise<ActionState> {
   const authError = await assertAdmin()
   if (authError) return authError
 
   const supabase = await createClient()
+
+  // Guard: a used code is protected by the RESTRICT FK. Check first so the
+  // admin gets a clear message instead of a raw foreign-key error.
+  const { count } = await supabase
+    .from('task_line_items')
+    .select('id', { count: 'exact', head: true })
+    .eq('task_code_id', id)
+  if (count && count > 0) {
+    return { error: 'This code is in use on existing bids — retire it instead of deleting.' }
+  }
+
   const { error } = await supabase.from('task_codes').delete().eq('id', id)
   if (error) return { error: error.message }
 

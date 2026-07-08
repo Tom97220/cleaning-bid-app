@@ -2,22 +2,33 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { deleteTaskCode } from './actions'
+import { deleteTaskCode, setTaskCodeActive } from './actions'
 import type { TaskCodeRow } from '@/types/task-code'
 import { UNIT_OF_MEASURE_LABELS } from '@/types/task-code'
 
 export default function TaskCodeList({
   taskCodes,
   isAdmin,
+  usedCodeIds,
 }: {
   taskCodes: TaskCodeRow[]
   isAdmin: boolean
+  usedCodeIds: string[]
 }) {
-  const [search, setSearch]          = useState('')
-  const [deletingId, setDeletingId]  = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [search, setSearch]           = useState('')
+  const [view, setView]               = useState<'active' | 'archived'>('active')
+  const [pendingId, setPendingId]     = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [isPending, startTransition]  = useTransition()
+
+  const usedSet = new Set(usedCodeIds)
+
+  const activeCount   = taskCodes.filter((t) => t.is_active).length
+  const archivedCount = taskCodes.length - activeCount
 
   const filtered = taskCodes.filter((t) => {
+    // View toggle first: 'active' shows only is_active, 'archived' only inactive.
+    if (view === 'active' ? !t.is_active : t.is_active) return false
     const q = search.toLowerCase()
     return (
       !q ||
@@ -31,10 +42,24 @@ export default function TaskCodeList({
 
   function handleDelete(id: string, name: string) {
     if (!confirm(`Delete task code "${name}"? This cannot be undone.`)) return
-    setDeletingId(id)
+    setPendingId(id)
+    setActionError(null)
     startTransition(async () => {
-      await deleteTaskCode(id)
-      setDeletingId(null)
+      const result = await deleteTaskCode(id)
+      if (result?.error) setActionError(result.error)
+      setPendingId(null)
+    })
+  }
+
+  function handleSetActive(id: string, active: boolean, name: string) {
+    const verb = active ? 'Reactivate' : 'Retire'
+    if (!confirm(`${verb} task code "${name}"?`)) return
+    setPendingId(id)
+    setActionError(null)
+    startTransition(async () => {
+      const result = await setTaskCodeActive(id, active)
+      if (result?.error) setActionError(result.error)
+      setPendingId(null)
     })
   }
 
@@ -42,7 +67,33 @@ export default function TaskCodeList({
 
   return (
     <div className="space-y-4">
+      {actionError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+          {actionError}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-3 items-center">
+        <div className="inline-flex rounded-lg border border-gray-300 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setView('active')}
+            className={`px-3 py-2 text-sm font-medium transition-colors ${
+              view === 'active' ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            Active ({activeCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('archived')}
+            className={`px-3 py-2 text-sm font-medium transition-colors ${
+              view === 'archived' ? 'bg-brand-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'
+            }`}
+          >
+            Archived ({archivedCount})
+          </button>
+        </div>
         <input
           type="text"
           placeholder="Search by code, name, task type, position, or description..."
@@ -51,7 +102,7 @@ export default function TaskCodeList({
           className="flex-1 min-w-[320px] max-w-md border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
         <span className="text-sm text-gray-400 ml-auto">
-          {filtered.length} of {taskCodes.length} task codes
+          {filtered.length} of {view === 'active' ? activeCount : archivedCount} {view} task codes
         </span>
       </div>
 
@@ -73,6 +124,8 @@ export default function TaskCodeList({
                   <p className="text-sm font-medium text-gray-400">
                     {taskCodes.length === 0
                       ? 'No task codes defined yet.'
+                      : view === 'archived' && archivedCount === 0
+                      ? 'No archived task codes.'
                       : 'No task codes match your search.'}
                   </p>
                 </td>
@@ -111,13 +164,32 @@ export default function TaskCodeList({
                         >
                           Edit
                         </Link>
-                        <button
-                          onClick={() => handleDelete(t.id, t.task_name)}
-                          disabled={isPending && deletingId === t.id}
-                          className="text-sm text-red-500 hover:text-red-700 font-medium disabled:opacity-40"
-                        >
-                          {isPending && deletingId === t.id ? 'Deleting…' : 'Delete'}
-                        </button>
+                        {t.is_active ? (
+                          <button
+                            onClick={() => handleSetActive(t.id, false, t.task_name)}
+                            disabled={isPending && pendingId === t.id}
+                            className="text-sm text-amber-600 hover:text-amber-800 font-medium disabled:opacity-40"
+                          >
+                            {isPending && pendingId === t.id ? 'Working…' : 'Retire'}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleSetActive(t.id, true, t.task_name)}
+                            disabled={isPending && pendingId === t.id}
+                            className="text-sm text-green-600 hover:text-green-800 font-medium disabled:opacity-40"
+                          >
+                            {isPending && pendingId === t.id ? 'Working…' : 'Reactivate'}
+                          </button>
+                        )}
+                        {!usedSet.has(t.id) && (
+                          <button
+                            onClick={() => handleDelete(t.id, t.task_name)}
+                            disabled={isPending && pendingId === t.id}
+                            className="text-sm text-red-500 hover:text-red-700 font-medium disabled:opacity-40"
+                          >
+                            {isPending && pendingId === t.id ? 'Deleting…' : 'Delete'}
+                          </button>
+                        )}
                       </div>
                     </td>
                   )}
