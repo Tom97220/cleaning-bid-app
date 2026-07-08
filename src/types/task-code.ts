@@ -3,7 +3,7 @@ export type UnitOfMeasure = 'sqft_per_hour' | 'minutes_per_unit' | 'both'
 export const UNIT_OF_MEASURE_LABELS: Record<UnitOfMeasure, string> = {
   sqft_per_hour:    'Sq ft per hour',
   minutes_per_unit: 'Minutes per unit',
-  both:             'Both (sq ft + each)',
+  both:             'Sq ft or each (choose per use)',
 }
 
 export type DefaultBasis = 'sqft_per_hour' | 'minutes_per_unit'

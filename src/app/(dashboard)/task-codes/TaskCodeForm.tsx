@@ -153,7 +153,7 @@ export default function TaskCodeForm({
               <option value="" disabled>Select unit...</option>
               <option value="sqft_per_hour">Sq ft per hour</option>
               <option value="minutes_per_unit">Minutes per unit</option>
-              <option value="both">Both (sq ft + each)</option>
+              <option value="both">Sq ft or each (choose per use)</option>
             </select>
           </div>
 
