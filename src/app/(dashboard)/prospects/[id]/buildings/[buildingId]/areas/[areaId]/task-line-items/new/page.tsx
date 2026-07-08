@@ -27,6 +27,7 @@ export default async function NewTaskLineItemPage({
     supabase
       .from('task_codes')
       .select('id, task_code, task_name, position_id, unit_of_measure, production_rate, rate_each, default_basis, description, task_types(type_name)')
+      .eq('is_active', true)
       .order('task_code'),
     supabase
       .from('positions')

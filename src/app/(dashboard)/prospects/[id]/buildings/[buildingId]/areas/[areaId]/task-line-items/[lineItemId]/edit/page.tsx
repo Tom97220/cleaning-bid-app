@@ -32,6 +32,7 @@ export default async function EditTaskLineItemPage({
     supabase
       .from('task_codes')
       .select('id, task_code, task_name, position_id, unit_of_measure, production_rate, rate_each, default_basis, description, task_types(type_name)')
+      .eq('is_active', true)
       .order('task_code'),
     supabase
       .from('positions')
@@ -41,12 +42,25 @@ export default async function EditTaskLineItemPage({
 
   if (!item || !area) notFound()
 
+  const taskCodes = (taskCodesRaw ?? []) as unknown as TaskCodeForForm[]
+
+  // The pickers above are active-only, but this line item may reference a code
+  // that has since been retired (is_active = false). Append that one code so the
+  // edit form keeps its current selection instead of rendering blank.
+  const currentCodeId = (item as TaskLineItem).task_code_id
+  if (currentCodeId && !taskCodes.some((tc) => tc.id === currentCodeId)) {
+    const { data: currentCode } = await supabase
+      .from('task_codes')
+      .select('id, task_code, task_name, position_id, unit_of_measure, production_rate, rate_each, default_basis, description, task_types(type_name)')
+      .eq('id', currentCodeId)
+      .single()
+    if (currentCode) taskCodes.push(currentCode as unknown as TaskCodeForForm)
+  }
+
   const hasSqftBreakdown = area.carpet_sqft != null || area.tile_vct_sqft != null || area.other_sqft != null
   const defaultQuantity = hasSqftBreakdown
     ? (area.carpet_sqft ?? 0) + (area.tile_vct_sqft ?? 0) + (area.other_sqft ?? 0)
     : area.square_footage ?? null
-
-  const taskCodes = (taskCodesRaw ?? []) as unknown as TaskCodeForForm[]
 
   return (
     <div className="flex flex-col h-full">
