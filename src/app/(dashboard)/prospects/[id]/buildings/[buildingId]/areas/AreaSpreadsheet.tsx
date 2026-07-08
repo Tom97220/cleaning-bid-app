@@ -650,7 +650,7 @@ function SavedAreaRow({
     <>
       {rowError && (
         <tr>
-          <td colSpan={15} className="px-3 py-1">
+          <td colSpan={14} className="px-3 py-1">
             <span className="text-xs text-red-600">{rowError}</span>
           </td>
         </tr>
@@ -760,13 +760,6 @@ function SavedAreaRow({
             value={sinks} onChange={e => setSinks(e.target.value)}
             onFocus={() => { hasActiveFocusRef.current = true }}
             onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('sinks', e.target.value, true) }}
-            className={`${cellInput} tabular-nums text-right`} />
-        </td>
-        <td className={TD}>
-          <input type="number" min="0" step="1" placeholder="—"
-            value={stairwells} onChange={e => setStairwells(e.target.value)}
-            onFocus={() => { hasActiveFocusRef.current = true }}
-            onBlur={e => { hasActiveFocusRef.current = false; void handleNumBlur('stairwells', e.target.value, true) }}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
         <td className="px-2 py-1 text-center">
@@ -880,7 +873,7 @@ function InlineAreaRow({
   if (creating) {
     return (
       <tr className="border-t border-dashed border-gray-200">
-        <td colSpan={15} className="px-4 py-2 text-center text-xs text-gray-400 italic">Saving…</td>
+        <td colSpan={14} className="px-4 py-2 text-center text-xs text-gray-400 italic">Saving…</td>
       </tr>
     )
   }
@@ -889,7 +882,7 @@ function InlineAreaRow({
     <>
       {createError && (
         <tr>
-          <td colSpan={15} className="px-3 py-1">
+          <td colSpan={14} className="px-3 py-1">
             <span className="text-xs text-red-600">{createError}</span>
           </td>
         </tr>
@@ -959,12 +952,6 @@ function InlineAreaRow({
         <td className="px-1 py-1 w-16">
           <input type="number" min="0" step="1" placeholder="—"
             value={sinks} onChange={e => setSinks(e.target.value)}
-            onFocus={handleFocus} onBlur={handleBlur}
-            className={`${cellInput} tabular-nums text-right`} />
-        </td>
-        <td className="px-1 py-1 w-16">
-          <input type="number" min="0" step="1" placeholder="—"
-            value={stairwells} onChange={e => setStairwells(e.target.value)}
             onFocus={handleFocus} onBlur={handleBlur}
             className={`${cellInput} tabular-nums text-right`} />
         </td>
@@ -1182,7 +1169,6 @@ export default function AreaSpreadsheet({
                   <th className={`${TH} w-16`}># Showers</th>
                   <th className={`${TH} w-16`}># Fountains</th>
                   <th className={`${TH} w-16`} title="Non-restroom sinks only"># Sinks</th>
-                  <th className={`${TH} w-16`}># Stairwells</th>
                   <th className={`${TH} w-12 text-center`}>Tasks</th>
                 </tr>
               </thead>
@@ -1216,7 +1202,6 @@ export default function AreaSpreadsheet({
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.showers)}</td>
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.fountains)}</td>
                   <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.sinks)}</td>
-                  <td className="px-2 py-2 text-right text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.stairwells)}</td>
                   <td />
                   <td className="px-2 py-2 text-center text-sm font-semibold tabular-nums text-gray-700">{fmt(totals.tasks)}</td>
                 </tr>

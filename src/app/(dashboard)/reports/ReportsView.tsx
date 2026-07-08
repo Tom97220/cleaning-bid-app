@@ -858,7 +858,6 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
     { label: 'Showers',      getValue: a => a.showers,       getTotal: () => sumCol(a => a.showers)       },
     { label: 'Fountains',    getValue: a => a.fountains,     getTotal: () => sumCol(a => a.fountains)     },
     { label: 'Sinks',        getValue: a => a.sinks,         getTotal: () => sumCol(a => a.sinks)         },
-    { label: 'Stairwells',   getValue: a => a.stairwells,    getTotal: () => sumCol(a => a.stairwells)    },
     { label: 'Total Sqft',   getValue: a => a.square_footage,getTotal: () => sumCol(a => a.square_footage)},
   ]
 
@@ -973,9 +972,9 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
         <div className="overflow-x-auto">
           <table className="w-full border-collapse table-fixed">
             <colgroup>
-              <col style={{ width: '14.5%' }} />
+              <col style={{ width: '16%' }} />
               {gridCols.map(col => (
-                <col key={col.label} style={{ width: '9.5%' }} />
+                <col key={col.label} style={{ width: '10.5%' }} />
               ))}
             </colgroup>
             <thead>
