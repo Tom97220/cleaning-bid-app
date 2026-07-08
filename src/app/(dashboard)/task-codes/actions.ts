@@ -22,7 +22,7 @@ function extractTaskCodeData(formData: FormData) {
   const uom          = (formData.get('unit_of_measure') as string)
   const isBoth       = uom === 'both'
   return {
-    task_code:        (formData.get('task_code') as string).trim().toUpperCase(),
+    task_code:        (formData.get('task_code') as string).trim(),
     task_name:        (formData.get('task_name') as string).trim(),
     task_type_id:     (formData.get('task_type_id') as string) || null,
     position_id:      (formData.get('position_id') as string) || null,
