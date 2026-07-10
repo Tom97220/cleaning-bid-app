@@ -968,7 +968,6 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
       {/* ── Page 2: Area Grid ─────────────────────────────────────────────── */}
       <div className="report-section">
         <ReportHeader title="Pinpoint — Area Grid" prospect={prospect} building={building} />
-        <div className="overflow-x-auto">
           <table className="w-full border-collapse table-fixed">
             <colgroup>
               <col style={{ width: '16%' }} />
@@ -1003,7 +1002,6 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
               </tr>
             </tfoot>
           </table>
-        </div>
       </div>
 
       {/* ── Page 3: Production & Staffing Summary ─────────────────────────── */}
@@ -1141,6 +1139,12 @@ export default function ReportsView({
           .cover-page  { break-after: page; height: 100vh !important; min-height: unset !important; }
           .report-section { break-before: page; }
           .report-section:first-child { break-before: auto; }
+          .flex.h-full.overflow-hidden,
+          .flex-1.overflow-y-auto {
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
+          }
         }
         @page {
           size: portrait;
@@ -1709,6 +1713,12 @@ export function ConsolidatedReportsView({
           .cover-page  { break-after: page; height: 100vh !important; min-height: unset !important; }
           .report-section { break-before: page; }
           .report-section:first-child { break-before: auto; }
+          .flex.h-full.overflow-hidden,
+          .flex-1.overflow-y-auto {
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
+          }
         }
         @page {
           size: portrait;
