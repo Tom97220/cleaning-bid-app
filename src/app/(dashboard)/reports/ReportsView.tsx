@@ -838,7 +838,7 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
 
   // compact cell classes for the area grid (many columns — use xs sizing)
   const agTh  = 'border border-gray-300 px-2 py-1.5 text-left   text-[8px] font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
-  const agThC = 'border border-gray-300 px-2 py-1.5 text-right  text-[8px] font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+  const agThC = 'border border-gray-300 px-2 py-1.5 text-center text-[8px] font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
   const agTd  = 'border border-gray-300 px-2 py-1   text-[8px] text-gray-700'
   const agTdC = 'border border-gray-300 px-2 py-1   text-[8px] text-right tabular-nums text-gray-700'
 
@@ -967,7 +967,7 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
       </div>
 
       {/* ── Page 2: Area Grid ─────────────────────────────────────────────── */}
-      <div className="report-section pinpoint-landscape">
+      <div className="report-section pinpoint-portrait">
         <ReportHeader title="Pinpoint — Area Grid" prospect={prospect} building={building} />
         <div className="overflow-x-auto">
           <table className="w-full border-collapse table-fixed">
@@ -1142,10 +1142,10 @@ export default function ReportsView({
           .cover-page  { break-after: page; height: 100vh !important; min-height: unset !important; }
           .report-section { break-before: page; }
           .report-section:first-child { break-before: auto; }
-          .pinpoint-landscape { page: pinpoint-landscape; }
+          .pinpoint-portrait { page: pinpoint-portrait; }
         }
-        @page pinpoint-landscape {
-          size: landscape;
+        @page pinpoint-portrait {
+          size: portrait;
           margin: 0.4in;
         }
       `}</style>
@@ -1711,10 +1711,10 @@ export function ConsolidatedReportsView({
           .cover-page  { break-after: page; height: 100vh !important; min-height: unset !important; }
           .report-section { break-before: page; }
           .report-section:first-child { break-before: auto; }
-          .pinpoint-landscape { page: pinpoint-landscape; }
+          .pinpoint-portrait { page: pinpoint-portrait; }
         }
-        @page pinpoint-landscape {
-          size: landscape;
+        @page pinpoint-portrait {
+          size: portrait;
           margin: 0.4in;
         }
       `}</style>
