@@ -966,7 +966,7 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
       </div>
 
       {/* ── Page 2: Area Grid ─────────────────────────────────────────────── */}
-      <div className="report-section pinpoint-portrait">
+      <div className="report-section">
         <ReportHeader title="Pinpoint — Area Grid" prospect={prospect} building={building} />
         <div className="overflow-x-auto">
           <table className="w-full border-collapse table-fixed">
@@ -1141,9 +1141,8 @@ export default function ReportsView({
           .cover-page  { break-after: page; height: 100vh !important; min-height: unset !important; }
           .report-section { break-before: page; }
           .report-section:first-child { break-before: auto; }
-          .pinpoint-portrait { page: pinpoint-portrait; }
         }
-        @page pinpoint-portrait {
+        @page {
           size: portrait;
           margin: 0.4in;
         }
@@ -1710,9 +1709,8 @@ export function ConsolidatedReportsView({
           .cover-page  { break-after: page; height: 100vh !important; min-height: unset !important; }
           .report-section { break-before: page; }
           .report-section:first-child { break-before: auto; }
-          .pinpoint-portrait { page: pinpoint-portrait; }
         }
-        @page pinpoint-portrait {
+        @page {
           size: portrait;
           margin: 0.4in;
         }
