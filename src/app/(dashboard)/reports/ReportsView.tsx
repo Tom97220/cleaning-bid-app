@@ -837,10 +837,10 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
   const pV = 'px-2 py-1.5 text-xs text-center text-gray-900 border-r border-b border-gray-200'
 
   // compact cell classes for the area grid (many columns — use xs sizing)
-  const agTh  = 'border border-gray-300 px-2 py-1.5 text-left   text-[8px] font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
-  const agThC = 'border border-gray-300 px-2 py-1.5 text-center text-[8px] font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
-  const agTd  = 'border border-gray-300 px-2 py-1   text-[8px] text-gray-700'
-  const agTdC = 'border border-gray-300 px-2 py-1   text-[8px] text-right tabular-nums text-gray-700'
+  const agTh  = 'border border-gray-300 px-2 py-1.5 text-left   text-[11px] font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+  const agThC = 'border border-gray-300 px-2 py-1.5 text-center text-[11px] font-semibold uppercase tracking-wide text-gray-600 bg-gray-50'
+  const agTd  = 'border border-gray-300 px-2 py-1   text-[11px] text-gray-700'
+  const agTdC = 'border border-gray-300 px-2 py-1   text-[11px] text-right tabular-nums text-gray-700'
 
   type GridRow = { label: string; getValue: (a: Area) => number | null | undefined; getTotal: () => number | null }
   // sum a field across all areas; returns null when no area has a non-null value (so the Totals cell shows "—", not 0)
@@ -856,7 +856,6 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
     { label: 'Tile Sqft',    getValue: a => a.tile_vct_sqft, getTotal: () => sumCol(a => a.tile_vct_sqft) },
     { label: 'RR Fix',       getValue: a => a.fixtures,      getTotal: () => sumCol(a => a.fixtures)      },
     { label: 'Showers',      getValue: a => a.showers,       getTotal: () => sumCol(a => a.showers)       },
-    { label: 'Fountains',    getValue: a => a.fountains,     getTotal: () => sumCol(a => a.fountains)     },
     { label: 'Sinks',        getValue: a => a.sinks,         getTotal: () => sumCol(a => a.sinks)         },
     { label: 'Total Sqft',   getValue: a => a.square_footage,getTotal: () => sumCol(a => a.square_footage)},
   ]
@@ -974,7 +973,7 @@ function PinpointReport({ data, logoUrl = null, customerLogoUrl = null }: { data
             <colgroup>
               <col style={{ width: '16%' }} />
               {gridCols.map(col => (
-                <col key={col.label} style={{ width: '10.5%' }} />
+                <col key={col.label} style={{ width: '12%' }} />
               ))}
             </colgroup>
             <thead>
